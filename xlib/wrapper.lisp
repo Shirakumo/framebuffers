@@ -3,7 +3,7 @@
 (pushnew :xlib fb:*available-backends*)
 
 (defmethod fb:init-backend ((backend (eql :xlib)))
-  )
+  (cffi:use-foreign-library xlib:x11))
 
 (defmethod fb:shutdown-backend ((backend (eql :xlib)))
   )

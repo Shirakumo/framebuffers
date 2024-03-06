@@ -143,8 +143,7 @@
   (exposures :bool))
 
 (cffi:defcfun (close-display "XCloseDisplay") :int
-  (display :pointer)
-  (window xid))
+  (display :pointer))
 
 (cffi:defcfun (create-image "XCreateImage") :pointer
   (display :pointer)

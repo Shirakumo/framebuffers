@@ -1,12 +1,32 @@
 (in-package #:org.shirakumo.framebuffers)
 
 ;;; Backend Internals
+(defvar *windows-table* (make-hash-table :test 'eql))
 (defvar *available-backends* ())
 (defvar *backend* NIL)
 
 (defgeneric init-backend (backend))
 (defgeneric shutdown-backend (backend))
 (defgeneric open-backend (backend &key))
+
+(defun default-title ()
+  (format NIL "Framebuffer (~a ~a)" (lisp-implementation-type) (lisp-implementation-version)))
+
+(declaim (inline ptr-int))
+(defun ptr-int (ptr)
+  (etypecase ptr
+    (cffi:foreign-pointer (cffi:pointer-address ptr))
+    ((integer 1) ptr)))
+
+(declaim (inline ptr-window))
+(defun ptr-window (ptr)
+  (gethash (ptr-int ptr) *windows-table*))
+
+(defun (setf ptr-window) (window ptr)
+  (if window
+      (setf (gethash (ptr-int ptr) *windows-table*) window)
+      (remhash (ptr-int ptr) *windows-table*))
+  window)
 
 ;;; Setup
 (defun init ()
@@ -27,7 +47,8 @@
 ;;; Base class
 (defclass window () ())
 
-(defun open (&key width height visible-p &allow-other-keys)
+(defun open (&key width height title visible-p &allow-other-keys)
+  (declare (ignore width height title visible-p))
   (apply #'open-backend (or *backend* (init)) args))
 
 ;;; Window info

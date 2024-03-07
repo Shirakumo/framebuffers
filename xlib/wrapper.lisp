@@ -74,7 +74,6 @@
             (xlib:store-name display window title)
             (xlib:select-input display window '(:key-press :key-release :button-press :button-relaese :pointer-motion
                                                 :structure-notify :exposure :focus-change :enter-window :leave-window))
-            ;; TODO: stuff like borderless, always on top, fullscreen, resizable, min/max size, etc.
             (setf (cffi:mem-aref protos :pointer 0) (xlib:intern-atom display "WM_DELETE_WINDOW" 0))
             (setf (cffi:mem-aref protos :pointer 1) (xlib:intern-atom display "NET_WM_PING" 0))
             (xlib:set-wm-protocols display window protos 2)

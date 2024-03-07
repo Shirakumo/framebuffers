@@ -100,3 +100,15 @@
 ;; Actions: PRESS RELEASE REPEAT
 (defmethod string-entered ((window window) string))
 (defmethod file-dropped ((window window) paths))
+
+;;; TODO:
+;; minimum-size
+;; maximum-size
+;; borderless-p
+;; always-on-top-p
+;; fullscreen-p
+;; resizable-p
+;; icon
+;; cursor-state (hidden locked visible)
+;; cursor
+;; monitor

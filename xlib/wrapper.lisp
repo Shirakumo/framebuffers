@@ -103,11 +103,16 @@
    (atom-table :initform (make-hash-table :test 'equal) :reader atom-table)))
 
 (defun atom (window name)
-  (or (gethash name (atom-table window))
-      (setf (gethash name (atom-table window)) (xlib:intern-atom (display window) name 0))))
+  (etypecase name
+    ((or symbol string)
+     (let ((name (string name)))
+       (or (gethash name (atom-table window))
+           (setf (gethash name (atom-table window)) (xlib:intern-atom (display window) name 0)))))
+    ((integer 0)
+     name)))
 
 (defun atomp (window atom name)
-  (cffi:pointer-eq atom (atom window name)))
+  (= atom (atom window name)))
 
 (defun send-client-event (window type a b c d e)
   (cffi:with-foreign-objects ((event '(:struct xlib:client-message-event)))
@@ -124,6 +129,25 @@
     (xlib:send-event (display window) (xlib:default-root-window (display window))
                      NIL 1572864 event)))
 
+(defun get-property (window property type value)
+  (cffi:with-foreign-objects ((actual-type 'xlib:atom)
+                              (actual-format :int)
+                              (item-count :ulong)
+                              (bytes-after :ulong))
+    (xlib:get-window-property (display window) (xid window) (atom window property) 0 2147483647 NIL (atom window type)
+                              actual-type actual-format item-count bytes-after value)
+    (cffi:mem-ref item-count :ulong)))
+
+(defun get-state (window)
+  (cffi:with-foreign-objects ((state :pointer))
+    (prog1 (if (<= 2 (get-property window "WM_STATE" "WM_STATE" state))
+               (ecase (cffi:mem-ref (cffi:mem-ref state :pointer) :uint32)
+                 (0 :withdrawn)
+                 (1 :normal)
+                 (2 :iconic))
+               :withdrawn)
+      (xlib:free (cffi:mem-ref state :pointer)))))
+
 (defmethod fb:valid-p ((window window))
   (not (null (xid window))))
 
@@ -136,6 +160,7 @@
     (xlib:destroy-window (display window) (xid window))
     (setf (xid window) NIL))
   (when (display window)
+    (xlib:flush (display window))
     (xlib:close-display (display window))
     (setf (display window) NIL)))
 
@@ -148,6 +173,7 @@
 (defmethod (setf fb:size) (size (window window))
   (destructuring-bind (w . h) size
     (xlib:resize-window (display window) (xid window) w h)
+    (xlib:flush (display window))
     (setf (car (size window)) w)
     (setf (cdr (size window)) h)
     size))
@@ -155,27 +181,57 @@
 (defmethod (setf fb:location) (location (window window))
   (destructuring-bind (x . y) location
     (xlib:move-window (display window) (xid window) x y)
+    (xlib:flush (display window))
     (setf (car (location window)) x)
     (setf (cdr (location window)) y)
     location))
 
 (defmethod (setf fb:title) (title (window window))
   (xlib:store-name (display window) (xid window) title)
+  (xlib:flush (display window))
   (setf (title window) title))
 
 (defmethod (setf fb:visible-p) (state (window window))
   (if state
       (xlib:map-raised (display window) (xid window))
       (xlib:unmap-window (display window) (xid window)))
+  (xlib:flush (display window))
   (setf (visible-p window) state))
 
 (defmethod (setf fb:maximized-p) (state (window window))
-  ;; TODO: implement maximisation switch
-  )
+  (cond (state
+         (cond ((visible-p window)
+                (send-client-event window "NET_WM_STATE" 1 
+                                   (atom window "NET_WM_STATE_MAXIMIZED_VERT")
+                                   (atom window "NET_WM_STATE_MAXIMIZED_HORZ")
+                                   1 0))
+               (T
+                (let ((count 2))
+                  (cffi:with-foreign-objects ((missing 'xlib:atom 2)
+                                              (states :pointer))
+                    (setf (cffi:mem-aref missing 'xlib:atom 0) (atom window "NET_WM_STATE_MAXIMIZED_VERT"))
+                    (setf (cffi:mem-aref missing 'xlib:atom 1) (atom window "NET_WM_STATE_MAXIMIZED_HORZ"))
+                    (dotimes (i (get-property window "NET_WM_STATE" 4 states))
+                      (dotimes (j 2)
+                        (when (= (cffi:mem-aref missing 'xlib:atom j) (cffi:mem-aref (cffi:mem-ref states :pointer) 'xlib:atom i))
+                          (setf (cffi:mem-aref missing 'xlib:atom j) (cffi:mem-aref missing 'xlib:atom (1- count)))
+                          (decf count))))
+                    (xlib:free (cffi:mem-ref states :pointer))
+                    (when (< 0 count)
+                      (xlib:change-property (display window) (xid window)
+                                            (atom window "NET_WM_STATE") 4 32 2 missing count)))))))
+        ((maximized-p window)
+         (send-client-event window "NET_WM_STATE" 0
+                            (atom window "NET_WM_STATE_MAXIMIZED_VERT")
+                            (atom window "NET_WM_STATE_MAXIMIZED_HORZ")
+                            1 0)))
+  (xlib:flush (display window))
+  (setf (maximized-p window) state))
 
 (defmethod (setf fb:iconified-p) (state (window window))
   (cond (state
          (xlib:iconify-window (display window) (xid window) (screen window))
+         (xlib:flush (display window))
          (setf (iconified-p window) T))
         (T
          (setf (fb:visible-p window) T)
@@ -190,7 +246,8 @@
   )
 
 (defmethod fb:request-attention ((window window))
-  (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0))
+  (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0)
+  (xlib:flush (display window)))
 
 (defmethod fb:swap-buffers ((window window) new-buffer)
   (let ((size (size window))
@@ -219,11 +276,13 @@
              (xlib:peek-event (display window) next)
              (when (and (eql :key-press (xlib:base-event-type next))
                         (= (xlib:positioned-event-time next) (xlib:positioned-event-time event))
-                        (= (xlib:key-event-keycode next) (xlib:key-event-keycode event)))
+                        (< (- (xlib:key-event-keycode next) (xlib:key-event-keycode event)) 20))
                (xlib:next-event (display window) event)
                (setf action :repeat))))
          (let ((code (xlib:key-event-keycode event)))
-           (fb:key-changed window (translate-keycode code) code action (xlib:key-event-state event)))))
+           (fb:key-changed window (translate-keycode code) code action (xlib:key-event-state event))
+           ;; FIXME: string translation
+           )))
   (defmethod process-event ((window window) (type (eql :key-press)) event)
     (process-key-event window :press event))
 
@@ -270,11 +329,24 @@
 (defmethod process-event ((window window) (type (eql :property-notify)) event)
   (when (= (xlib:property-event-state event) 0)
     (cond ((atomp window (xlib:property-event-atom event) "WM_STATE")
-           ;; TODO: Check for iconified
-           ())
+           (let ((state (get-state window)))
+             (case state
+               ((:iconic :normal)
+                (setf state (eq state :iconic))
+                (unless (eq (iconified-p window) state)
+                  (setf (iconified-p window) state)
+                  (fb:window-iconified window state))))))
           ((atomp window (xlib:property-event-atom event) "NET_WM_STATE")
-           ;; TODO: Check for maximized
-           ()))))
+           (cffi:with-foreign-objects ((states :pointer))
+             (let ((state (dotimes (i (get-property window "NET_WM_STATE" 4 states))
+                            (let ((atom (cffi:mem-aref (cffi:mem-ref states :pointer) 'xlib:atom i)))
+                              (when (or (atomp window atom "NET_WM_STATE_MAXIMIZED_VERT")
+                                        (atomp window atom "NET_WM_STATE_MAXIMIZED_HORZ"))
+                                (return T))))))
+               (unless (eq (maximized-p window) state)
+                 (setf (maximized-p window) state)
+                 (fb:window-maximized window state))
+               (xlib:free (cffi:mem-ref states :pointer))))))))
 
 (defmethod process-event ((window window) (type (eql :map-notify)) event)
   (setf (visible-p window) T)

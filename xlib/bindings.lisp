@@ -236,6 +236,20 @@
   (data :pointer)
   (elements :int))
 
+(cffi:defcfun (get-window-property "XGetWindowProperty") :int
+  (display :pointer)
+  (window xid)
+  (property atom)
+  (offset :long)
+  (length :long)
+  (delete :bool)
+  (request-type atom)
+  (actual-type :pointer)
+  (actual-format :pointer)
+  (item-count :pointer)
+  (bytes-after-return :pointer)
+  (return :pointer))
+
 (cffi:defcfun (clear-window "XClearWindow") :int
   (display :pointer)
   (window xid))

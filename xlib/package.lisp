@@ -121,6 +121,7 @@
    #:init-threads
    #:free-threads
    #:change-property
+   #:get-window-property
    #:clear-window
    #:clear-area
    #:close-display

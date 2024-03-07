@@ -4,6 +4,29 @@
    #:x11
    #:xid
    #:atom
+   #:image
+   #:image-width
+   #:image-height
+   #:image-xoffset
+   #:image-format
+   #:image-data
+   #:image-byte-order
+   #:image-bitmap-unit
+   #:image-bitmap-bit-order
+   #:image-bitmap-pad
+   #:image-depth
+   #:image-bytes-per-line
+   #:image-bits-per-pixel
+   #:image-red-mask
+   #:image-green-mask
+   #:image-blue-mask
+   #:image-obdata
+   #:image-create-image
+   #:image-destroy-image
+   #:image-get-pixel
+   #:image-put-pixel
+   #:image-sub-image
+   #:image-add-pixel
    #:set-window-attributes
    #:set-window-attributes-background-pixmap
    #:set-window-attributes-background-pixel
@@ -43,6 +66,7 @@
    #:size-hint-base-width
    #:size-hint-base-height
    #:size-hint-win-gravity
+   #:event
    #:base-event
    #:base-event-type
    #:base-event-serial
@@ -58,6 +82,7 @@
    #:positioned-event-x-root
    #:positioned-event-y-root
    #:key-event
+   #:key-event-state
    #:key-event-keycode
    #:key-event-same-screen
    #:button-event
@@ -75,11 +100,16 @@
    #:configure-event-border-width
    #:configure-event-above
    #:configure-event-override-redirect
+   #:property-event
+   #:property-event-atom
+   #:property-event-time
+   #:property-event-state
    #:destroy-window-event
    #:client-message-event
    #:client-message-event-message-type
    #:client-message-event-format
    #:client-message-event-data
+   #:net-message-event-protocol
    #:black-pixel
    #:default-depth
    #:default-gc
@@ -118,6 +148,7 @@
    #:move-window
    #:resize-window
    #:send-event
+   #:iconify-window
    #:xkb-keycode-to-keysym
    #:shm-segment-info
    #:shm-segment-info-message
@@ -131,6 +162,7 @@
 
 (defpackage #:org.shirakumo.framebuffers.xlib
   (:use #:cl)
+  (:shadow #:atom)
   (:local-nicknames
    (#:fb #:org.shirakumo.framebuffers)
    (#:fb-int #:org.shirakumo.framebuffers.int)

@@ -1,4 +1,4 @@
-(in-package #:org.shirakumo.framebuffers)
+(in-package #:org.shirakumo.framebuffers.int)
 
 ;;; Backend Internals
 (defvar *windows-table* (make-hash-table :test 'eql))

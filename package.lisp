@@ -1,5 +1,6 @@
 (defpackage #:org.shirakumo.framebuffers
   (:use #:cl)
+  (:shadow #:open #:close)
   (:export
    #:init
    #:shutdown
@@ -36,16 +37,8 @@
    #:file-dropped))
 
 (defpackage #:org.shirakumo.framebuffers.int
-  (:use #:cl)
-  (:import-from
-   #:org.shirakumo.framebuffers
-   #:*available-backends*
-   #:init-backend
-   #:shutdown-backend
-   #:open-backend
-   #:default-title
-   #:ptr-int
-   #:ptr-window)
+  (:use #:cl #:org.shirakumo.framebuffers)
+  (:shadowing-import-from #:org.shirakumo.framebuffers #:open #:close)
   (:export
    #:*available-backends*
    #:init-backend

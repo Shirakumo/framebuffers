@@ -6,6 +6,66 @@
 (cffi:defctype xid :ulong)
 (cffi:defctype atom :ulong)
 
+(cffi:defcenum event-type
+  (:key-press 2)
+  (:key-release 3)
+  (:button-press 4)
+  (:button-release 5)
+  (:motion-notify 6)
+  (:enter-notify 7)
+  (:leave-notify 8)
+  (:focus-in 9)
+  (:focus-out 10)
+  (:keymap-notify 11)
+  (:expose 12)
+  (:graphics-expose 13)
+  (:no-expose 14)
+  (:visibility-notify 15)
+  (:create-notify 16)
+  (:destroy-notify 17)
+  (:unmap-notify 18)
+  (:map-notify 19)
+  (:map-request 20)
+  (:reparent-notify 21)
+  (:configure-notify 22)
+  (:configure-request 23)
+  (:gravity-notify 24)
+  (:resize-request 25)
+  (:circulate-notify 26)
+  (:circulate-request 27)
+  (:property-notify 28)
+  (:selection-clear 29)
+  (:selection-request 30)
+  (:selection-notify 31)
+  (:colormap-notify 32)
+  (:client-message 33)
+  (:mapping-notify 34)
+  (:generic-event 35))
+
+(cffi:defcstruct (image :conc-name image-)
+  (width :int)
+  (height :int)
+  (xoffset :int)
+  (format :int)
+  (data :pointer)
+  (byte-order :int)
+  (bitmap-unit :int)
+  (bitmap-bit-order :int)
+  (bitmap-pad :int)
+  (depth :int)
+  (bytes-per-line :int)
+  (bits-per-pixel :int)
+  (red-mask :ulong)
+  (green-mask :ulong)
+  (blue-mask :ulong)
+  (obdata :pointer)
+  (create-image :pointer)
+  (destroy-image :pointer)
+  (get-pixel :pointer)
+  (put-pixel :pointer)
+  (sub-image :pointer)
+  (add-pixel :pointer))
+
 (cffi:defcstruct (set-window-attributes :conc-name set-window-attributes-)
   (background-pixmap xid)
   (background-pixel :ulong)
@@ -48,8 +108,11 @@
   (base-height :int)
   (win-gravity :int))
 
+(cffi:defcstruct event
+  (_ :char :count 192))
+
 (cffi:defcstruct (base-event :conc-name base-event-)
-  (type :int)
+  (type event-type)
   (serial :ulong)
   (send-event :bool)
   (display :pointer)
@@ -59,21 +122,31 @@
   (_ (:struct base-event))
   (root xid)
   (subwindow xid)
-  (time time)
+  (time :ulong)
   (x :int)
   (y :int)
   (x-root :int)
   (y-root :int))
 
+(cffi:defbitfield modifiers
+  (:shift 1)
+  (:caps-lock 2)
+  (:control 4)
+  (:alt 8)           ; MOD1
+  (:num-lock 16)     ; MOD2
+  (:scroll-lock 32)  ; MOD3
+  (:super 64)        ; MOD4
+  (:hyper 128))      ; MOD5
+
 (cffi:defcstruct (key-event :conc-name key-event-)
   (_ (:struct positioned-event))
-  (state :uint)
-  (keycode :unit)
+  (state modifiers)
+  (keycode :uint)
   (same-screen :bool))
 
 (cffi:defcstruct (button-event :conc-name button-event-)
   (_ (:struct positioned-event))
-  (state :uint)
+  (state modifiers)
   (button :uint)
   (same-screen :bool))
 
@@ -98,6 +171,12 @@
   (above xid)
   (override-redirect :bool))
 
+(cffi:defcstruct (property-event :conc-name property-event-)
+  (_ (:struct base-event))
+  (atom atom)
+  (time :ulong)
+  (state :int))
+
 (cffi:defcstruct (destroy-window-event :conc-name destroy-window-event-)
   (_ (:struct base-event)))
 
@@ -106,6 +185,12 @@
   (message-type atom)
   (format :int)
   (data :char :count 20))
+
+(cffi:defcstruct (net-message-event :conc-name net-message-event-)
+  (_ (:struct base-event))
+  (message-type atom)
+  (format :int)
+  (protocol atom))
 
 (cffi:defcfun (black-pixel "XBlackPixel") :ulong
   (display :pointer)
@@ -180,7 +265,7 @@
   (bytes-per-line :int))
 
 (cffi:defbitfield window-value-mask
-  (:back-pixmap 0)
+  (:back-pixmap 1)
   :back-pixel
   :border-pixmap
   :border-pixel
@@ -343,6 +428,11 @@
   (propagate :bool)
   (event-mask :long)
   (event :pointer))
+
+(cffi:defcfun (iconify-window "XIconifyWindow") :int
+  (display :pointer)
+  (window xid)
+  (screen :int))
 
 ;; XKB
 (cffi:defcfun (xkb-keycode-to-keysym "XkbKeycodeToKeysym") xid

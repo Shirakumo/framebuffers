@@ -3,7 +3,6 @@
 
 (defun check-pixmap-formats (display)
   (let* ((screen (xlib:default-screen display))
-         (visual (xlib:default-visual display screen))
          (depth (xlib:default-depth display screen)))
     (unless (cffi:with-foreign-objects ((count :int))
               (let ((array (xlib:list-pixmap-formats display count)))
@@ -59,9 +58,10 @@
       ;; Default size and location
       (unless (car size) (setf (car size) (xlib:display-width display screen)))
       (unless (cdr size) (setf (cdr size) (xlib:display-height display screen)))
-      (unless (car location) (setf (car location) (truncate (- (xlib:display-width display scree3n) (car size)) 2)))
+      (unless (car location) (setf (car location) (truncate (- (xlib:display-width display screen) (car size)) 2)))
       (unless (cdr location) (setf (cdr location) (truncate (- (xlib:display-height display screen) (cdr size)) 2)))
-      (cffi:with-foreign-objects ((attrs '(:struct xlib:set-window-attributes)))
+      (cffi:with-foreign-objects ((attrs '(:struct xlib:set-window-attributes))
+                                  (protos :pointer 10))
         (setf (xlib:set-window-attributes-border-pixel attrs) (xlib:black-pixel display screen))
         (setf (xlib:set-window-attributes-background-pixel attrs) (xlib:black-pixel display screen))
         (setf (xlib:set-window-attributes-backing-store attrs) 0)
@@ -75,17 +75,20 @@
             (xlib:select-input display window '(:key-press :key-release :button-press :button-relaese :pointer-motion
                                                 :structure-notify :exposure :focus-change :enter-window :leave-window))
             ;; TODO: stuff like borderless, always on top, fullscreen, resizable, min/max size, etc.
-            (xlib:set-wm-protocols display window (xlib:intern-atom display "WM_DELETE_WINDOW" 0) 1)
+            (setf (cffi:mem-aref protos :pointer 0) (xlib:intern-atom display "WM_DELETE_WINDOW" 0))
+            (setf (cffi:mem-aref protos :pointer 1) (xlib:intern-atom display "NET_WM_PING" 0))
+            (xlib:set-wm-protocols display window protos 2)
             (xlib:clear-window display window)
             (when visible-p
               (xlib:map-raised display window))
             (xlib:flush display)
-            (make-instance 'window :display display :image image :xid window
+            (make-instance 'window :display display :image image :xid window :screen screen
                                    :size size :location location :title title
                                    :visible-p visible-p)))))))
 
 (defclass window (fb:window)
   ((display :initarg :display :accessor display)
+   (screen :initarg :screen :accessor screen)
    (xid :initarg :xid :accessor xid)
    (image :initarg :image :accessor image)
 
@@ -96,7 +99,30 @@
    (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
-   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
+   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)
+   (atom-table :initform (make-hash-table :test 'equal) :reader atom-table)))
+
+(defun atom (window name)
+  (or (gethash name (atom-table window))
+      (setf (gethash name (atom-table window)) (xlib:intern-atom (display window) name 0))))
+
+(defun atomp (window atom name)
+  (cffi:pointer-eq atom (atom window name)))
+
+(defun send-client-event (window type a b c d e)
+  (cffi:with-foreign-objects ((event '(:struct xlib:client-message-event)))
+    (setf (xlib:base-event-type event) :client-message)
+    (setf (xlib:base-event-window event) (xid window))
+    (setf (xlib:client-message-event-message-type event) (atom window type))
+    (setf (xlib:client-message-event-format event) 32)
+    (let ((ptr (cffi:foreign-slot-pointer event '(:struct xlib:client-message-event) 'xlib::data)))
+      (setf (cffi:mem-aref ptr :int32 0) a)
+      (setf (cffi:mem-aref ptr :int32 1) b)
+      (setf (cffi:mem-aref ptr :int32 2) c)
+      (setf (cffi:mem-aref ptr :int32 3) d)
+      (setf (cffi:mem-aref ptr :int32 4) e))
+    (xlib:send-event (display window) (xlib:default-root-window (display window))
+                     NIL 1572864 event)))
 
 (defmethod fb:valid-p ((window window))
   (not (null (xid window))))
@@ -134,7 +160,7 @@
     location))
 
 (defmethod (setf fb:title) (title (window window))
-  (xlib:store-name display window title)
+  (xlib:store-name (display window) (xid window) title)
   (setf (title window) title))
 
 (defmethod (setf fb:visible-p) (state (window window))
@@ -143,16 +169,151 @@
       (xlib:unmap-window (display window) (xid window)))
   (setf (visible-p window) state))
 
-(defmethod (setf fb:maximized-p) (state (window window)))
+(defmethod (setf fb:maximized-p) (state (window window))
+  ;; TODO: implement maximisation switch
+  )
 
-(defmethod (setf fb:iconified-p) (state (window window)))
+(defmethod (setf fb:iconified-p) (state (window window))
+  (cond (state
+         (xlib:iconify-window (display window) (xid window) (screen window))
+         (setf (iconified-p window) T))
+        (T
+         (setf (fb:visible-p window) T)
+         (setf (iconified-p window) NIL))))
 
-(defmethod fb:clipboard-string ((window window)))
+(defmethod fb:clipboard-string ((window window))
+  ;; TODO: implement clipboard fetching
+  )
 
-(defmethod (setf fb:clipboard-string) (string (window window)))
+(defmethod (setf fb:clipboard-string) (string (window window))
+  ;; TODO: implement clipboard setting
+  )
 
-(defmethod fb:swap-buffers ((window window) new-buffer))
+(defmethod fb:request-attention ((window window))
+  (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0))
 
-(defmethod fb:process-events ((window window) &key timeout))
+(defmethod fb:swap-buffers ((window window) new-buffer)
+  (let ((size (size window))
+        (display (display window))
+        (image (image window)))
+    (cffi:with-pointer-to-vector-data (ptr new-buffer)
+      (setf (xlib:image-data image) ptr)
+      (xlib:put-image display (xid window) (xlib:default-gc display (screen window))
+                      image 0 0 0 0 (car size) (cdr size))
+      (xlib:flush display))))
 
-(defmethod fb:request-attention ((window window)))
+(defmethod fb:process-events ((window window) &key timeout)
+  (etypecase timeout
+    (null
+     (cffi:with-foreign-objects ((event '(:struct xlib:event)))
+       (loop while (and (display window) (xlib:pending (display window)))
+             do (xlib:next-event (display window) event)
+                (process-event window (xlib:base-event-type event) event))))
+    ((or real (eql T))
+     ;; TODO: implement via XConnectionNumber and poll()
+     )))
+
+(flet ((process-key-event (window action event)
+         (when (and (eql action :release) (xlib:events-queued (display window) 1))
+           (cffi:with-foreign-objects ((next '(:struct xlib:event)))
+             (xlib:peek-event (display window) next)
+             (when (and (eql :key-press (xlib:base-event-type next))
+                        (= (xlib:positioned-event-time next) (xlib:positioned-event-time event))
+                        (= (xlib:key-event-keycode next) (xlib:key-event-keycode event)))
+               (xlib:next-event (display window) event)
+               (setf action :repeat))))
+         (let ((code (xlib:key-event-keycode event)))
+           (fb:key-changed window (translate-keycode code) code action (xlib:key-event-state event)))))
+  (defmethod process-event ((window window) (type (eql :key-press)) event)
+    (process-key-event window :press event))
+
+  (defmethod process-event ((window window) (type (eql :key-release)) event)
+    (process-key-event window :release event)))
+
+(flet ((process-mouse-event (window action event)
+         (case (xlib:button-event-button event)
+           (1 (fb:mouse-button-changed window :left action (xlib:button-event-state event)))
+           (2 (fb:mouse-button-changed window :middle action (xlib:button-event-state event)))
+           (3 (fb:mouse-button-changed window :right action (xlib:button-event-state event)))
+           (4 (fb:mouse-scrolled window  0.0 +1.0))
+           (5 (fb:mouse-scrolled window  0.0 -1.0))
+           (6 (fb:mouse-scrolled window +1.0  0.0))
+           (7 (fb:mouse-scrolled window -1.0  0.0))
+           (T (fb:mouse-button-changed window (- (xlib:button-event-button event) 4) action (xlib:button-event-state event))))))
+  (defmethod process-event ((window window) (type (eql :button-press)) event)
+    (process-mouse-event window :press event))
+
+  (defmethod process-event ((window window) (type (eql :button-release)) event)
+    (process-mouse-event window :release event)))
+
+(defmethod process-event ((window window) (type (eql :motion-notify)) event)
+  (fb:mouse-moved window (xlib:positioned-event-x event) (xlib:positioned-event-y event)))
+
+(defmethod process-event ((window window) (type (eql :configure-notify)) event)
+  (let ((size (size window)))
+    (when (or (/= (car size) (xlib:configure-event-width event))
+              (/= (cdr size) (xlib:configure-event-height event)))
+      (setf (car size) (xlib:configure-event-width event))
+      (setf (cdr size) (xlib:configure-event-height event))
+      (let ((new-image (check-create (xlib:create-image (display window) 0 (xlib:default-depth (display window) (screen window))
+                                                        2 0 0 (car size) (cdr size) 32 (* 4 (car size))))))
+        (xlib:destroy-image (image window))
+        (setf (image window) new-image))
+      (fb:window-resized window (car size) (cdr size))))
+  (let ((location (location window)))
+    (when (or (/= (car location) (xlib:configure-event-x event))
+              (/= (cdr location) (xlib:configure-event-y event)))
+      (setf (car location) (xlib:configure-event-x event))
+      (setf (cdr location) (xlib:configure-event-y event))
+      (fb:window-moved window (car location) (cdr location)))))
+
+(defmethod process-event ((window window) (type (eql :property-notify)) event)
+  (when (= (xlib:property-event-state event) 0)
+    (cond ((atomp window (xlib:property-event-atom event) "WM_STATE")
+           ;; TODO: Check for iconified
+           ())
+          ((atomp window (xlib:property-event-atom event) "NET_WM_STATE")
+           ;; TODO: Check for maximized
+           ()))))
+
+(defmethod process-event ((window window) (type (eql :map-notify)) event)
+  (setf (visible-p window) T)
+  ;; Make sure we restore the proper window size.
+  (destructuring-bind (w . h) (size window)
+    (xlib:resize-window (display window) (xid window) w h)))
+
+(defmethod process-event ((window window) (type (eql :unmap-notify)) event)
+  (setf (visible-p window) NIL))
+
+(defmethod process-event ((window window) (type (eql :enter-notify)) event)
+  (fb:mouse-entered window T))
+
+(defmethod process-event ((window window) (type (eql :leave-notify)) event)
+  (fb:mouse-entered window NIL))
+
+(defmethod process-event ((window window) (type (eql :focus-in)) event)
+  (fb:window-focused window T))
+
+(defmethod process-event ((window window) (type (eql :focus-out)) event)
+  (fb:window-focused window NIL))
+
+(defmethod process-event ((window window) (type (eql :destroy-notify)) event)
+  (setf (close-requested-p window) T))
+
+(defmethod process-event ((window window) (type (eql :expose)) event)
+  (fb:window-refreshed window))
+
+(defmethod process-event ((window window) (type (eql :client-message)) event)
+  (cond ((atomp window (xlib:client-message-event-message-type event) "WM_PROTOCOLS")
+         (let ((protocol (xlib:net-message-event-protocol event)))
+           (cond ((atomp window protocol "WM_DELETE_WINDOW")
+                  (setf (close-requested-p window) T))
+                 ((atomp window protocol "NET_WM_PING")
+                  (cffi:with-foreign-objects ((rpl '(:struct xlib:event)))
+                    (cffi:foreign-funcall "memcpy" :pointer rpl :pointer event :size (cffi:foreign-type-size '(:struct xlib:event)))
+                    (setf (xlib:base-event-window rpl) (xlib:default-root-window (display window)))
+                    ;; SubstructureNotifyMask | SubstructureRedirectMask
+                    (xlib:send-event (display window) (xid window) NIL 1572864 rpl))))))
+        ((atom window (xlib:client-message-event-message-type event) "XdndDrop")
+         ;; TODO: implement drops
+         )))

@@ -4,6 +4,26 @@
    #:x11
    #:xid
    #:atom
+   #:set-window-attributes
+   #:set-window-attributes-background-pixmap
+   #:set-window-attributes-background-pixel
+   #:set-window-attributes-border-pixmap
+   #:set-window-attributes-border-pixel
+   #:set-window-attributes-bit-gravity
+   #:set-window-attributes-win-gravity
+   #:set-window-attributes-backing-store
+   #:set-window-attributes-backing-planes
+   #:set-window-attributes-backing-pixel
+   #:set-window-attributes-save-under
+   #:set-window-attributes-event-mask
+   #:set-window-attributes-do-not-progagate-mask
+   #:set-window-attributes-override-redirect
+   #:set-window-attributes-colormap
+   #:set-window-attributes-cursor
+   #:pixmap-format
+   #:pixmap-format-depth
+   #:pixmap-format-bits-per-pixel
+   #:pixmap-format-scanline-pad
    #:size-hint
    #:size-hint-flags
    #:size-hint-x

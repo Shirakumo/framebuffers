@@ -6,6 +6,28 @@
 (cffi:defctype xid :ulong)
 (cffi:defctype atom :ulong)
 
+(cffi:defcstruct (set-window-attributes :conc-name set-window-attributes-)
+  (background-pixmap xid)
+  (background-pixel :ulong)
+  (border-pixmap xid)
+  (border-pixel :ulong)
+  (bit-gravity :int)
+  (win-gravity :int)
+  (backing-store :int)
+  (backing-planes :ulong)
+  (backing-pixel :ulong)
+  (save-under :bool)
+  (event-mask :long)
+  (do-not-propagate-mask :long)
+  (override-redirect :bool)
+  (colormap xid)
+  (cursor xid))
+
+(cffi:defcstruct (pixmap-format :conc-name pixmap-format-)
+  (depth :int)
+  (bits-per-pixel :int)
+  (scanline-pad :int))
+
 (cffi:defcstruct (size-hint :conc-name size-hint-)
   (flags :long)
   (x :int)
@@ -157,6 +179,23 @@
   (bitmap-pad :int)
   (bytes-per-line :int))
 
+(cffi:defbitfield window-value-mask
+  (:back-pixmap 0)
+  :back-pixel
+  :border-pixmap
+  :border-pixel
+  :bit-gravity
+  :win-gravity
+  :backing-store
+  :backing-planes
+  :backing-pixel
+  :override-redirect
+  :save-under
+  :event-mask
+  :dont-propagate
+  :colormap
+  :cursor)
+
 (cffi:defcfun (create-window "XCreateWindow") xid
   (display :pointer)
   (window xid)
@@ -168,7 +207,7 @@
   (depth :int)
   (class :uint)
   (visual :pointer)
-  (value-mask :ulong)
+  (value-mask window-value-mask)
   (attributes :pointer))
 
 (cffi:defcfun (destroy-image "XDestroyImage") :int
@@ -234,10 +273,37 @@
   (width :uint)
   (height :uint))
 
+(cffi:defcenum (event-mask :long)
+  (:key-press 0)
+  :key-release
+  :button-press
+  :button-release
+  :enter-window
+  :leave-window
+  :pointer-motion
+  :pointer-motion-hint
+  :button1-motion
+  :button2-motion
+  :button3-motion
+  :button4-motion
+  :button5-motion
+  :button-motion
+  :keymap-state
+  :exposure
+  :visibility-change
+  :structure-notify
+  :resize-redirect
+  :substructure-notify
+  :substructure-redirect
+  :focus-change
+  :property-change
+  :colormap-change
+  :owner-grab-button)
+
 (cffi:defcfun (select-input "XSelectInput") :int
   (display :pointer)
   (window xid)
-  (event-mask :long))
+  (event-mask event-mask))
 
 (cffi:defcfun (set-wm-normal-hints "XSetWMNormalHints") :void
   (display :pointer)

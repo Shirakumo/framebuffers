@@ -47,8 +47,8 @@
 ;;; Base class
 (defclass window () ())
 
-(defun open (&key width height title visible-p &allow-other-keys)
-  (declare (ignore width height title visible-p))
+(defun open (&key size location title visible-p &allow-other-keys)
+  (declare (ignore size location title visible-p))
   (apply #'open-backend (or *backend* (init)) args))
 
 ;;; Window info

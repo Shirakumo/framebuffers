@@ -105,6 +105,7 @@
    #:list-pixmap-formats
    #:lookup-string
    #:map-raised
+   #:unmap-window
    #:next-event
    #:open-display
    #:peek-event
@@ -114,6 +115,9 @@
    #:set-wm-normal-hints
    #:set-wm-protocols
    #:store-name
+   #:move-window
+   #:resize-window
+   #:send-event
    #:xkb-keycode-to-keysym
    #:shm-segment-info
    #:shm-segment-info-message

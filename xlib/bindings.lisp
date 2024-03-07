@@ -247,6 +247,10 @@
   (display :pointer)
   (window xid))
 
+(cffi:defcfun (unmap-window "XUnmapWindow") :int
+  (display :pointer)
+  (window xid))
+
 (cffi:defcfun (next-event "XNextEvent") :int
   (display :pointer)
   (event :pointer))
@@ -320,6 +324,25 @@
   (display :pointer)
   (window xid)
   (name :string))
+
+(cffi:defcfun (move-window "XMoveWindow") :int
+  (display :pointer)
+  (window xid)
+  (x :int)
+  (y :int))
+
+(cffi:defcfun (resize-window "XResizeWindow") :int
+  (display :pointer)
+  (window xid)
+  (width :uint)
+  (height :uint))
+
+(cffi:defcfun (send-event "XSendEvent") :int
+  (display :pointer)
+  (window xid)
+  (propagate :bool)
+  (event-mask :long)
+  (event :pointer))
 
 ;; XKB
 (cffi:defcfun (xkb-keycode-to-keysym "XkbKeycodeToKeysym") xid

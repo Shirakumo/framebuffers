@@ -92,14 +92,24 @@
    (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
    (title :initform "" :initarg :title :reader fb:title :accessor title)
+   (close-requested-p :initform NIL :initarg :close-requested-p :reader fb:close-requested-p :accessor close-requested-p)
    (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
 
+(defmethod fb:valid-p ((window window))
+  (not (null (xid window))))
+
 (defmethod fb:close ((window window))
+  (setf (close-requested-p window) T)
+  (when (image window)
+    (xlib:destroy-image (image window))
+    (setf (image window) NIL))
+  (when (xid window)
+    (xlib:destroy-window (display window) (xid window))
+    (setf (xid window) NIL))
   (when (display window)
-    (setf (xid window) NIL)
     (xlib:close-display (display window))
     (setf (display window) NIL)))
 
@@ -109,13 +119,29 @@
 (defmethod fb:height ((window window))
   (cdr (fb:size window)))
 
-(defmethod (setf fb:size) (size (window window)))
+(defmethod (setf fb:size) (size (window window))
+  (destructuring-bind (w . h) size
+    (xlib:resize-window (display window) (xid window) w h)
+    (setf (car (size window)) w)
+    (setf (cdr (size window)) h)
+    size))
 
-(defmethod (setf fb:location) (location (window window)))
+(defmethod (setf fb:location) (location (window window))
+  (destructuring-bind (x . y) location
+    (xlib:move-window (display window) (xid window) x y)
+    (setf (car (location window)) x)
+    (setf (cdr (location window)) y)
+    location))
 
-(defmethod (setf fb:title) (title (window window)))
+(defmethod (setf fb:title) (title (window window))
+  (xlib:store-name display window title)
+  (setf (title window) title))
 
-(defmethod (setf fb:visible-p) (state (window window)))
+(defmethod (setf fb:visible-p) (state (window window))
+  (if state
+      (xlib:map-raised (display window) (xid window))
+      (xlib:unmap-window (display window) (xid window)))
+  (setf (visible-p window) state))
 
 (defmethod (setf fb:maximized-p) (state (window window)))
 

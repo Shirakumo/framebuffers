@@ -5,6 +5,8 @@
    #:shutdown
    #:window
    #:open
+   #:valid-p
+   #:close-requested-p
    #:close
    #:width
    #:height

@@ -236,7 +236,8 @@
     (setf (fb-int:ptr-window (display window)) NIL)
     (xlib:flush (display window))
     (xlib:close-display (display window))
-    (setf (display window) NIL)))
+    (setf (display window) NIL))
+  window)
 
 (defmethod fb:width ((window window))
   (car (fb:size window)))
@@ -321,7 +322,8 @@
 
 (defmethod fb:request-attention ((window window))
   (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0)
-  (xlib:flush (display window)))
+  (xlib:flush (display window))
+  window)
 
 (defmethod fb:swap-buffers ((window window))
   (let ((size (size window))
@@ -330,7 +332,8 @@
     (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
     (xlib:put-image display (xid window) (xlib:default-gc display (screen window))
                     image 0 0 0 0 (car size) (cdr size))
-    (xlib:flush display)))
+    (xlib:flush display)
+    window))
 
 (defmethod fb:process-events ((window window) &key timeout)
   (etypecase timeout
@@ -338,7 +341,8 @@
      (cffi:with-foreign-objects ((event '(:struct xlib:event)))
        (loop while (and (display window) (xlib:pending (display window)))
              do (xlib:next-event (display window) event)
-                (process-event window (xlib:base-event-type event) event))))
+                (process-event window (xlib:base-event-type event) event))
+       window))
     ((or real (eql T))
      ;; TODO: implement via XConnectionNumber and poll()
      )))

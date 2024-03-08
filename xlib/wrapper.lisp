@@ -47,13 +47,18 @@
                   (xlib:free array))))
       (error "Server does not support 32bpp format."))))
 
+(defvar *init* NIL)
+
 (defmethod fb-int:init-backend ((backend (eql :xlib)))
-  (unless (cffi:foreign-library-loaded-p 'xlib:x11)
-    (cffi:use-foreign-library xlib:x11)
+  (unless *init*
+    (unless (cffi:foreign-library-loaded-p 'xlib:x11)
+      (cffi:use-foreign-library xlib:x11))
     (xlib:init-threads)
+    (setf *init* T)
     (xlib:set-error-handler (cffi:callback error-handler))
     (xlib:set-io-error-handler (cffi:callback io-error-handler))
-    ;; Try to open the display once to ensure we have a connection
+      ;; Try to open the display once to ensure we have a connection
+
     (let ((display (xlib:open-display (cffi:null-pointer))))
       (when (cffi:null-pointer-p display)
         (error "Failed to open display."))
@@ -61,8 +66,9 @@
         (xlib:close-display display)))))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :xlib)))
-  (when (cffi:foreign-library-loaded-p 'xlib:x11)
-    (xlib:free-threads)))
+  (when *init*
+    (xlib:free-threads)
+    (setf *init* NIL)))
 
 (defun check-create (result &key call)
   (if (etypecase result

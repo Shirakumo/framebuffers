@@ -115,7 +115,7 @@
 (defmethod (setf event-handler) :before ((handler event-handler) (window window))
   (setf (window handler) window))
 
-(defun open (&key size location title visible-p &allow-other-keys)
+(defun open (&rest args &key size location title visible-p &allow-other-keys)
   (declare (ignore size location title visible-p))
   (apply #'open-backend (or *backend* (init)) args))
 

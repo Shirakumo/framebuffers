@@ -125,7 +125,7 @@
       (unless (car location) (setf (car location) (truncate (- (xlib:display-width display screen) (car size)) 2)))
       (unless (cdr location) (setf (cdr location) (truncate (- (xlib:display-height display screen) (cdr size)) 2)))
       (cffi:with-foreign-objects ((attrs '(:struct xlib:set-window-attributes))
-                                  (protos :pointer 10))
+                                  (protos 'xlib:atom 10))
         (setf (xlib:set-window-attributes-border-pixel attrs) (xlib:black-pixel display screen))
         (setf (xlib:set-window-attributes-background-pixel attrs) (xlib:black-pixel display screen))
         (setf (xlib:set-window-attributes-backing-store attrs) 0)
@@ -133,13 +133,13 @@
                                                    (car location) (cdr location) (car size) (cdr size)
                                                    0 depth 1 visual '(:back-pixel :border-pixel :backing-store) attrs))
                        (xlib:destroy-window display window)
-          (with-creation (image (xlib:create-image display 0 depth 2 0 0 (car size) (cdr size) 32 (* 4 (car size))))
+          (with-creation (image (xlib:create-image display (cffi:null-pointer) depth 2 0 (cffi:null-pointer) (car size) (cdr size) 32 (* 4 (car size))))
                          (xlib:destroy-image image)
             (xlib:store-name display window title)
-            (xlib:select-input display window '(:key-press :key-release :button-press :button-relaese :pointer-motion
+            (xlib:select-input display window '(:key-press :key-release :button-press :button-release :pointer-motion
                                                 :structure-notify :exposure :focus-change :enter-window :leave-window))
-            (setf (cffi:mem-aref protos :pointer 0) (xlib:intern-atom display "WM_DELETE_WINDOW" 0))
-            (setf (cffi:mem-aref protos :pointer 1) (xlib:intern-atom display "NET_WM_PING" 0))
+            (setf (cffi:mem-aref protos 'xlib:atom 0) (xlib:intern-atom display "WM_DELETE_WINDOW" 0))
+            (setf (cffi:mem-aref protos 'xlib:atom 1) (xlib:intern-atom display "NET_WM_PING" 0))
             (xlib:set-wm-protocols display window protos 2)
             (xlib:clear-window display window)
             (when visible-p
@@ -342,6 +342,8 @@
      ;; TODO: implement via XConnectionNumber and poll()
      )))
 
+(defmethod process-event ((window window) type event))
+
 (flet ((process-key-event (window action event)
          (when (and (eql action :release) (xlib:events-queued (display window) 1))
            (cffi:with-foreign-objects ((next '(:struct xlib:event)))
@@ -386,8 +388,8 @@
               (/= (cdr size) (xlib:configure-event-height event)))
       (setf (car size) (xlib:configure-event-width event))
       (setf (cdr size) (xlib:configure-event-height event))
-      (let ((new-image (check-create (xlib:create-image (display window) 0 (xlib:default-depth (display window) (screen window))
-                                                        2 0 0 (car size) (cdr size) 32 (* 4 (car size)))))
+      (let ((new-image (check-create (xlib:create-image (display window) (cffi:null-pointer) (xlib:default-depth (display window) (screen window))
+                                                        2 0 (cffi:null-pointer) (car size) (cdr size) 32 (* 4 (car size)))))
             (new-buffer (static-vectors:make-static-vector (* 4 (car size) (cdr size)))))
         (xlib:destroy-image (image window))
         (static-vectors:free-static-vector (buffer window))

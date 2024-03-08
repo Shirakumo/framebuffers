@@ -1,19 +1,19 @@
 (in-package #:org.shirakumo.framebuffers.xlib.cffi)
 
 (cffi:define-foreign-library x11
-  (:defaults "X11"))
+  (T (:or (:default "libX11") (:default "X11"))))
 
 (cffi:define-foreign-library xrandr
-  (:defaults (:or "Xrandr" "Xrandr-2")))
+  (T (:or (:default "libXrandr") (:default "Xrandr"))))
 
 (cffi:define-foreign-library xinerama
-  (:defaults (:or "Xinerama" "Xinerama-1")))
+  (T (:or (:default "libXinerama") (:default "Xinerama"))))
 
 (cffi:define-foreign-library xcursor
-  (:defaults (:or "Xcursor" "Xcursor-1")))
+  (T (:or (:default "libXcursor") (:default "Xcursor"))))
 
 (cffi:define-foreign-library xi
-  (:defaults (:or "Xi" "Xi-6")))
+  (T (:or (:default "libXi") (:default "Xi"))))
 
 (cffi:defctype xid :ulong)
 (cffi:defctype atom :ulong)
@@ -401,8 +401,8 @@
   (width :uint)
   (height :uint))
 
-(cffi:defcenum (event-mask :long)
-  (:key-press 0)
+(cffi:defbitfield (event-mask :long)
+  (:key-press 1)
   :key-release
   :button-press
   :button-release

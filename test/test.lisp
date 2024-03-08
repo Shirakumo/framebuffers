@@ -1,7 +1,8 @@
 (defpackage #:org.shirakumo.framebuffers.test
   (:use #:cl)
   (:local-nicknames
-   (#:fb #:org.shirakumo.framebuffers))
+   (#:fb #:org.shirakumo.framebuffers)
+   (#:fb-int #:org.shirakumo.framebuffers.int))
   (:export
    #:framebuffers))
 

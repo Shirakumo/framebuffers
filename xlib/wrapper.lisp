@@ -116,6 +116,8 @@
 (defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T))
   (with-creation (display (xlib:open-display (cffi:null-pointer))) (xlib:close-display display)
     (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer))
+    (unless *keytable*
+      (setf *keytable* (make-keytable display (probe-xkb display))))
     (let* ((screen (xlib:default-screen display))
            (visual (xlib:default-visual display screen))
            (depth (xlib:default-depth display screen)))
@@ -145,7 +147,6 @@
             (when visible-p
               (xlib:map-raised display window))
             (xlib:flush display)
-            
             (make-instance 'window :display display :image image :xid window :screen screen
                                    :size size :location location :title title
                                    :xkb (probe-xkb display) :visible-p visible-p
@@ -354,7 +355,7 @@
                (xlib:next-event (display window) event)
                (setf action :repeat))))
          (let ((code (xlib:key-event-keycode event)))
-           (fb:key-changed window (translate-keycode code window) code action (xlib:key-event-state event))
+           (fb:key-changed window (translate-keycode code) code action (xlib:key-event-state event))
            ;; FIXME: string translation
            )))
   (defmethod process-event ((window window) (type (eql :key-press)) event)

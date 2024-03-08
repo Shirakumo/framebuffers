@@ -547,7 +547,7 @@
   (compat atom)
   (vmods atom :count 16)
   (indicators atom :count 32)
-  (groups atom :count 32)
+  (groups atom :count 4)
   (keys :pointer)
   (key-aliases :pointer)
   (radio-groups :pointer)

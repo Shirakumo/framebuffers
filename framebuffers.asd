@@ -16,6 +16,7 @@
                 :if-feature (:or :bsd :linux)
                 :components ((:file "package")
                              (:file "bindings")
+                             (:file "keycodes")
                              (:file "wrapper")))
                #++
                (:module "wayland"

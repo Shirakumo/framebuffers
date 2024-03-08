@@ -3,6 +3,18 @@
 (cffi:define-foreign-library x11
   (:defaults "X11"))
 
+(cffi:define-foreign-library xrandr
+  (:defaults (:or "Xrandr" "Xrandr-2")))
+
+(cffi:define-foreign-library xinerama
+  (:defaults (:or "Xinerama" "Xinerama-1")))
+
+(cffi:define-foreign-library xcursor
+  (:defaults (:or "Xcursor" "Xcursor-1")))
+
+(cffi:define-foreign-library xi
+  (:defaults (:or "Xi" "Xi-6")))
+
 (cffi:defctype xid :ulong)
 (cffi:defctype atom :ulong)
 
@@ -41,6 +53,10 @@
   (:client-message 33)
   (:mapping-notify 34)
   (:generic-event 35))
+
+(cffi:defcstruct (xrm-value :conc-name xrm-value-)
+  (size :uint)
+  (addr :pointer))
 
 (cffi:defcstruct (error-event :conc-name error-event-)
   (type :int)
@@ -474,12 +490,105 @@
   (buffer :pointer)
   (length :int))
 
+(cffi:defcfun (display-keycodes "XDisplayKeycodes") :int
+  (display :pointer)
+  (min :pointer)
+  (max :pointer))
+
+(cffi:defcfun (get-keyboard-mapping "XGetKeyboardMapping") :pointer
+  (display :pointer)
+  (first :uchar)
+  (count :int)
+  (width :pointer))
+
+(cffi:defcfun (resource-manager-string "XResourceManagerString") :pointer
+  (display :pointer))
+
+(cffi:defcfun (xrm-get-string-database "XrmGetStringDatabase") :pointer
+  (string :pointer))
+
+(cffi:defcfun (xrm-get-resource "XrmGetResource") :bool
+  (database :pointer)
+  (name :string)
+  (class :string)
+  (str-return :pointer)
+  (value :pointer))
+
+(cffi:defcfun (xrm-destroy-database "XrmDestroyDatabase") :void
+  (database :pointer))
+
 ;; XKB
+(cffi:defcstruct (xkb-desc :conc-name xkb-desc-)
+  (display :pointer)
+  (flags :ushort)
+  (device-spec :ushort)
+  (min-key-code :uchar)
+  (max-key-code :uchar)
+  (controls :pointer)
+  (server-map :pointer)
+  (client-map :pointer)
+  (indicator :pointer)
+  (names :pointer)
+  (compat-map :pointer)
+  (geometry :pointer))
+
+(cffi:defcstruct (xkb-key :conc-name xkb-key-)
+  (name :char :count 4))
+
+(cffi:defcstruct (xkb-alias :conc-name xkb-alias-)
+  (real :char :count 4)
+  (alias :char :count 4))
+
+(cffi:defcstruct (xkb-names :conc-name xkb-names-)
+  (keycodes atom)
+  (geometry atom)
+  (symbols atom)
+  (types atom)
+  (compat atom)
+  (vmods atom :count 16)
+  (indicators atom :count 32)
+  (groups atom :count 32)
+  (keys :pointer)
+  (key-aliases :pointer)
+  (radio-groups :pointer)
+  (phys-symbols atom)
+  (num-keys :uchar)
+  (num-key-aliases :uchar)
+  (num-rg :ushort))
+
+(cffi:defcfun (xkb-query-extension "XkbQueryExtension") :bool
+  (display :pointer)
+  (opcode :pointer)
+  (event-base :pointer)
+  (error-base :pointer)
+  (major :pointer)
+  (minor :pointer))
+
 (cffi:defcfun (xkb-keycode-to-keysym "XkbKeycodeToKeysym") xid
   (display :pointer)
   (code :uchar)
   (group :int)
   (level :int))
+
+(cffi:defcfun (xkb-get-map "XkbGetMap") :pointer
+  (display :pointer)
+  (which :uint)
+  (device-spec :uint))
+
+(cffi:defcfun (xkb-get-names "XkbGetNames") :int
+  (display :pointer)
+  (which :uint)
+  (desc :pointer))
+
+(cffi:defcfun (xkb-free-names "XkbFreeNames") :void
+  (desc :pointer)
+  (which :uint)
+  (free :bool))
+
+(cffi:defcfun (xkb-free-keyboard "XkbFreeKeyboard") :void
+  (desc :pointer)
+  (which :uint)
+  (free :bool))
 
 ;; XSHM
 (cffi:defcstruct shm-segment-into

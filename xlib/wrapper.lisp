@@ -76,12 +76,36 @@
 (defmacro with-creation ((var creator) cleanup &body body)
   (let ((ok (gensym "OK")))
     `(let ((,ok NIL)
-           (,var (check-create ,creator ',(car creator))))
+           (,var (check-create ,creator :call ',(car creator))))
        (unwind-protect
             (multiple-value-prog1 (progn ,@body)
               (setf ,ok T))
          (unless ,ok
            ,cleanup)))))
+
+(defun content-scale (display)
+  (let ((xdpi 96) (ydpi 96)
+        (rms (xlib:resource-manager-string display)))
+    (unless (cffi:null-pointer-p rms)
+      (let ((db (xlib:xrm-get-string-database rms)))
+        (unless (cffi:null-pointer-p db)
+          (cffi:with-foreign-objects ((value '(:struct xlib:xrm-value))
+                                      (type :pointer))
+            (when (xlib:xrm-get-resource db "Xft.dpi" "Xft.Dpi" type value)
+              (when (and (not (cffi:null-pointer-p (cffi:mem-ref type :pointer)))
+                         (string= "String" (cffi:mem-ref (cffi:mem-ref type :pointer) :string)))
+                (setf xdpi (cffi:foreign-funcall "atof" :pointer (xlib:xrm-value-addr value) :double))
+                (setf ydpi xdpi)))
+            (xlib:xrm-destroy-database db)))))
+    (cons (/ xdpi 96) (/ ydpi 96))))
+
+(defun probe-xkb (display)
+  (cffi:with-foreign-objects ((opcode :int)
+                              (event-base :int)
+                              (error-base :int)
+                              (major :int)
+                              (minor :int))
+    (xlib:xkb-query-extension display opcode event-base error-base major minor)))
 
 (defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T))
   (with-creation (display (xlib:open-display (cffi:null-pointer))) (xlib:close-display display)
@@ -115,15 +139,18 @@
             (when visible-p
               (xlib:map-raised display window))
             (xlib:flush display)
+            
             (make-instance 'window :display display :image image :xid window :screen screen
                                    :size size :location location :title title
-                                   :visible-p visible-p)))))))
+                                   :xkb (probe-xkb display) :visible-p visible-p
+                                   :content-scale (content-scale display))))))))
 
 (defclass window (fb:window)
   ((display :initarg :display :accessor display)
    (screen :initarg :screen :accessor screen)
    (xid :initarg :xid :accessor xid)
    (image :initarg :image :accessor image)
+   (xkb :initarg :xkb :accessor xkb)
 
    (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
@@ -132,7 +159,7 @@
    (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
-   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)
+   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale)
    (atom-table :initform (make-hash-table :test 'equal) :reader atom-table)))
 
 (defmethod initialize-instance :after ((window window) &key)
@@ -317,7 +344,7 @@
                (xlib:next-event (display window) event)
                (setf action :repeat))))
          (let ((code (xlib:key-event-keycode event)))
-           (fb:key-changed window (translate-keycode code) code action (xlib:key-event-state event))
+           (fb:key-changed window (translate-keycode code window) code action (xlib:key-event-state event))
            ;; FIXME: string translation
            )))
   (defmethod process-event ((window window) (type (eql :key-press)) event)

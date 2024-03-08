@@ -4,6 +4,9 @@
    #:x11
    #:xid
    #:atom
+   #:xrm-value
+   #:xrm-value-size
+   #:xrm-value-addr
    #:error-event
    #:error-event-type
    #:error-event-display
@@ -162,7 +165,52 @@
    #:set-io-error-handler
    #:set-io-error-exit-handler
    #:get-error-text
+   #:display-keycodes
+   #:get-keyboard-mapping
+   #:resource-manager-string
+   #:xrm-get-string-database
+   #:xrm-get-resource
+   #:xrm-destroy-database
+   #:xkb-desc
+   #:xkb-desc-display
+   #:xkb-desc-flags
+   #:xkb-desc-device-spec
+   #:xkb-desc-min-key-code
+   #:xkb-desc-max-key-code
+   #:xkb-desc-controls
+   #:xkb-desc-server-map
+   #:xkb-desc-client-map
+   #:xkb-desc-indicator
+   #:xkb-desc-names
+   #:xkb-desc-compat-map
+   #:xkb-desc-geometry
+   #:xkb-key
+   #:xkb-key-name
+   #:xkb-alias
+   #:xkb-alias-real
+   #:xkb-alias-alias
+   #:xkb-names
+   #:xkb-names-keycodes
+   #:xkb-names-geometry
+   #:xkb-names-symbols
+   #:xkb-names-types
+   #:xkb-names-compat
+   #:xkb-names-vmods
+   #:xkb-names-indicators
+   #:xkb-names-groups
+   #:xkb-names-keys
+   #:xkb-names-key-aliases
+   #:xkb-names-radio-groups
+   #:xkb-names-phys-symbols
+   #:xkb-names-num-keys
+   #:xkb-names-num-key-aliases
+   #:xkb-names-num-rg
+   #:xkb-query-extension
    #:xkb-keycode-to-keysym
+   #:xkb-get-map
+   #:xkb-get-names
+   #:xkb-free-names
+   #:xkb-free-keyboard
    #:shm-segment-info
    #:shm-segment-info-message
    #:shm-segment-info-id

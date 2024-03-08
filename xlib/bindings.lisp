@@ -42,6 +42,15 @@
   (:mapping-notify 34)
   (:generic-event 35))
 
+(cffi:defcstruct (error-event :conc-name error-event-)
+  (type :int)
+  (display :pointer)
+  (resource-id xid)
+  (serial :ulong)
+  (error-code :uchar)
+  (request-code :uchar)
+  (minor-code :uchar))
+
 (cffi:defcstruct (image :conc-name image-)
   (width :int)
   (height :int)
@@ -447,6 +456,23 @@
   (display :pointer)
   (window xid)
   (screen :int))
+
+(cffi:defcfun (set-error-handler "XSetErrorHandler") :pointer
+  (handler :pointer))
+
+(cffi:defcfun (set-io-error-handler "XSetIOErrorHandler") :pointer
+  (handler :pointer))
+
+(cffi:defcfun (set-io-error-exit-handler "XSetIOErrorExitHandler") :void
+  (display :pointer)
+  (handler :pointer)
+  (user-data :pointer))
+
+(cffi:defcfun (get-error-text "XGetErrorText") :int
+  (display :pointer)
+  (code :int)
+  (buffer :pointer)
+  (length :int))
 
 ;; XKB
 (cffi:defcfun (xkb-keycode-to-keysym "XkbKeycodeToKeysym") xid

@@ -1,6 +1,39 @@
 (in-package #:org.shirakumo.framebuffers.xlib)
 (pushnew :xlib fb-int:*available-backends*)
 
+(define-condition xlib-error (fb:framebuffer-error)
+  ((code :initarg :code :initform NIL :reader code)
+   (message :initarg :message :initform NIL :reader message))
+  (:report (lambda (c s) (format s "An X11 call failed~@[ (~a)~]~@[:~%  ~a~]"
+                                 (code c) (message c)))))
+
+(cffi:defcallback error-handler :int ((display :pointer) (event :pointer))
+  (cffi:with-foreign-objects ((str :char 256))
+    (xlib:get-error-text display (xlib:error-event-error-code event) str 256)
+    (error 'xlib-error :window (fb-int:ptr-window display)
+                       :code (xlib:error-event-error-code event)
+                       :message (cffi:mem-ref str :string))))
+
+(cffi:defcallback io-error-handler :int ((display :pointer))
+  (let ((window (fb-int:ptr-window display)))
+    ;; Invalidate the window
+    (when window
+      (setf (fb-int:ptr-window display) NIL)
+      (setf (xid window) NIL)
+      (setf (image window) NIL)
+      (setf (display window) NIL))
+    (error 'xlib-error :window window
+                       :message "An IO error occurred and the display connection has been closed.")))
+
+(cffi:defcallback io-error-exit-handler :void ((display :pointer) (user :pointer))
+  (declare (ignore user))
+  (let ((window (fb-int:ptr-window display)))
+    (when window
+      (setf (fb-int:ptr-window display) NIL)
+      (setf (xid window) NIL)
+      (setf (image window) NIL)
+      (setf (display window) NIL))))
+
 (defun check-pixmap-formats (display)
   (let* ((screen (xlib:default-screen display))
          (depth (xlib:default-depth display screen)))
@@ -18,6 +51,8 @@
   (unless (cffi:foreign-library-loaded-p 'xlib:x11)
     (cffi:use-foreign-library xlib:x11)
     (xlib:init-threads)
+    (xlib:set-error-handler (cffi:callback error-handler))
+    (xlib:set-io-error-handler (cffi:callback io-error-handler))
     ;; Try to open the display once to ensure we have a connection
     (let ((display (xlib:open-display (cffi:null-pointer))))
       (when (cffi:null-pointer-p display)
@@ -29,21 +64,19 @@
   (when (cffi:foreign-library-loaded-p 'xlib:x11)
     (xlib:free-threads)))
 
-(defun check-create (result)
+(defun check-create (result &key call)
   (if (etypecase result
         (cffi:foreign-pointer (cffi:null-pointer-p result))
         (integer (= 0 result)))
-      (error "Failed to create X11 object.")
+      (if call
+          (error "Failed to ~a" call)
+          (error "Failed to create X11 object"))
       result))
 
 (defmacro with-creation ((var creator) cleanup &body body)
   (let ((ok (gensym "OK")))
     `(let ((,ok NIL)
-           (,var ,creator))
-       (when (etypecase ,var
-               (cffi:foreign-pointer (cffi:null-pointer-p ,var))
-               (integer (= 0 ,var)))
-         (error "Failed to ~a" ',(car creator)))
+           (,var (check-create ,creator ',(car creator))))
        (unwind-protect
             (multiple-value-prog1 (progn ,@body)
               (setf ,ok T))
@@ -52,6 +85,7 @@
 
 (defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T))
   (with-creation (display (xlib:open-display (cffi:null-pointer))) (xlib:close-display display)
+    (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer))
     (let* ((screen (xlib:default-screen display))
            (visual (xlib:default-visual display screen))
            (depth (xlib:default-depth display screen)))
@@ -100,6 +134,9 @@
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)
    (atom-table :initform (make-hash-table :test 'equal) :reader atom-table)))
+
+(defmethod initialize-instance :after ((window window) &key)
+  (setf (fb-int:ptr-window (display window)) window))
 
 (defun atom (window name)
   (etypecase name
@@ -159,6 +196,7 @@
     (xlib:destroy-window (display window) (xid window))
     (setf (xid window) NIL))
   (when (display window)
+    (setf (fb-int:ptr-window (display window)) NIL)
     (xlib:flush (display window))
     (xlib:close-display (display window))
     (setf (display window) NIL)))

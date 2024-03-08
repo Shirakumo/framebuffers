@@ -4,6 +4,14 @@
    #:x11
    #:xid
    #:atom
+   #:error-event
+   #:error-event-type
+   #:error-event-display
+   #:error-event-resource-id
+   #:error-event-serial
+   #:error-event-error-code
+   #:error-event-request-code
+   #:error-event-minor-code
    #:image
    #:image-width
    #:image-height
@@ -150,6 +158,10 @@
    #:resize-window
    #:send-event
    #:iconify-window
+   #:set-error-handler
+   #:set-io-error-handler
+   #:set-io-error-exit-handler
+   #:get-error-text
    #:xkb-keycode-to-keysym
    #:shm-segment-info
    #:shm-segment-info-message

@@ -29,6 +29,9 @@
   window)
 
 ;;; Setup
+(define-condition framebuffer-error (error)
+  ((window :initarg :window :initform NIL :reader window)))
+
 (defun init ()
   (dolist (backend *available-backends*)
     (handler-case
@@ -42,7 +45,8 @@
 
 (defun shutdown ()
   (when *backend*
-    (shutdown-backend (shiftf *backend* NIL))))
+    (shutdown-backend (shiftf *backend* NIL))
+    (clrhash *windows-table*)))
 
 ;;; Base class
 (defclass window () ())

@@ -2,6 +2,7 @@
   (:use #:cl)
   (:shadow #:open #:close)
   (:export
+   #:framebuffer-error
    #:init
    #:shutdown
    #:window

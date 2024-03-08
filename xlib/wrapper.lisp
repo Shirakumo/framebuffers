@@ -152,6 +152,7 @@
    (image :initarg :image :accessor image)
    (xkb :initarg :xkb :accessor xkb)
 
+   (buffer :initarg :buffer :reader fb:buffer :accessor buffer)
    (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
    (title :initform "" :initarg :title :reader fb:title :accessor title)
@@ -163,7 +164,9 @@
    (atom-table :initform (make-hash-table :test 'equal) :reader atom-table)))
 
 (defmethod initialize-instance :after ((window window) &key)
-  (setf (fb-int:ptr-window (display window)) window))
+  (setf (fb-int:ptr-window (display window)) window)
+  (destructuring-bind (w . h) (size window)
+    (setf (buffer window) (static-vectors:make-static-vector (* 4 w h)))))
 
 (defun atom (window name)
   (etypecase name
@@ -313,15 +316,14 @@
   (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0)
   (xlib:flush (display window)))
 
-(defmethod fb:swap-buffers ((window window) new-buffer)
+(defmethod fb:swap-buffers ((window window))
   (let ((size (size window))
         (display (display window))
         (image (image window)))
-    (cffi:with-pointer-to-vector-data (ptr new-buffer)
-      (setf (xlib:image-data image) ptr)
-      (xlib:put-image display (xid window) (xlib:default-gc display (screen window))
-                      image 0 0 0 0 (car size) (cdr size))
-      (xlib:flush display))))
+    (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
+    (xlib:put-image display (xid window) (xlib:default-gc display (screen window))
+                    image 0 0 0 0 (car size) (cdr size))
+    (xlib:flush display)))
 
 (defmethod fb:process-events ((window window) &key timeout)
   (etypecase timeout
@@ -379,9 +381,12 @@
       (setf (car size) (xlib:configure-event-width event))
       (setf (cdr size) (xlib:configure-event-height event))
       (let ((new-image (check-create (xlib:create-image (display window) 0 (xlib:default-depth (display window) (screen window))
-                                                        2 0 0 (car size) (cdr size) 32 (* 4 (car size))))))
+                                                        2 0 0 (car size) (cdr size) 32 (* 4 (car size)))))
+            (new-buffer (static-vectors:make-static-vector (* 4 (car size) (cdr size)))))
         (xlib:destroy-image (image window))
-        (setf (image window) new-image))
+        (static-vectors:free-static-vector (buffer window))
+        (setf (image window) new-image)
+        (setf (buffer window) new-buffer))
       (fb:window-resized window (car size) (cdr size))))
   (let ((location (location window)))
     (when (or (/= (car location) (xlib:configure-event-x event))

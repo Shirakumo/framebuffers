@@ -82,7 +82,8 @@
 (defgeneric clipboard-string (window))
 (defgeneric (setf clipboard-string) (string window))
 (defgeneric content-scale (window))
-(defgeneric swap-buffers (window new-buffer))
+(defgeneric buffer (window))
+(defgeneric swap-buffers (window))
 (defgeneric process-events (window &key timeout))
 (defgeneric request-attention (window))
 
@@ -113,6 +114,7 @@
 ;; fullscreen-p
 ;; resizable-p
 ;; icon
-;; cursor-state (hidden locked visible)
-;; cursor
+;; cursor-state (hidden, locked, visible)
+;; cursor-icon
 ;; monitor
+;; IM

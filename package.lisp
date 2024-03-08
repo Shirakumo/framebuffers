@@ -20,6 +20,7 @@
    #:iconified-p
    #:clipboard-string
    #:content-scale
+   #:buffer
    #:swap-buffers
    #:process-events
    #:request-attention

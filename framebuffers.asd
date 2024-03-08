@@ -32,5 +32,6 @@
                 :components ((:file "package"))))
   :depends-on (:documentation-utils
                :float-features
+               :static-vectors
                :trivial-features
                :cffi))

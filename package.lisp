@@ -6,7 +6,9 @@
    #:init
    #:shutdown
    #:window
+   #:event-handler
    #:open
+   #:with-window
    #:valid-p
    #:close-requested-p
    #:close

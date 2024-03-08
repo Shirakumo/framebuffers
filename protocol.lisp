@@ -1,5 +1,59 @@
 (in-package #:org.shirakumo.framebuffers.int)
 
+;;; Window info
+(defgeneric valid-p (window))
+(defgeneric close (window))
+(defgeneric close-requested-p (window))
+(defgeneric width (window))
+(defgeneric height (window))
+(defgeneric size (window))
+(defgeneric (setf size) (size window))
+(defgeneric location (window))
+(defgeneric (setf location) (location window))
+(defgeneric title (window))
+(defgeneric (setf title) (title window))
+(defgeneric visible-p (window))
+(defgeneric (setf visible-p) (state window))
+(defgeneric maximized-p (window))
+(defgeneric (setf maximized-p) (state window))
+(defgeneric iconified-p (window))
+(defgeneric (setf iconified-p) (state window))
+(defgeneric clipboard-string (window))
+(defgeneric (setf clipboard-string) (string window))
+(defgeneric content-scale (window))
+(defgeneric buffer (window))
+(defgeneric swap-buffers (window))
+(defgeneric process-events (window &key timeout))
+(defgeneric request-attention (window))
+
+;;; Event callbacks
+(defgeneric window-moved (event-handler xpos ypos))
+(defgeneric window-resized (event-handler width height))
+(defgeneric window-refreshed (event-handler))
+(defgeneric window-focused (event-handler focused-p))
+(defgeneric window-iconified (event-handler iconified-p))
+(defgeneric window-maximized (event-handler maximized-p))
+(defgeneric mouse-button-changed (event-handler button action modifiers))
+(defgeneric mouse-moved (event-handler xpos ypos))
+(defgeneric mouse-entered (event-handler entered-p))
+(defgeneric mouse-scrolled (event-handler xoffset yoffset))
+(defgeneric key-changed (event-handler key scan-code action modifiers))
+(defgeneric string-entered (event-handler string))
+(defgeneric file-dropped (event-handler paths))
+
+;;; TODO:
+;; minimum-size
+;; maximum-size
+;; borderless-p
+;; always-on-top-p
+;; fullscreen-p
+;; resizable-p
+;; icon
+;; cursor-state (hidden, locked, visible)
+;; cursor-icon
+;; monitor
+;; IM
+
 ;;; Backend Internals
 (defvar *windows-table* (make-hash-table :test 'eql))
 (defvar *available-backends* ())
@@ -70,47 +124,6 @@
     (if (valid-p window)
         (format stream "~dx~d" (width window) (height window))
         (format stream "CLOSED"))))
-
-;;; Window info
-(defgeneric valid-p (window))
-(defgeneric close (window))
-(defgeneric close-requested-p (window))
-(defgeneric width (window))
-(defgeneric height (window))
-(defgeneric size (window))
-(defgeneric (setf size) (size window))
-(defgeneric location (window))
-(defgeneric (setf location) (location window))
-(defgeneric title (window))
-(defgeneric (setf title) (title window))
-(defgeneric visible-p (window))
-(defgeneric (setf visible-p) (state window))
-(defgeneric maximized-p (window))
-(defgeneric (setf maximized-p) (state window))
-(defgeneric iconified-p (window))
-(defgeneric (setf iconified-p) (state window))
-(defgeneric clipboard-string (window))
-(defgeneric (setf clipboard-string) (string window))
-(defgeneric content-scale (window))
-(defgeneric buffer (window))
-(defgeneric swap-buffers (window))
-(defgeneric process-events (window &key timeout))
-(defgeneric request-attention (window))
-
-;;; Event callbacks
-(defgeneric window-moved (user xpos ypos))
-(defgeneric window-resized (user width height))
-(defgeneric window-refreshed (user))
-(defgeneric window-focused (user focused-p))
-(defgeneric window-iconified (user iconified-p))
-(defgeneric window-maximized (user maximized-p))
-(defgeneric mouse-button-changed (user button action modifiers))
-(defgeneric mouse-moved (user xpos ypos))
-(defgeneric mouse-entered (user entered-p))
-(defgeneric mouse-scrolled (user xoffset yoffset))
-(defgeneric key-changed (user key scan-code action modifiers))
-(defgeneric string-entered (user string))
-(defgeneric file-dropped (user paths))
 
 ;;; Impls
 (defmethod window-moved ((window window) xpos ypos)
@@ -200,16 +213,3 @@
                     until (close-requested-p ,window)
                     do (process-events ,window :timeout T))
            (close ,window))))))
-
-;;; TODO:
-;; minimum-size
-;; maximum-size
-;; borderless-p
-;; always-on-top-p
-;; fullscreen-p
-;; resizable-p
-;; icon
-;; cursor-state (hidden, locked, visible)
-;; cursor-icon
-;; monitor
-;; IM

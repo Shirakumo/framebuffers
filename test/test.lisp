@@ -1,12 +1,12 @@
-(defpackage #:org.shirakumo.framebuffers.test
-  (:use #:cl)
+(defpackage org.shirakumo.framebuffers.test
+  (:use cl)
   (:local-nicknames
-   (#:fb #:org.shirakumo.framebuffers)
-   (#:fb-int #:org.shirakumo.framebuffers.int))
+   (fb org.shirakumo.framebuffers)
+   (fb-int org.shirakumo.framebuffers.int))
   (:export
-   #:framebuffers))
+   framebuffers))
 
-(in-package #:org.shirakumo.framebuffers.test)
+(in-package org.shirakumo.framebuffers.test)
 
 (defmacro do-pixels ((i x y buf w h &optional (channels 4)) &body body)
   `(let ((,i 0))
@@ -26,12 +26,17 @@
 (defun color (buf w h r g b a)
   (do-pixels (i x y buf w h)
     (setf (aref buf (+ 0 i)) r)
-    (setf (aref buf (+ 0 i)) g)
-    (setf (aref buf (+ 0 i)) b)
-    (setf (aref buf (+ 0 i)) a)))
+    (setf (aref buf (+ 1 i)) g)
+    (setf (aref buf (+ 2 i)) b)
+    (setf (aref buf (+ 3 i)) a)))
 
 (defun test ()
   (fb:with-window (window :size '(800 . 600))
     (fb:window-resized (w h)
                        (gradient (fb:buffer window) w h)
                        (fb:swap-buffers window))))
+
+(defun test/2 ()
+  (fb:with-window (window :size '(800 . 600))
+    (T (type &rest args)
+       (print (list type args)))))

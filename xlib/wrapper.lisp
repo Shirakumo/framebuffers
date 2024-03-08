@@ -113,7 +113,7 @@
                               (minor :int))
     (xlib:xkb-query-extension display opcode event-base error-base major minor)))
 
-(defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T))
+(defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T) event-handler)
   (with-creation (display (xlib:open-display (cffi:null-pointer))) (xlib:close-display display)
     (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer))
     (unless *keytable*
@@ -150,7 +150,8 @@
             (make-instance 'window :display display :image image :xid window :screen screen
                                    :size size :location location :title title
                                    :xkb (probe-xkb display) :visible-p visible-p
-                                   :content-scale (content-scale display))))))))
+                                   :content-scale (content-scale display)
+                                   :event-handler event-handler)))))))
 
 (defclass window (fb:window)
   ((display :initarg :display :accessor display)
@@ -234,7 +235,6 @@
     (setf (xid window) NIL))
   (when (display window)
     (setf (fb-int:ptr-window (display window)) NIL)
-    (xlib:flush (display window))
     (xlib:close-display (display window))
     (setf (display window) NIL))
   window)
@@ -335,17 +335,35 @@
     (xlib:flush display)
     window))
 
+(cffi:defcstruct (pollfd :conc-name pollfd-)
+  (fd :int)
+  (events :short)
+  (revents :short))
+
 (defmethod fb:process-events ((window window) &key timeout)
-  (etypecase timeout
-    (null
-     (cffi:with-foreign-objects ((event '(:struct xlib:event)))
-       (loop while (and (display window) (xlib:pending (display window)))
-             do (xlib:next-event (display window) event)
-                (process-event window (xlib:base-event-type event) event))
-       window))
-    ((or real (eql T))
-     ;; TODO: implement via XConnectionNumber and poll()
-     )))
+  (cffi:with-foreign-objects ((event '(:struct xlib:event)))
+    (flet ((process ()
+             (loop while (and (display window) (xlib:pending (display window)))
+                   do (xlib:next-event (display window) event)
+                      (process-event window (xlib:base-event-type event) event))))
+      (etypecase timeout
+        (null
+         (process))
+        ((or real (eql T))
+         (let ((millis (etypecase timeout
+                         (real (truncate (* 1000 timeout)))
+                         ((eql T) 1000))))
+           (cffi:with-foreign-objects ((fd '(:struct pollfd)))
+             (setf (pollfd-fd fd) (xlib:connection-number (display window)))
+             (setf (pollfd-events fd) 1)
+             (setf (pollfd-revents fd) 0)
+             (if (eql T timeout)
+                 (loop while (and (display window) (not (close-requested-p window)))
+                       do (when (< 0 (cffi:foreign-funcall "poll" :pointer fd :int 1 :int millis :int))
+                            (process)))
+                 (when (< 0 (cffi:foreign-funcall "poll" :pointer fd :int 1 :int millis :int))
+                   (process))))))))
+    window))
 
 (defmethod process-event ((window window) type event))
 
@@ -452,7 +470,8 @@
   (fb:window-focused window NIL))
 
 (defmethod process-event ((window window) (type (eql :destroy-notify)) event)
-  (setf (close-requested-p window) T))
+  (setf (close-requested-p window) T)
+  (fb:window-closed window))
 
 (defmethod process-event ((window window) (type (eql :expose)) event)
   (fb:window-refreshed window))
@@ -461,7 +480,8 @@
   (cond ((atomp window (xlib:client-message-event-message-type event) "WM_PROTOCOLS")
          (let ((protocol (xlib:net-message-event-protocol event)))
            (cond ((atomp window protocol "WM_DELETE_WINDOW")
-                  (setf (close-requested-p window) T))
+                  (setf (close-requested-p window) T)
+                  (fb:window-closed window))
                  ((atomp window protocol "NET_WM_PING")
                   (cffi:with-foreign-objects ((rpl '(:struct xlib:event)))
                     (cffi:foreign-funcall "memcpy" :pointer rpl :pointer event :size (cffi:foreign-type-size '(:struct xlib:event)))

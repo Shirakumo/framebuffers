@@ -35,3 +35,8 @@
                :static-vectors
                :trivial-features
                :cffi))
+
+(asdf:defsystem framebuffers/test
+  :components ((:module "test"
+                :components ((:file "test"))))
+  :depends-on (:framebuffers))

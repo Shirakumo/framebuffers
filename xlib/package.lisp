@@ -167,6 +167,7 @@
    #:get-error-text
    #:display-keycodes
    #:get-keyboard-mapping
+   #:connection-number
    #:resource-manager-string
    #:xrm-get-string-database
    #:xrm-get-resource

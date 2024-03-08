@@ -32,6 +32,7 @@
    #:window-focused
    #:window-iconified
    #:window-maximized
+   #:window-closed
    #:mouse-button-changed
    #:mouse-moved
    #:mouse-entered

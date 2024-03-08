@@ -495,6 +495,9 @@
   (min :pointer)
   (max :pointer))
 
+(cffi:defcfun (connection-number "XConnectionNumber") :int
+  (display :pointer))
+
 (cffi:defcfun (get-keyboard-mapping "XGetKeyboardMapping") :pointer
   (display :pointer)
   (first :uchar)

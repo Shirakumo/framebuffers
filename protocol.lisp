@@ -33,6 +33,7 @@
 (defgeneric window-focused (event-handler focused-p))
 (defgeneric window-iconified (event-handler iconified-p))
 (defgeneric window-maximized (event-handler maximized-p))
+(defgeneric window-closed (event-handler))
 (defgeneric mouse-button-changed (event-handler button action modifiers))
 (defgeneric mouse-moved (event-handler xpos ypos))
 (defgeneric mouse-entered (event-handler entered-p))
@@ -138,6 +139,8 @@
   (window-iconified (event-handler window) iconified-p))
 (defmethod window-maximized ((window window) maximized-p)
   (window-maximized (event-handler window) maximized-p))
+(defmethod window-closed ((window window))
+  (window-closed (event-handler window)))
 (defmethod mouse-button-changed ((window window) button action modifiers)
   (mouse-button-changed (event-handler window) button action modifiers))
 (defmethod mouse-moved ((window window) xpos ypos)
@@ -159,6 +162,7 @@
 (defmethod window-focused ((handler event-handler) focused-p))
 (defmethod window-iconified ((handler event-handler) iconified-p))
 (defmethod window-maximized ((handler event-handler) maximized-p))
+(defmethod window-closed ((handler event-handler)))
 (defmethod mouse-button-changed ((handler event-handler) button action modifiers))
 (defmethod mouse-moved ((handler event-handler) xpos ypos))
 (defmethod mouse-entered ((handler event-handler) entered-p))
@@ -182,6 +186,8 @@
   (funcall (handler handler) 'window-iconified (window handler) iconified-p))
 (defmethod window-maximized ((handler dynamic-event-handler) maximized-p)
   (funcall (handler handler) 'window-maximized (window handler) maximized-p))
+(defmethod window-closed ((handler dynamic-event-handler))
+  (funcall (handler handler) 'window-closed (window handler)))
 (defmethod mouse-button-changed ((handler dynamic-event-handler) button action modifiers)
   (funcall (handler handler) 'mouse-button-changed (window handler) button action modifiers))
 (defmethod mouse-moved ((handler dynamic-event-handler) xpos ypos)
@@ -204,8 +210,11 @@
     `(flet ((,handle (,event-type ,window &rest ,args)
               (case ,event-type
                 ,@(loop for (type lambda-list . body) in handlers
-                        collect `(,type (destructuring-bind ,lambda-list ,args
-                                          ,@body))))))
+                        collect (if (eql T type)
+                                    `(,type (destructuring-bind ,lambda-list (list* ,event-type ,args)
+                                              ,@body))
+                                    `(,type (destructuring-bind ,lambda-list ,args
+                                              ,@body)))))))
        (let ((,window (open :event-handler (make-instance 'dynamic-event-handler :handler #',handle) ,@initargs)))
          (unwind-protect
               (loop initially (,handle 'init ,window)

@@ -9,6 +9,7 @@
    #:event-handler
    #:open
    #:with-window
+   #:do-pixels
    #:valid-p
    #:close-requested-p
    #:close

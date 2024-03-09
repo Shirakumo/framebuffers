@@ -8,23 +8,16 @@
 
 (in-package org.shirakumo.framebuffers.test)
 
-(defmacro do-pixels ((i x y buf w h &optional (channels 4)) &body body)
-  `(let ((,i 0))
-     (declare (type (simple-array (unsigned-byte 8) (*)) ,buf))
-     (dotimes (,y ,h ,buf)
-       (dotimes (,x ,w)
-         (progn ,@body)
-         (incf ,i ,channels)))))
-
-(defun gradient (buf w h)
-  (do-pixels (i x y buf w h)
+(defun gradient (win)
+  (declare (optimize speed))
+  (fb:do-pixels (buf i x y) win
     (setf (aref buf (+ 0 i)) (mod x 256))
     (setf (aref buf (+ 1 i)) (mod y 256))
-    (setf (aref buf (+ 2 i)) (mod (* x y) 256))
+    (setf (aref buf (+ 2 i)) 0)
     (setf (aref buf (+ 3 i)) 255)))
 
-(defun color (buf w h r g b a)
-  (do-pixels (i x y buf w h)
+(defun color (win r g b a)
+  (fb:do-pixels (buf i x y) win
     (setf (aref buf (+ 0 i)) r)
     (setf (aref buf (+ 1 i)) g)
     (setf (aref buf (+ 2 i)) b)
@@ -33,7 +26,7 @@
 (defun test ()
   (fb:with-window (window :size '(800 . 600))
     (fb:window-refreshed ()
-      (gradient (fb:buffer window) (fb:width window) (fb:height window))
+      (gradient window)
       (fb:swap-buffers window))))
 
 (defun log-events ()

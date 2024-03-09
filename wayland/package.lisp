@@ -54,6 +54,7 @@
    #:display-cancel-read
    #:display-read-events
    #:log-set-handler-client
+   #:define-listener
    #:buffer-destroy
    #:compositor-create-surface
    #:display-get-registry

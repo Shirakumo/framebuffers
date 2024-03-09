@@ -3,8 +3,10 @@
 (pushnew :wayland sb-int:*available-backends*)
 
 (define-condition wayland-error (fb:framebuffer-error)
-  ((message :initarg :message :initform NIl :reader message))
-  (:report (lambda (c s) (format s ""))))
+  ((code :initarg :code :initform NIL :reader code)
+   (message :initarg :message :initform NIL :reader message))
+  (:report (lambda (c s) (format s "A Wayland call failed~@[ (~a)~]~@[:~%  ~a~]"
+                                 (code c) (message c)))))
 
 (defmethod fb-int:init-backend ((backend (eql :wayland)))
   (unless (cffi:foreign-library-loaded-p 'wl:wayland)
@@ -102,6 +104,58 @@
 
 (defmethod fb:swap-buffers ((window window)))
 
-(defmethod fb:process-events ((window window) &key timeout))
-
 (defmethod fb:request-attention ((window window)))
+
+(cffi:defcstruct (pollfd :conc-name pollfd-)
+  (fd :int)
+  (events :short)
+  (revents :short))
+
+(defmethod fb:process-events ((window window) &key timeout)
+  (let ((display (display window)))
+    (cffi:with-foreign-objects ((fd '(:struct pollfd)))
+      (setf (pollfd-fd fd) (wl:display-get-fd display))
+      (setf (pollfd-events fd) 1)
+      (setf (pollfd-revents fd) 0)
+      (flet ((poll (millis)
+               (let ((res (cffi:foreign-funcall "poll" :pointer fd :int 1 :int millis :int)))
+                 (cond ((< 0 res)
+                        (wl:display-read-events display)
+                        (wl:display-dispatch-pending display))
+                       ((< res 0)
+                        (wl:display-cancel-read display)
+                        NIL)))))
+        (etypecase timeout 
+          (null
+           (wl:display-dispatch-pending display))
+          (real
+           (cond ((/= 0 (wl:display-prepare-read display))
+                  (wl:display-dispatch-pending display))
+                 (T
+                  (wl:display-flush display)
+                  (poll (truncate (* 1000 timeout))))))
+          ((eql T)
+           (loop while (display window)
+                 do (loop while (/= 0 (wl:display-prepare-read display))
+                          do (wl:display-dispatch-pending display))
+                    (poll 1000))))))))
+
+(defmacro define-listener (name &body callbacks)
+  `(wl:define-listener ,name
+     ,@(loop for (cb args . body) in callbacks
+             collect (if body
+                         `(,cb :void ((window :pointer) ,@args)
+                               (declare (ignorable ,@(mapcar #'car args)))
+                               (let ((window (fb-int:ptr-window window)))
+                                 (when window
+                                   ,@body)))
+                         `(,cb NIL)))))
+
+(trivial-indent:define-indentation define-listener
+    (4 &rest (&whole 2 6 &body)))
+
+(define-listener display-listener
+  (error ((display :pointer) (object-id :pointer) (code :uint32) (message :string))
+    (error 'wayland-error :window window :code code :message message))
+  
+  (delete-id))

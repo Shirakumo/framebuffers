@@ -306,11 +306,6 @@
                     collect `(setf (,slot struct) ,(if ret `(cffi:callback ,slot) '(cffi:null-pointer))))
             struct)))
 
-#++
-(define-listener display-listener
-  (error :void ((data :pointer) (display :pointer) (object-id :pointer) (code :uint32) (message :string)))
-  (delete-id :void ((data :pointer) (display :pointer) (id :uint32))))
-
 (defmacro define-marshal-fun (name interface args)
   (let ((object (gensym "OBJECT")))
     `(defun ,name (,object ,@(loop for arg in args when (and arg (symbolp arg)) collect arg))

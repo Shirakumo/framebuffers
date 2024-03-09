@@ -35,6 +35,7 @@
                :float-features
                :static-vectors
                :trivial-features
+               :trivial-indent
                :cffi
                (:feature :linux :mmap)))
 

@@ -18,10 +18,11 @@
                              (:file "bindings")
                              (:file "keycodes")
                              (:file "wrapper")))
-               #++
                (:module "wayland"
                 :if-feature :linux
-                :components ((:file "package")))
+                :components ((:file "package")
+                             (:file "bindings")
+                             (:file "wrapper")))
                #++
                (:module "win32"
                 :if-feature :windows

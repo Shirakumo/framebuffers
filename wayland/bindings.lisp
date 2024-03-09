@@ -284,107 +284,53 @@
 (defconstant SUBSURFACE-SET-SYNC 4)
 (defconstant SUBSURFACE-SET-DESYNC 5)
 
+(cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
+(cffi:defcvar (registry-interface "wl_registry_interface") (:struct interface))
+(cffi:defcvar (shell-surface-interface "wl_shell_surface_interface") (:struct interface))
+(cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
+(cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
+(cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
+
+(defmacro define-marshal-fun (name interface args)
+  (let ((object (gensym "OBJECT")))
+    `(defun ,name (,object ,@(loop for arg in args when (and arg (symbolp arg)) collect arg))
+       (proxy-marshal-flags ,object
+                            ,name
+                            ,(if interface `(cffi:get-var-pointer ',interface) '(cffi:null-pointer))
+                            (proxy-get-version ,object)
+                            0
+                            ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))
+
 (defun buffer-destroy (buffer)
   (proxy-marshal-flags buffer BUFFER-DESTROY (cffi:null-pointer) (proxy-get-version buffer) MARSHAL-FLAG-DESTROY))
 
-(defun callback-add-listener (callback listener data)
-  (proxy-add-listener callback listener data))
+(define-marshal-fun compositor-create-surface surface-interface (NIL))
 
-(defun callback-destroy (callback)
-  (proxy-destroy callback))
+(define-marshal-fun display-get-registry registry-interface (NIL))
 
-(cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
-
-(defun compositor-create-surface (compositor)
-  (proxy-marshal-flags compositor COMPOSITOR-CREATE-SURFACE (cffi:get-var-pointer 'surface-interface) (proxy-get-version compositor) 0 (cffi:null-pointer)))
-
-(defun compositor-destroy (compositor)
-  (proxy-destroy compositor))
-
-(cffi:defcvar (registry-interface "wl_registry_interface") (:struct interface))
-
-(defun display-get-registry (display)
-  (proxy-marshal-flags display DISPLAY-GET-REGISTRY (cffi:get-var-pointer 'registry-interface) (proxy-get-version display) 0 (cffi:null-pointer)))
-
-(defun keyboard-add-listener (keyboard listener data)
-  (proxy-add-listener keyboard listener data))
-
-(defun keyboard-destroy (keyboard)
-  (proxy-destroy keyboard))
-
-(defun pointer-destroy (pointer)
-  (proxy-destroy pointer))
-
-(defun pointer-set-cursor (pointer serial surface hotspot-x hotspot-y)
-  (proxy-marshal-flags pointer POINTER-SET-CURSOR (cffi:null-pointer) (proxy-get-version pointer) 0 serial surface hotspot-x hotspot-y))
-
-(defun registry-add-listener (registry listener data)
-  (proxy-add-listener registry listener data))
+(define-marshal-fun pointer-set-cursor NIL (serial surface hotspot-x hotspot-y))
 
 (defun registry-bind (registry name interface version)
   (proxy-marshal-flags registry REGISTRY-BIND interface version 0 name (interface-name interface) version (cffi:null-pointer)))
 
-(defun registry-destroy (registry)
-  (proxy-destroy registry))
+(define-marshal-fun shell-get-shell-surface shell-surface-interface (NIL surface))
 
-(defun seat-add-listener (seat listener data)
-  (proxy-add-listener seat listener data))
+(define-marshal-fun shell-surface-pong NIL (serial))
 
-(defun seat-destroy (seat)
-  (proxy-destroy seat))
+(define-marshal-fun shell-surface-set-title NIL (title))
 
-(defun shell-destroy (shell)
-  (proxy-destroy shell))
+(define-marshal-fun shell-surface-set-toplevel NIL ())
 
-(cffi:defcvar (shell-surface-interface "wl_shell_surface_interface") (:struct interface))
+(define-marshal-fun shm-create-pool shm-pool-interface (NIL fd size))
 
-(defun shell-get-shell-surface (shell surface)
-  (proxy-marshal-flags shell SHELL-GET-SHELL-SURFACE (cffi:get-var-pointer 'shell-surface-interface) (proxy-get-version shell) 0 (cffi:null-pointer) surface))
+(define-marshal-fun shm-pool-create-buffer buffer-interface (NIL offset width height stride format))
 
-(defun shell-surface-add-listener (shell-surface listener data)
-  (proxy-add-listener shell-surface listener data))
+(define-marshal-fun shm-pool-resize NIL (size))
 
-(defun shell-surface-destroy (shell-surface)
-  (proxy-destroy shell-surface))
+(define-marshal-fun surface-attach NIL (buffer x y))
 
-(defun shell-surface-pong (shell-surface serial)
-  (proxy-marshal-flags shell-surface SHELL-SURFACE-PONG (cffi:null-pointer) (proxy-get-version shell-surface) 0 serial))
+(define-marshal-fun surface-commit NIL ())
 
-(defun shell-surface-set-title (shell-surface title)
-  (proxy-marshal-flags shell-surface SHELL-SURFACE-SET-TITLE (cffi:null-pointer) (proxy-get-version shell-surface) 0 title))
+(define-marshal-fun surface-damage NIL (x y width height))
 
-(defun shell-surface-set-toplevel (shell-surface)
-  (proxy-marshal-flags shell-surface SHELL-SURFACE-SET-TOPLEVEL (cffi:null-pointer) (proxy-get-version shell-surface) 0))
-
-(defun shm-add-listener (shm listener data)
-  (proxy-add-listener shm listener data))
-
-(cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
-
-(defun shm-create-pool (shm fd size)
-  (proxy-marshal-flags shm SHM-CREATE-POOL (cffi:get-var-pointer 'shm-pool-interface) (proxy-get-version shm) 0 (cffi:null-pointer) fd size))
-
-(defun shm-destroy (shm)
-  (proxy-destroy shm))
-
-(cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
-
-(defun shm-pool-create-buffer (shm-pool offset width height stride format)
-  (proxy-marshal-flags shm-pool SHM-POOL-CREATE-BUFFER (cffi:get-var-pointer 'buffer-interface) (proxy-get-version shm-pool) 0 (cffi:null-pointer) offset width height stride format))
-
-(defun shm-pool-resize (shm-pool size)
-  (proxy-marshal-flags shm-pool SHM-POOL-RESIZE (cffi:null-pointer) (proxy-get-version shm-pool) 0 size))
-
-(defun surface-attach (surface buffer x y)
-  (proxy-marshal-flags surface SURFACE-ATTACH (cffi:null-pointer) (proxy-get-version surface) 0 buffer x y))
-
-(defun surface-commit (surface)
-  (proxy-marshal-flags surface SURFACE-COMMIT (cffi:null-pointer) (proxy-get-version surface) 0))
-
-(defun surface-damage (surface x y width height)
-  (proxy-marshal-flags surface SURFACE-DAMAGE-BUFFER (cffi:null-pointer) (proxy-get-version surface) 0 x y width height))
-
-(cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
-
-(defun surface-frame (surface)
-  (proxy-marshal-flags surface SURFACE-FRAME callback-interface (proxy-get-version surface) 0 (cffi:null-pointer)))
+(define-marshal-fun surface-frame callback-interface (NIL))

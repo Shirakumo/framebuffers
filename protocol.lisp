@@ -222,3 +222,16 @@
                     until (close-requested-p ,window)
                     do (process-events ,window :timeout T))
            (close ,window))))))
+
+(defun resize-buffer (w h &optional old-buffer ow oh)
+  (let ((buffer (static-vectors:make-static-vector (* 4 w h) :initial-element 0)))
+    (when old-buffer
+      ;; Copy sub-region back.
+      ;; TODO: scale it instead
+      (dotimes (y (min h oh))
+        (dotimes (x (min w ow))
+          (dotimes (z 4)
+            (setf (aref buffer (+ z (* 4 (+ x (* w y)))))
+                  (aref old-buffer (+ z (* 4 (+ x (* ow y)))))))))
+      (static-vectors:free-static-vector old-buffer))
+    buffer))

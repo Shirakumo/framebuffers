@@ -2,6 +2,7 @@
   (:use #:cl)
   (:export
    #:x11
+   #:xext
    #:xid
    #:atom
    #:xrm-value
@@ -215,12 +216,14 @@
    #:shm-segment-info
    #:shm-segment-info-message
    #:shm-segment-info-id
-   #:shm-segment-indo-address
+   #:shm-segment-info-address
    #:shm-segment-info-read-only
    #:xshm-query-extension
    #:xshm-pixmap-format
    #:xshm-put-image
-   #:xshm-create-image))
+   #:xshm-create-image
+   #:xshm-attach
+   #:xshm-detach))
 
 (defpackage #:org.shirakumo.framebuffers.xlib
   (:use #:cl)

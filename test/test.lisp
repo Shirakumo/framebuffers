@@ -32,11 +32,11 @@
 
 (defun test ()
   (fb:with-window (window :size '(800 . 600))
-    (fb:window-resized (w h)
-                       (gradient (fb:buffer window) w h)
-                       (fb:swap-buffers window))))
+    (fb:window-refreshed ()
+      (gradient (fb:buffer window) (fb:width window) (fb:height window))
+      (fb:swap-buffers window))))
 
-(defun test/2 ()
+(defun log-events ()
   (fb:with-window (window :size '(800 . 600))
     (T (type &rest args)
-       (print (list type args)))))
+       (print (list* type args)))))

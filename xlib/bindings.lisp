@@ -3,6 +3,9 @@
 (cffi:define-foreign-library x11
   (T (:or (:default "libX11") (:default "X11"))))
 
+(cffi:define-foreign-library xext
+  (T (:or (:default "libXext") (:default "Xext"))))
+
 (cffi:define-foreign-library xrandr
   (T (:or (:default "libXrandr") (:default "Xrandr"))))
 
@@ -594,11 +597,11 @@
   (free :bool))
 
 ;; XSHM
-(cffi:defcstruct shm-segment-into
+(cffi:defcstruct (shm-segment-info :conc-name shm-segment-info-)
   (message :ulong)
   (id :int)
   (address :pointer)
-  (read-only :pointer))
+  (read-only :bool))
 
 (cffi:defcfun (xshm-query-extension "XShmQueryExtension") :bool
   (display :pointer))
@@ -628,3 +631,11 @@
   (shm-info :pointer)
   (width :uint)
   (height :uint))
+
+(cffi:defcfun (xshm-attach "XShmAttach") :bool
+  (display :pointer)
+  (shm :pointer))
+
+(cffi:defcfun (xshm-detach "XShmDetach") :bool
+  (display :pointer)
+  (shm :pointer))

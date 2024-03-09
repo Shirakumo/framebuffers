@@ -51,4 +51,5 @@
    #:open-backend
    #:default-title
    #:ptr-int
-   #:ptr-window))
+   #:ptr-window
+   #:resize-buffer))

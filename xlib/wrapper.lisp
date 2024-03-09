@@ -1,6 +1,10 @@
 (in-package #:org.shirakumo.framebuffers.xlib)
 (pushnew :xlib fb-int:*available-backends*)
 
+(defun dbg (fmt &rest args)
+  (format *standard-output* "~&> ~?~%" fmt args)
+  (finish-output *standard-output*))
+
 (define-condition xlib-error (fb:framebuffer-error)
   ((code :initarg :code :initform NIL :reader code)
    (message :initarg :message :initform NIL :reader message))
@@ -53,12 +57,13 @@
   (unless *init*
     (unless (cffi:foreign-library-loaded-p 'xlib:x11)
       (cffi:use-foreign-library xlib:x11))
+    (unless (cffi:foreign-library-loaded-p 'xlib:xext)
+      (ignore-errors (cffi:use-foreign-library xlib:xext)))
     (xlib:init-threads)
     (setf *init* T)
     (xlib:set-error-handler (cffi:callback error-handler))
     (xlib:set-io-error-handler (cffi:callback io-error-handler))
-      ;; Try to open the display once to ensure we have a connection
-
+    ;; Try to open the display once to ensure we have a connection
     (let ((display (xlib:open-display (cffi:null-pointer))))
       (when (cffi:null-pointer-p display)
         (error "Failed to open display."))
@@ -135,32 +140,31 @@
                                                    (car location) (cdr location) (car size) (cdr size)
                                                    0 depth 1 visual '(:back-pixel :border-pixel :backing-store) attrs))
                        (xlib:destroy-window display window)
-          (with-creation (image (xlib:create-image display (cffi:null-pointer) depth 2 0 (cffi:null-pointer) (car size) (cdr size) 32 (* 4 (car size))))
-                         (xlib:destroy-image image)
-            (xlib:store-name display window title)
-            (xlib:select-input display window '(:key-press :key-release :button-press :button-release :pointer-motion
-                                                :structure-notify :exposure :focus-change :enter-window :leave-window))
-            (setf (cffi:mem-aref protos 'xlib:atom 0) (xlib:intern-atom display "WM_DELETE_WINDOW" 0))
-            (setf (cffi:mem-aref protos 'xlib:atom 1) (xlib:intern-atom display "NET_WM_PING" 0))
-            (xlib:set-wm-protocols display window protos 2)
-            (xlib:clear-window display window)
-            (when visible-p
-              (xlib:map-raised display window))
-            (xlib:flush display)
-            (make-instance 'window :display display :image image :xid window :screen screen
-                                   :size size :location location :title title
-                                   :xkb (probe-xkb display) :visible-p visible-p
-                                   :content-scale (content-scale display)
-                                   :event-handler event-handler)))))))
+          (xlib:store-name display window title)
+          (xlib:select-input display window '(:key-press :key-release :button-press :button-release :pointer-motion
+                                              :structure-notify :exposure :focus-change :enter-window :leave-window))
+          (setf (cffi:mem-aref protos 'xlib:atom 0) (xlib:intern-atom display "WM_DELETE_WINDOW" 0))
+          (setf (cffi:mem-aref protos 'xlib:atom 1) (xlib:intern-atom display "NET_WM_PING" 0))
+          (xlib:set-wm-protocols display window protos 2)
+          (xlib:clear-window display window)
+          (when visible-p
+            (xlib:map-raised display window))
+          (xlib:flush display)
+          (make-instance 'window :display display :xid window :screen screen
+                                 :size size :location location :title title :visible-p visible-p
+                                 :content-scale (content-scale display)
+                                 :event-handler event-handler))))))
 
 (defclass window (fb:window)
   ((display :initarg :display :accessor display)
    (screen :initarg :screen :accessor screen)
    (xid :initarg :xid :accessor xid)
-   (image :initarg :image :accessor image)
-   (xkb :initarg :xkb :accessor xkb)
-
+   (gc :initarg :gc :initform NIL :accessor gc)
+   (xkb :initarg :xkb :initform NIL :accessor xkb)
+   (xshm :initarg :xshm :initform NIL :accessor xshm)
+   (image :initarg :image :initform NIL :accessor image)
    (buffer :initarg :buffer :initform NIL :reader fb:buffer :accessor buffer)
+
    (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
    (title :initform "" :initarg :title :reader fb:title :accessor title)
@@ -173,19 +177,54 @@
 
 (defmethod initialize-instance :after ((window window) &key)
   (setf (fb-int:ptr-window (display window)) window)
-  (update-buffer window))
+  (unless (xkb window) (setf (xkb window) (probe-xkb (display window))))
+  #++
+  (unless (xshm window) (when (ignore-errors (xlib:xshm-query-extension (display window)))
+                          (cffi:foreign-alloc '(:struct xlib:shm-segment-info))))
+  (unless (gc window) (setf (gc window) (xlib:default-gc (display window) (screen window))))
+  (unless (buffer window) (update-buffer window (car (size window)) (cdr (size window)))))
 
-(defun update-buffer (window)
-  (destructuring-bind (w . h) (size window)
-    (let ((buffer (static-vectors:make-static-vector (* 4 w h)))
-          (image (check-create (xlib:create-image (display window) (cffi:null-pointer) (xlib:default-depth (display window) (screen window))
-                                                  2 0 (cffi:null-pointer) w h 32 (* 4 w)))))
-      (when (buffer window)
-        (static-vectors:free-static-vector (buffer window)))
-      (when (image window)
-        (xlib:destroy-image (image window)))
-      (setf (buffer window) buffer)
-      (setf (image window) image))))
+(defun update-buffer (window w h)
+  (let* ((buffer (fb-int:resize-buffer w h (buffer window) (car (size window)) (cdr (size window))))
+         (depth (xlib:default-depth (display window) (screen window)))
+         (image (cond ((xshm window)
+                       ;; FIXME: This does not seem to work, shmat won't attach to the static vector pointer, probably due to alignment problems.
+                       (let* ((shm (xshm window))
+                              (image (check-create (xlib:xshm-create-image (display window) (cffi:null-pointer) depth 2 (cffi:null-pointer) shm w h)))
+                              (id (cffi:foreign-funcall "shmget" :int 0 :size (* h (xlib:image-bytes-per-line image)) :int #x1777 :int))
+                              (ptr (cffi:foreign-funcall "shmat" :int id :pointer (static-vectors:static-vector-pointer buffer) :int 0 :pointer)))
+                         (when (= id -1)
+                           (error 'xlib-error :message "Failed to create shared memory region." :window window))
+                         (when (= (cffi:pointer-address ptr) (1- (ash 1 64)))
+                           (error 'xlib-error :message "Failed to bind shared memory region." :window window))
+                         (setf (xlib:shm-segment-info-id shm) id)
+                         (setf (xlib:shm-segment-info-address shm) ptr)
+                         (setf (xlib:shm-segment-info-read-only shm) T)
+                         (unless (xlib:xshm-attach (display window) shm)
+                           (error 'xlib-error :message "Failed to attach shared memory." :window window))
+                         image))
+                      (T
+                       (check-create (xlib:create-image (display window) (cffi:null-pointer) depth 2 0 (cffi:null-pointer) w h 32 (* 4 w)))))))
+    (when (image window)
+      (setf (xlib:image-data image) (cffi:null-pointer))
+      (xlib:destroy-image (image window)))
+    (setf (buffer window) buffer)
+    (setf (image window) image)
+    (setf (car (size window)) w)
+    (setf (cdr (size window)) h)
+    window))
+
+(defmethod fb:swap-buffers ((window window))
+  (let ((display (display window))
+        (image (image window)))
+    (destructuring-bind (width . height) (size window)
+      (cond ((xshm window)
+             (xlib:xshm-put-image display (xid window) (gc window) image 0 0 0 0 width height NIL))
+            (T
+             (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
+             (xlib:put-image display (xid window) (gc window) image 0 0 0 0 width height)))
+      (xlib:flush display))
+    window))
 
 (defun atom (window name)
   (etypecase name
@@ -238,7 +277,14 @@
 
 (defmethod fb:close ((window window))
   (setf (close-requested-p window) T)
+  (when (xshm window)
+    (cffi:foreign-free (xshm window))
+    (setf (xshm window) NIL))
+  (when (buffer window)
+    (static-vectors:free-static-vector (buffer window))
+    (setf (buffer window) NIL))
   (when (image window)
+    (setf (xlib:image-data (image window)) (cffi:null-pointer))
     (xlib:destroy-image (image window))
     (setf (image window) NIL))
   (when (xid window)
@@ -336,16 +382,6 @@
   (xlib:flush (display window))
   window)
 
-(defmethod fb:swap-buffers ((window window))
-  (let ((display (display window))
-        (image (image window)))
-    (destructuring-bind (width . height) (size window)
-      (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
-      (xlib:put-image display (xid window) (xlib:default-gc display (screen window))
-                      image 0 0 0 0 width height))
-    (xlib:flush display)
-    window))
-
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)
   (events :short)
@@ -354,7 +390,7 @@
 (defmethod fb:process-events ((window window) &key timeout)
   (cffi:with-foreign-objects ((event '(:struct xlib:event)))
     (flet ((process ()
-             (loop while (and (display window) (xlib:pending (display window)))
+             (loop while (and (display window) (< 0 (xlib:events-queued (display window) 1)))
                    do (xlib:next-event (display window) event)
                       (process-event window (xlib:base-event-type event) event))))
       (etypecase timeout
@@ -379,7 +415,7 @@
 (defmethod process-event ((window window) type event))
 
 (flet ((process-key-event (window action event)
-         (when (and (eql action :release) (xlib:events-queued (display window) 1))
+         (when (and (eql action :release) (< 0 (xlib:events-queued (display window) 1)))
            (cffi:with-foreign-objects ((next '(:struct xlib:event)))
              (xlib:peek-event (display window) next)
              (when (and (eql :key-press (xlib:base-event-type next))
@@ -420,9 +456,7 @@
   (let ((size (size window)))
     (when (or (/= (car size) (xlib:configure-event-width event))
               (/= (cdr size) (xlib:configure-event-height event)))
-      (setf (car size) (xlib:configure-event-width event))
-      (setf (cdr size) (xlib:configure-event-height event))
-      (update-buffer window)
+      (update-buffer window (xlib:configure-event-width event) (xlib:configure-event-height event))
       (fb:window-resized window (car size) (cdr size))))
   (let ((location (location window)))
     (when (or (/= (car location) (xlib:configure-event-x event))

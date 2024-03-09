@@ -107,7 +107,7 @@
   (interface :pointer)
   (version :uint32))
 
-(define-vararg proxy-marshal-constructor-versinoed (proxy opcode interface version &rest args)
+(define-vararg proxy-marshal-constructor-versioned (proxy opcode interface version &rest args)
   (proxy-marshal-array-constructor-versioned proxy opcode args interface version))
 
 (cffi:defcfun (proxy-destroy "wl_proxy_destroy") :void

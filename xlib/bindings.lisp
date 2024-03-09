@@ -191,6 +191,7 @@
 
 (cffi:defcstruct (configure-event :conc-name configure-event-)
   (_ (:struct base-event))
+  (window xid)
   (x :int)
   (y :int)
   (width :int)

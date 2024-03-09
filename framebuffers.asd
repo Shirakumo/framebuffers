@@ -35,7 +35,8 @@
                :float-features
                :static-vectors
                :trivial-features
-               :cffi))
+               :cffi
+               (:feature :linux :mmap)))
 
 (asdf:defsystem framebuffers/test
   :components ((:module "test"

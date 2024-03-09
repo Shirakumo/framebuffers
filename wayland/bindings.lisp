@@ -291,15 +291,35 @@
 (cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
 (cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
 
+(defmacro define-listener (name &body callbacks)
+  `(progn (cffi:defcstruct (,name :conc-name ,(intern (format NIL "~a-" (symbol-name name))))
+            ,@(loop for (cb) in callbacks collect `(,cb :pointer)))
+          
+          ,@(loop for (cb ret args . body) in callbacks
+                  when ret
+                  collect `(cffi:defcallback ,(intern (format NIL "~a-~a" (symbol-name name) (symbol-name cb))) ,ret ,args 
+                             ,@body))
+
+          (defun ,(intern (format NIL "~a-~a" (symbol-name :make) name)) (&optional (struct (cffi:foreign-alloc '(:struct ,name))))
+            ,@(loop for (cb ret args . body) in callbacks
+                    for slot = (intern (format NIL "~a-~a" (symbol-name name) (symbol-name cb)))
+                    collect `(setf (,slot struct) ,(if ret `(cffi:callback ,slot) '(cffi:null-pointer))))
+            struct)))
+
+#++
+(define-listener display-listener
+  (error :void ((data :pointer) (display :pointer) (object-id :pointer) (code :uint32) (message :string)))
+  (delete-id :void ((data :pointer) (display :pointer) (id :uint32))))
+
 (defmacro define-marshal-fun (name interface args)
   (let ((object (gensym "OBJECT")))
     `(defun ,name (,object ,@(loop for arg in args when (and arg (symbolp arg)) collect arg))
-       (proxy-marshal-flags ,object
-                            ,name
-                            ,(if interface `(cffi:get-var-pointer ',interface) '(cffi:null-pointer))
-                            (proxy-get-version ,object)
-                            0
-                            ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))
+       (proxy-arshal-flags ,object
+                           ,name
+                           ,(if interface `(cffi:get-var-pointer ',interface) '(cffi:null-pointer))
+                           (proxy-get-version ,object)
+                           0
+                           ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))
 
 (defun buffer-destroy (buffer)
   (proxy-marshal-flags buffer BUFFER-DESTROY (cffi:null-pointer) (proxy-get-version buffer) MARSHAL-FLAG-DESTROY))

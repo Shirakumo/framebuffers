@@ -55,6 +55,17 @@
    #:display-read-events
    #:log-set-handler-client
    #:define-listener
+   #:buffer-interface
+   #:callback-interface
+   #:compositor-interface
+   #:registry-interface
+   #:seat-interface
+   #:shell-interface
+   #:shell-surface-interface
+   #:shm-interface
+   #:shm-pool-interface
+   #:surface-interface
+   #:seat-capabilities
    #:buffer-destroy
    #:compositor-create-surface
    #:display-get-registry

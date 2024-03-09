@@ -284,12 +284,19 @@
 (defconstant SUBSURFACE-SET-SYNC 4)
 (defconstant SUBSURFACE-SET-DESYNC 5)
 
-(cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
-(cffi:defcvar (registry-interface "wl_registry_interface") (:struct interface))
-(cffi:defcvar (shell-surface-interface "wl_shell_surface_interface") (:struct interface))
-(cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
 (cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
 (cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
+(cffi:defcvar (compositor-interface "wl_compositor_interface") (:struct interface))
+(cffi:defcvar (registry-interface "wl_registry_interface") (:struct interface))
+(cffi:defcvar (seat-interface "wl_seat_interface") (:struct interface))
+(cffi:defcvar (shell-interface "wl_shell_interface") (:struct interface))
+(cffi:defcvar (shell-surface-interface "wl_shell_surface_interface") (:struct interface))
+(cffi:defcvar (shm-interface "wl_shm_interface") (:struct interface))
+(cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
+(cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
+
+(cffi:defbitfield seat-capabilities
+  :pointer :keyboard :touch)
 
 (defmacro define-listener (name &body callbacks)
   `(progn (cffi:defcstruct (,name :conc-name ,(intern (format NIL "~a-" (symbol-name name))))

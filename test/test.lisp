@@ -16,13 +16,6 @@
     (setf (aref buf (+ 2 i)) 0)
     (setf (aref buf (+ 3 i)) 255)))
 
-(defun color (win r g b a)
-  (fb:do-pixels (buf i x y) win
-    (setf (aref buf (+ 0 i)) r)
-    (setf (aref buf (+ 1 i)) g)
-    (setf (aref buf (+ 2 i)) b)
-    (setf (aref buf (+ 3 i)) a)))
-
 (defun test ()
   (fb:with-window (window :size '(800 . 600))
     (fb:window-refreshed ()

@@ -1,6 +1,7 @@
 (in-package #:org.shirakumo.framebuffers.xlib)
 
 (defvar *keytable* NIL)
+(defvar *stringtable* (make-hash-table :test 'eql))
 
 ;; Fallback translation based on X11 keysyms
 (defun translate-keysym (a b)
@@ -306,6 +307,22 @@
         (xlib:free keysyms)))
     array))
 
+(defun make-stringtable (&optional (table (make-hash-table :test 'eql)))
+  (with-open-file (file (fb-int:static-file "xlib/keysyms.txt"))
+    (loop for keysym = (read file NIL)
+          for codepoint = (read file NIL)
+          while keysym
+          do (setf (gethash keysym table) (string (code-char codepoint))))
+    table))
+
+(make-stringtable)
+
 (defun translate-keycode (code)
   (when (<= 0 code 255)
     (aref *keytable* code)))
+
+(defun keysym-string (code)
+  (cond ((= #x1000000 (logand code #xff000000))
+         (string (code-char (logand code #xffffff))))
+        (T
+         (gethash code *stringtable*))))

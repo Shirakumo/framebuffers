@@ -47,6 +47,7 @@
   (:shadowing-import-from #:org.shirakumo.framebuffers #:open #:close)
   (:export
    #:*available-backends*
+   #:static-file
    #:init-backend
    #:shutdown-backend
    #:open-backend

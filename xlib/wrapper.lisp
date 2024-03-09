@@ -425,8 +425,13 @@
                (setf action :repeat))))
          (let ((code (xlib:key-event-keycode event)))
            (fb:key-changed window (translate-keycode code) code action (xlib:key-event-state event))
-           ;; FIXME: string translation
-           )))
+           (case action
+             ((:repeat :press)
+              (cffi:with-foreign-objects ((keysym :uint32))
+                (xlib:lookup-string event (cffi:null-pointer) 0 keysym (cffi:null-pointer))
+                (let ((str (keysym-string (cffi:mem-ref keysym :uint32))))
+                  (when str (fb:string-entered window str)))))))))
+
   (defmethod process-event ((window window) (type (eql :key-press)) event)
     (process-key-event window :press event))
 
@@ -443,6 +448,7 @@
            (6 (fb:mouse-scrolled window +1.0  0.0))
            (7 (fb:mouse-scrolled window -1.0  0.0))
            (T (fb:mouse-button-changed window (- (xlib:button-event-button event) 4) action (xlib:button-event-state event))))))
+
   (defmethod process-event ((window window) (type (eql :button-press)) event)
     (process-mouse-event window :press event))
 

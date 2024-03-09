@@ -524,6 +524,21 @@
 (cffi:defcfun (xrm-destroy-database "XrmDestroyDatabase") :void
   (database :pointer))
 
+(cffi:defcfun (utf8-lookup-string "Xutf8LookupString") :int
+  (ic :pointer)
+  (event :pointer)
+  (buffer :pointer)
+  (bytes :int)
+  (keysym :pointer)
+  (status :pointer))
+
+(cffi:defcfun (lookup-string "XLookupString") :int
+  (event :pointer)
+  (buffer :pointer)
+  (bytes :int)
+  (keysym :pointer)
+  (status :pointer))
+
 ;; XKB
 (cffi:defcstruct (xkb-desc :conc-name xkb-desc-)
   (display :pointer)

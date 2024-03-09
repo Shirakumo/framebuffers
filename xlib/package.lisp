@@ -173,6 +173,8 @@
    #:xrm-get-string-database
    #:xrm-get-resource
    #:xrm-destroy-database
+   #:utf8-lookup-string
+   #:lookup-string
    #:xkb-desc
    #:xkb-desc-display
    #:xkb-desc-flags

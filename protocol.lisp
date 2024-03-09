@@ -49,6 +49,7 @@
 ;; always-on-top-p
 ;; fullscreen-p
 ;; resizable-p
+;; floating-p
 ;; icon
 ;; cursor-state (hidden, locked, visible)
 ;; cursor-icon
@@ -56,6 +57,7 @@
 ;; IM
 
 ;;; Backend Internals
+(defvar *here* #.(make-pathname :name NIL :type NIL :defaults (or *compile-file-pathname* *load-pathname* (error "Need compile-file or load."))))
 (defvar *windows-table* (make-hash-table :test 'eql))
 (defvar *available-backends* ())
 (defvar *backend* NIL)
@@ -63,6 +65,9 @@
 (defgeneric init-backend (backend))
 (defgeneric shutdown-backend (backend))
 (defgeneric open-backend (backend &key))
+
+(defun static-file (path)
+  (merge-pathnames path *here*))
 
 (defun default-title ()
   (format NIL "Framebuffer (~a ~a)" (lisp-implementation-type) (lisp-implementation-version)))

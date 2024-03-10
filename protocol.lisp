@@ -88,6 +88,10 @@
       (remhash (ptr-int ptr) *windows-table*))
   window)
 
+(defun list-windows ()
+  (loop for window being the hash-values of *windows-table*
+        collect window))
+
 ;;; Setup
 (define-condition framebuffer-error (error)
   ((window :initarg :window :initform NIL :reader window)))
@@ -105,6 +109,8 @@
 
 (defun shutdown ()
   (when *backend*
+    (dolist (window (list-windows))
+      (ignore-errors (close window)))
     (shutdown-backend (shiftf *backend* NIL))
     (clrhash *windows-table*)))
 

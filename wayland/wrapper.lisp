@@ -99,6 +99,7 @@
     (static-vectors:free-static-vector (buffer window))
     (setf (buffer window) NIL))
   (when (display window)
+    (setf (fb-int:ptr-window (display window)) NIL)
     (wl:display-disconnect (display window))
     (setf (display window) NIL)))
 

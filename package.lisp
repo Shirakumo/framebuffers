@@ -54,5 +54,6 @@
    #:default-title
    #:ptr-int
    #:ptr-window
+   #:list-windows
    #:resize-buffer
    #:with-cleanup))

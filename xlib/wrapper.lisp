@@ -214,16 +214,17 @@
     (setf (cdr (size window)) h)
     window))
 
-(defmethod fb:swap-buffers ((window window))
+(defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (car (size window))) (h (cdr (size window))) sync)
   (let ((display (display window))
         (image (image window)))
-    (destructuring-bind (width . height) (size window)
-      (cond ((xshm window)
-             (xlib:xshm-put-image display (xid window) (gc window) image 0 0 0 0 width height NIL))
-            (T
-             (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
-             (xlib:put-image display (xid window) (gc window) image 0 0 0 0 width height)))
-      (xlib:flush display))
+    (cond ((xshm window)
+           (xlib:xshm-put-image display (xid window) (gc window) image x y x y w h NIL))
+          (T
+           (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
+           (xlib:put-image display (xid window) (gc window) image x y x y w h)))
+    (if sync
+        (xlib:sync display)
+        (xlib:flush display))
     window))
 
 (defun atom (window name)

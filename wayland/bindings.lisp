@@ -287,6 +287,8 @@
 (cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
 (cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
 (cffi:defcvar (compositor-interface "wl_compositor_interface") (:struct interface))
+(cffi:defcvar (keyboard-interface "wl_keyboard_interface") (:struct interface))
+(cffi:defcvar (pointer-interface "wl_pointer_interface") (:struct interface))
 (cffi:defcvar (registry-interface "wl_registry_interface") (:struct interface))
 (cffi:defcvar (seat-interface "wl_seat_interface") (:struct interface))
 (cffi:defcvar (shell-interface "wl_shell_interface") (:struct interface))
@@ -294,6 +296,7 @@
 (cffi:defcvar (shm-interface "wl_shm_interface") (:struct interface))
 (cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
 (cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
+(cffi:defcvar (touch-interface "wl_touch_interface") (:struct interface))
 
 (cffi:defbitfield seat-capabilities
   :pointer :keyboard :touch)
@@ -316,12 +319,12 @@
 (defmacro define-marshal-fun (name interface args)
   (let ((object (gensym "OBJECT")))
     `(defun ,name (,object ,@(loop for arg in args when (and arg (symbolp arg)) collect arg))
-       (proxy-arshal-flags ,object
-                           ,name
-                           ,(if interface `(cffi:get-var-pointer ',interface) '(cffi:null-pointer))
-                           (proxy-get-version ,object)
-                           0
-                           ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))
+       (proxy-marshal-flags ,object
+                            ,name
+                            ,(if interface `(cffi:get-var-pointer ',interface) '(cffi:null-pointer))
+                            (proxy-get-version ,object)
+                            0
+                            ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))
 
 (defun buffer-destroy (buffer)
   (proxy-marshal-flags buffer BUFFER-DESTROY (cffi:null-pointer) (proxy-get-version buffer) MARSHAL-FLAG-DESTROY))
@@ -334,6 +337,12 @@
 
 (defun registry-bind (registry name interface version)
   (proxy-marshal-flags registry REGISTRY-BIND interface version 0 name (interface-name interface) version (cffi:null-pointer)))
+
+(define-marshal-fun seat-get-keyboard keyboard-interface (NIL))
+
+(define-marshal-fun seat-get-pointer pointer-interface (NIL))
+
+(define-marshal-fun seat-get-touch touch-interface (NIL))
 
 (define-marshal-fun shell-get-shell-surface shell-surface-interface (NIL surface))
 

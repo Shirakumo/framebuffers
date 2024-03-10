@@ -22,7 +22,7 @@
 (defgeneric (setf clipboard-string) (string window))
 (defgeneric content-scale (window))
 (defgeneric buffer (window))
-(defgeneric swap-buffers (window))
+(defgeneric swap-buffers (window &key x y w h sync))
 (defgeneric process-events (window &key timeout))
 (defgeneric request-attention (window))
 
@@ -255,3 +255,12 @@
            (dotimes (,x ,wg)
              (progn ,@body)
              (incf ,i 4)))))))
+
+(defmacro with-cleanup (cleanup &body body)
+  (let ((ok (gensym "OK")))
+    `(let ((,ok NIL))
+       (unwind-protect
+            (multiple-value-prog1 (progn ,@body)
+              (setf ,ok T))
+         (unless ,ok
+           ,cleanup)))))

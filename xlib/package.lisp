@@ -143,6 +143,7 @@
    #:destroy-window
    #:events-queued
    #:flush
+   #:sync
    #:free
    #:intern-atom
    #:list-pixmap-formats

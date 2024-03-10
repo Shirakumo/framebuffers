@@ -1,6 +1,6 @@
 (in-package #:org.shirakumo.framebuffers.wayland)
 
-(pushnew :wayland sb-int:*available-backends*)
+(pushnew :wayland fb-int:*available-backends*)
 
 (define-condition wayland-error (fb:framebuffer-error)
   ((code :initarg :code :initform NIL :reader code)
@@ -13,22 +13,16 @@
     (cffi:use-foreign-library wl:wayland)
     (let ((display (wl:display-connect (cffi:null-pointer))))
       (if (cffi:null-pointer-p display)
-          (error "Failed to connect to Wayland display.")
+          (error 'wayland-error :message "Failed to connect to Wayland display.")
           (wl:display-disconnect display)))))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :wayland))))
 
 (defmethod fb-int:open-backend ((backend (eql :wayland)) &key)
-  (let* ((display (wl:display-connect (cffi:null-pointer)))
-         (window (make-instance 'window :display display)))
-    (when (= -1 (wl:display-dispatch display))
-      (error 'wayland-error :message "Failed to dispatch display."))
-    (when (= -1 (wl:display-roundtrip display))
-      (error 'wayland-error :message "Failed to roundtrip display."))
-    (when (= -1 (shm-format window))
-      (error 'wayland-error :message "No suitable pixel format."))
-    (when (= -1 (compositor window))
-      (error 'wayland-error :message "Couldn't find a compositor."))))
+  (let ((display (wl:display-connect (cffi:null-pointer))))
+    (if (cffi:null-pointer-p display)
+        (error 'wayland-error :message "Failed to connect to Wayland display.")
+        (make-instance 'window :display display))))
 
 (defclass window (fb:window)
   ((display :initarg :display :initform NIL :accessor display)
@@ -41,6 +35,7 @@
    (shm :initform NIL :accessor shm)
    (compositor :initform NIL :accessor compositor)
    (keyboard :initform NIL :accessor keyboard)
+   (pointer :initform NIL :accessor pointer)
    (seat :initform NIL :accessor seat)
    (registry :initform NIL :accessor registry)
 
@@ -54,19 +49,37 @@
    (maximized-p :initform NIL :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :reader fb:iconified-p :accessor iconified-p)))
 
-(defmethod initialize-instance :after ((window window) &key)
+(defmethod initialize-instance :after ((window window) &key title)
   (let ((display (display window)))
-    (setf (fb-int:ptr-window display) window)
-    (setf (registry window) (wl:display-get-registry display))
-    (wl:proxy-add-listener (registry window) (registry-listener (listener window)) display)))
+    (fb-int:with-cleanup (fb:close window)
+      (setf (fb-int:ptr-window display) window)
+      (setf (registry window) (wl:display-get-registry display))
+      (wl:proxy-add-listener (display window) (display-listener (listener window)) display)
+      (wl:proxy-add-listener (registry window) (registry-listener (listener window)) display)
+      (when (= -1 (wl:display-dispatch display))
+        (error 'wayland-error :message "Failed to dispatch display."))
+      (when (= -1 (wl:display-roundtrip display))
+        (error 'wayland-error :message "Failed to roundtrip display."))
+      (when (= -1 (compositor window))
+        (error 'wayland-error :message "Couldn't find a compositor."))
+      (setf (shm-pool window) (wl:shm-create-pool (shm window) fd size))
+      (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1))
+      (setf (surface window) (wl:compositor-create-surface (compositor window)))
+      (setf (shell-surface window) (wl:shell-get-shell-surface (shell window) (surface window)))
+      (wl:proxy-add-listener (shell-surface window) (shell-surface-listener (listener window)) display)
+      (wl:shell-surface-set-title (shell-surface window) title)
+      (wl:shell-surface-set-toplevel (shell-surface window))
+      (wl:surface-attach (surface window) (draw-buffer window) 0 0)
+      (wl:surface-damage (surface window) 0 0 w h)
+      (wl:surface-commit (surface window)))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (display window))))
 
 (defmethod fb:close ((window window))
-  (dolist (slot '(shell-surface shell surface shm-pool shm compositor keyboard registry))
+  (dolist (slot '(shell-surface shell surface shm-pool shm compositor keyboard pointer registry))
     (when (slot-value window slot)
-      (fb:proxy-destroy (slot-value window slot))
+      (wl:proxy-destroy (slot-value window slot))
       (setf (slot-value window slot) NIL)))
   (when (listener window)
     (cffi:foreign-free (listener window))
@@ -105,7 +118,23 @@
 
 (defmethod (setf fb:clipboard-string) (string (window window)))
 
-(defmethod fb:swap-buffers ((window window)))
+(defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (car (size window))) (h (car (size window))) sync)
+  (wl:surface-attach (surface window) (draw-buffer window) 0 0)
+  (wl:surface-damage (surface window) x y w h)
+  (cond (sync
+         (let ((cb (wl:surface-frame (surface window))))
+           (unwind-protect
+                (cffi:with-foreign-objects ((done :char))
+                  (setf (cffi:mem-ref done :char) 0)
+                  (wl:proxy-add-listener cb (frame-listener (listener window)) done)
+                  (wl:surface-commit (surface window))
+                  (loop while (and (= 0 (cffi:mem-ref done :char)) (display window))
+                        do (when (or (= -1 (wl:display-dispatch (display window)))
+                                     (= -1 (wl:display-roundtrip (display window))))
+                             (error 'wayland-error :message "Lost connection to display"))))
+             (wl:proxy-destroy cb))))
+        (T
+         (wl:surface-commit (surface window)))))
 
 (defmethod fb:request-attention ((window window)))
 
@@ -172,16 +201,6 @@
                collect `(,(intern (format NIL "~a-~a" (symbol-name 'make) (symbol-name listener))) (,listener struct)))
        struct)))
 
-(define-whole-listener
-  display-listener
-  registry-listener
-  shm-listener
-  seat-listener
-  pointer-listener
-  keyboard-listener
-  shell-surface-listener
-  frame-listener)
-
 (define-listener display-listener
   (error ((display :pointer) (object-id :pointer) (code :uint32) (message :string))
     (error 'wayland-error :window window :code code :message message))
@@ -193,8 +212,7 @@
     (cond ((string= interface "wl_compositor")
            (setf (compositor window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:compositor-interface) 1)))
           ((string= interface "wl_shm")
-           (setf (shm window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shm-interface) 1))
-           (wl:proxy-add-listener (shm window) (shm-listener (listener window)) (display window)))
+           (setf (shm window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shm-interface) 1)))
           ((string= interface "wl_shell")
            (setf (shell window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shell-interface) 1)))
           ((string= interface "wl_seat")
@@ -203,26 +221,41 @@
 
   (global-remove))
 
-(define-listener shm-listener
-  (format ((shm :pointer) (format :uint32))
-    ))
-
 (define-listener seat-listener
   (capabilities ((seat :pointer) (caps wl:seat-capabilities))
-    )
+    (cond ((and (member :keyboard caps) (null (keyboard window)))
+           (setf (keyboard window) (wl:seat-get-keyboard seat))
+           (wl:proxy-add-listener (keyboard window) (keyboard-listener (listener window)) (display window)))
+          ((and (null (member :keyboard caps)) (keyboard window))
+           (wl:proxy-destroy (keyboard window))
+           (setf (keyboard window) NIL)))
+
+    (cond ((and (member :pointer caps) (null (pointer window)))
+           (setf (pointer window) (wl:seat-get-pointer seat))
+           (wl:proxy-add-listener (pointer window) (pointer-listener (listener window)) (display window)))
+          ((and (null (member :pointer caps)) (pointer window))
+           (wl:proxy-destroy (pointer window))
+           (setf (pointer window) NIL))))
 
   (name ((seat :pointer) (name :string))))
 
 (define-listener pointer-listener
-  (enter ((pointer :pointer) (serial :uint32) (surface :pointer) (sx :uint32) (sy :uint32)))
+  (enter ((pointer :pointer) (serial :uint32) (surface :pointer) (sx :uint32) (sy :uint32))
+    (fb:mouse-entered window T))
   
-  (leave ((pointer :pointer) (serial :uint32) (surface :pointer)))
+  (leave ((pointer :pointer) (serial :uint32) (surface :pointer))
+    (fb:mouse-entered window NIL))
   
-  (motion ((pointer :pointer) (time :uint32) (sx :uint32) (sy :uint32)))
+  (motion ((pointer :pointer) (time :uint32) (sx :uint32) (sy :uint32))
+    (fb:mouse-moved window (/ sx 256) (/ sy 256)))
   
-  (button ((pointer :pointer) (serial :uint32) (time :uint32) (button :uint32) (state :uint32)))
+  (button ((pointer :pointer) (serial :uint32) (time :uint32) (button :uint32) (state :uint32))
+    (fb:mouse-button-changed window ))
   
-  (axis ((pointer :pointer) (time :uint32) (axis :uint32) (value :uint32)))
+  (axis ((pointer :pointer) (time :uint32) (axis :uint32) (value :uint32))
+    (case axis
+      (0 (fb:mouse-scrolled window 0 (- (/ value 256))))
+      (1 (fb:mouse-scrolled window (- (/ value 256)) 0))))
   
   (frame ((pointer :pointer)))
   
@@ -235,13 +268,17 @@
 (define-listener keyboard-listener
   (keymap ((keyboard :pointer) (format :uint32) (fd :int) (size :uint32)))
   
-  (enter ((keyboard :pointer) (serial :uint32) (surface :pointer) (keys :pointer)))
+  (enter ((keyboard :pointer) (serial :uint32) (surface :pointer) (keys :pointer))
+    (fb:window-focused window T))
   
-  (leave ((keyboard :pointer) (serial :uint32) (surface :pointer)))
+  (leave ((keyboard :pointer) (serial :uint32) (surface :pointer))
+    (fb:window-focused window NIL))
   
-  (key ((keyboard :pointer) (serial :uint32) (time :uint32) (key :uint32) (state :uint32)))
+  (key ((keyboard :pointer) (serial :uint32) (time :uint32) (key :uint32) (state :uint32))
+    (fb:key-changed window ))
   
-  (modifiers ((keyboard :pointer) (serial :uint32) (mods-depressed :uint32) (mods-latched :uint32) (mods-locked :uint32) (group :uint32)))
+  (modifiers ((keyboard :pointer) (serial :uint32) (mods-depressed :uint32) (mods-latched :uint32) (mods-locked :uint32) (group :uint32))
+    )
   
   (repeat-info ((keyboard :pointer) (rate :int32) (delay :int32))))
 
@@ -253,7 +290,16 @@
 
   (popup-done ((shell-surface :pointer))))
 
-(define-listener frame-listener
-  (done ((callback :pointer) (cookie :uint32))
-    (wl:proxy-destroy callback)
-    ))
+(wl:define-listener frame-listener
+  (done :void ((var :pointer) (callback :pointer) (cookie :uint32))
+    (declare (ignorable callback cookie))
+    (setf (cffi:mem-ref var :char) 1)))
+
+(define-whole-listener
+  display-listener
+  registry-listener
+  seat-listener
+  pointer-listener
+  keyboard-listener
+  shell-surface-listener
+  frame-listener)

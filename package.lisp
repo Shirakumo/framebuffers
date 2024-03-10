@@ -54,4 +54,5 @@
    #:default-title
    #:ptr-int
    #:ptr-window
-   #:resize-buffer))
+   #:resize-buffer
+   #:with-cleanup))

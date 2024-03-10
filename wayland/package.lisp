@@ -71,6 +71,9 @@
    #:display-get-registry
    #:pointer-set-cursor
    #:registry-bind
+   #:seat-get-keyboard
+   #:seat-get-pointer
+   #:seat-get-touch
    #:shell-get-shell-surface
    #:shell-surface-pong
    #:shell-surface-set-title

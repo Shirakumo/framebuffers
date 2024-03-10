@@ -352,6 +352,9 @@
 (cffi:defcfun (flush "XFlush") :int
   (display :pointer))
 
+(cffi:defcfun (sync "XSync") :int
+  (display :pointer))
+
 (cffi:defcfun (free "XFree") :int
   (data :pointer))
 

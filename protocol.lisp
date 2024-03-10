@@ -43,18 +43,29 @@
 (defgeneric file-dropped (event-handler paths))
 
 ;;; TODO:
-;; minimum-size
-;; maximum-size
-;; borderless-p
-;; always-on-top-p
-;; fullscreen-p
-;; resizable-p
-;; floating-p
-;; icon
-;; cursor-state (hidden, locked, visible)
-;; cursor-icon
-;; monitor
-;; IM
+;; (defgeneric minimum-size (window))
+;; (defgeneric (setf minimum-size) (value window))
+;; (defgeneric maximum-size (window))
+;; (defgeneric (setf maximum-size) (value window))
+;; (defgeneric borderless-p (window))
+;; (defgeneric (setf borderless-p) (value window))
+;; (defgeneric always-on-top-p (window))
+;; (defgeneric (setf always-on-top-p) (value window))
+;; (defgeneric fullscreen-p (window))
+;; (defgeneric (setf fullscreen-p) (value window))
+;; (defgeneric resizable-p (window))
+;; (defgeneric (setf resizable-p) (value window))
+;; (defgeneric floating-p (window))
+;; (defgeneric (setf floating-p) (value window))
+;; (defgeneric icon (window))
+;; (defgeneric (setf icon) (value window))
+;; (defgeneric cursor-state (window))
+;; (defgeneric (setf cursor-state) (value window))
+;; (defgeneric cursor-icon (window))
+;; (defgeneric (setf cursor-icon) (value window))
+;; (defgeneric monitor (window))
+;; (defgeneric (setf monitor) (value window))
+;; IM support
 
 ;;; Backend Internals
 (defvar *here* #.(make-pathname :name NIL :type NIL :defaults (or *compile-file-pathname* *load-pathname* (error "Need compile-file or load."))))

@@ -38,11 +38,16 @@
    (pointer :initform NIL :accessor pointer)
    (seat :initform NIL :accessor seat)
    (registry :initform NIL :accessor registry)
+   (xdg-wm-base :initform NIL :accessor xdg-wm-base)
+   (xdg-decoration :initform NIL :accessor xdg-decoration)
+   (xdg-toplevel :initform NIL :accessor xdg-toplevel)
+   (xdg-surface :initform NIL :accessor xdg-surface)
 
    (buffer :initform NIL :reader fb:buffer :accessor buffer)
    (content-scale :initform (cons 1 1) :reader fb:content-scale :accessor content-scale)
    (close-requested-p :initform NIL :reader fb:close-requested-p :accessor close-requested-p)
    (size :initform (cons 1 1) :reader fb:size :accessor size)
+   (pending-size :initform (cons 0 0) :accessor pending-size)
    (location :initform (cons 0 0) :reader fb:location :accessor location)
    (title :initform NIL :reader fb:title :accessor title)
    (visible-p :initform NIL :reader fb:visible-p :accessor visible-p)
@@ -62,7 +67,8 @@
         (error 'wayland-error :message "Failed to roundtrip display."))
       (when (= -1 (compositor window))
         (error 'wayland-error :message "Couldn't find a compositor."))
-      (setf (shm-pool window) (wl:shm-create-pool (shm window) fd size))
+      ;; TODO: mmap
+      (setf (shm-pool window) (wl:shm-create-pool (shm window) fd (* w h 4)))
       (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1))
       (setf (surface window) (wl:compositor-create-surface (compositor window)))
       (setf (shell-surface window) (wl:shell-get-shell-surface (shell window) (surface window)))
@@ -71,13 +77,15 @@
       (wl:shell-surface-set-toplevel (shell-surface window))
       (wl:surface-attach (surface window) (draw-buffer window) 0 0)
       (wl:surface-damage (surface window) 0 0 w h)
-      (wl:surface-commit (surface window)))))
+      (wl:surface-commit (surface window))
+      ;; TODO: fetch content-scale
+      )))
 
 (defmethod fb:valid-p ((window window))
   (not (null (display window))))
 
 (defmethod fb:close ((window window))
-  (dolist (slot '(shell-surface shell surface shm-pool shm compositor keyboard pointer registry))
+  (dolist (slot '(shell-surface shell surface shm-pool shm compositor keyboard pointer registry xdg-wm-base xdg-decoration xdg-toplevel xdg-surface))
     (when (slot-value window slot)
       (wl:proxy-destroy (slot-value window slot))
       (setf (slot-value window slot) NIL)))
@@ -94,29 +102,82 @@
     (wl:display-disconnect (display window))
     (setf (display window) NIL)))
 
+(defun update-buffer (window w h)
+  ;; TODO: remap shared memory
+  (wl:shm-pool-resize (shm-pool window) (* w h 4))
+  (wl:buffer-destroy (draw-buffer window))
+  (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1)))
+
 (defmethod fb:width ((window window))
   (car (fb:size window)))
 
 (defmethod fb:height ((window window))
   (cdr (fb:size window)))
 
-(defmethod (setf fb:size) (size (window window)))
+(defmethod (setf fb:size) (size (window window))
+  (update-buffer window (car size) (cdr size))
+  size)
 
-(defmethod (setf fb:location) (location (window window)))
+(defmethod (setf fb:location) (location (window window))
+  ;; Can't do this.
+  location)
 
 (defmethod (setf fb:title) (title (window window))
   (wl:shell-surface-set-title (shell-surface window) title)
   (setf (title window) title))
 
-(defmethod (setf fb:visible-p) (state (window window)))
+(defun create-shell-objects (window)
+  (setf (xdg-surface window) (wl:xdg-wm-base-get-xdg-surface (xdg-wm-base window) (surface window)))
+  (wl:proxy-add-listener (xdg-surface window) (xdg-surface-listener (listener window)) (display window))
+  (setf (xdg-toplevel window) (wl:xdg-surface-get-toplevel (xdg-surface window)))
+  (wl:proxy-add-listener (xdg-toplevel window) (xdg-toplevel-listener (listener window)) (display window))
+  (wl:xdg-toplevel-set-title (xdg-toplevel window) (title window))
+  (when (maximized-p window)
+    (wl:xdg-toplevel-set-maximized (xdg-toplevel window)))
+  (wl:surface-commit (surface window))
+  (wl:display-roundtrip (display window)))
 
-(defmethod (setf fb:maximized-p) (state (window window)))
+(defun destroy-shell-objects (window)
+  (when (xdg-decoration window)
+    (wl:zxdg-toplevel-decoration-v1-destroy (xdg-decoration window))
+    (setf (xdg-decoration window) NIL))
+  (when (xdg-toplevel window)
+    (wl:proxy-destroy (xdg-toplevel window))
+    (setf (xdg-toplevel window) NIL))
+  (when (xdg-surface window)
+    (wl:proxy-destroy (xdg-surface window))
+    (setf (xdg-surface window) NIL)))
 
-(defmethod (setf fb:iconified-p) (state (window window)))
+(defmethod (setf fb:visible-p) (state (window window))
+  (cond (state
+         (create-shell-objects window)
+         (setf (iconified-p window) NIL))
+        (T
+         (destroy-shell-objects window)
+         (wl:surface-attach (surface window) (cffi:null-pointer) 0 0)
+         (wl:surface-commit (surface window))))
+  (setf (visible-p window) state))
 
-(defmethod fb:clipboard-string ((window window)))
+(defmethod (setf fb:maximized-p) (state (window window))
+  (cond (state
+         (wl:xdg-toplevel-set-maximized (xdg-toplevel window)))
+        (T
+         (wl:xdg-toplevel-unset-maximized (xdg-toplevel window)))))
 
-(defmethod (setf fb:clipboard-string) (string (window window)))
+(defmethod (setf fb:iconified-p) (state (window window))
+  (cond (state
+         (wl:xdg-toplevel-set-minimized (xdg-toplevel window)))
+        (T ;; Can't do this.
+         ))
+  (setf (iconified-p window) state))
+
+(defmethod fb:clipboard-string ((window window))
+  ;; TODO: implement clipboard fetching
+  )
+
+(defmethod (setf fb:clipboard-string) (string (window window))
+  ;; TODO: implement clipboard setting
+  )
 
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (car (size window))) (h (car (size window))) sync)
   (wl:surface-attach (surface window) (draw-buffer window) 0 0)
@@ -136,7 +197,9 @@
         (T
          (wl:surface-commit (surface window)))))
 
-(defmethod fb:request-attention ((window window)))
+(defmethod fb:request-attention ((window window))
+  ;; TODO: implement attention request
+  )
 
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)
@@ -217,7 +280,10 @@
            (setf (shell window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shell-interface) 1)))
           ((string= interface "wl_seat")
            (setf (seat window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:seat-interface) 1))
-           (wl:proxy-add-listener (seat window) (seat-listener (listener window)) (display window)))))
+           (wl:proxy-add-listener (seat window) (seat-listener (listener window)) (display window)))
+          ((string= interface "xdg_wm_base")
+           (setf (xdg-wm-base window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:xdg-wm-base-interface) 1))
+           (wl:proxy-add-listener (xdg-wm-base window) (xdg-wm-base-listener (listener window)) (display window)))))
 
   (global-remove))
 
@@ -250,6 +316,7 @@
     (fb:mouse-moved window (/ sx 256) (/ sy 256)))
   
   (button ((pointer :pointer) (serial :uint32) (time :uint32) (button :uint32) (state :uint32))
+    ;; TODO: mouse button translation
     (fb:mouse-button-changed window ))
   
   (axis ((pointer :pointer) (time :uint32) (axis :uint32) (value :uint32))
@@ -275,18 +342,22 @@
     (fb:window-focused window NIL))
   
   (key ((keyboard :pointer) (serial :uint32) (time :uint32) (key :uint32) (state :uint32))
+    ;; TODO: key translation
     (fb:key-changed window ))
   
   (modifiers ((keyboard :pointer) (serial :uint32) (mods-depressed :uint32) (mods-latched :uint32) (mods-locked :uint32) (group :uint32))
     )
   
-  (repeat-info ((keyboard :pointer) (rate :int32) (delay :int32))))
+  (repeat-info ((keyboard :pointer) (rate :int32) (delay :int32))
+    ))
 
 (define-listener shell-surface-listener
   (ping ((shell-surface :pointer) (serial :uint32))
     (wl:shell-surface-pong shell-surface serial))
 
-  (configure ((shell-surface :pointer) (edges :uint32) (width :int32) (height :int32)))
+  (configure ((shell-surface :pointer) (edges :uint32) (width :int32) (height :int32))
+    (update-buffer window width height)
+    (fb:window-resized window width height))
 
   (popup-done ((shell-surface :pointer))))
 
@@ -295,6 +366,39 @@
     (declare (ignorable callback cookie))
     (setf (cffi:mem-ref var :char) 1)))
 
+(define-listener xdg-wm-base-listener
+  (ping ((xdg-wm-base :pointer) (serial :uint32))
+    (wl:xdg-wm-base-pong xdg-wm-base serial)))
+
+(define-listener xdg-surface-listener
+  (configure ((xdg-surface :pointer) (serial :uint32))
+    (wl:xdg-surface-ack-configure xdg-surface serial)
+    
+    (when (< 0 (car (pending-size window)))
+      (update-buffer window (car (pending-size window)) (cdr (pending-size window)))
+      (fb:window-resized window (car (pending-size window)) (cdr (pending-size window)))
+      (setf (car (pending-size window)) 0 (cdr (pending-size window)) 0)
+      (when (visible-p window)
+        (fb:window-refreshed window)))))
+
+(define-listener xdg-toplevel-listener
+  (configure ((xdg-toplevel :pointer) (width :int32) (height :int32) (states :pointer))
+    (when (and (< 0 width) (< 0 height))
+      (setf (car (pending-size window)) width)
+      (setf (cdr (pending-size window)) height))
+    (dotimes (i (wl:array-size states))
+      (case (cffi:mem-aref (wl:array-data states) 'wl:xdg-toplevel-state i)
+        (:maximized (setf (maximized-p window) T))
+        (:fullscreen))))
+
+  (close ((xdg-toplevel :pointer))
+    (setf (close-requested-p window) T)
+    (fb:window-closed window))
+
+  (configure-bounds ((xdg-toplevel :pointer) (width :int32) (height :int32)))
+
+  (wm-capabilities ((xdg-toplevel :pointer) (capabilities :pointer))))
+
 (define-whole-listener
   display-listener
   registry-listener
@@ -302,4 +406,7 @@
   pointer-listener
   keyboard-listener
   shell-surface-listener
-  frame-listener)
+  frame-listener
+  xdg-wm-base-listener
+  xdg-surface-listener
+  xdg-toplevel-listener)

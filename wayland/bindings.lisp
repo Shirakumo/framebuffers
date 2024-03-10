@@ -6,6 +6,11 @@
 ;;; core defs
 (defconstant MARSHAL-FLAG-DESTROY 1)
 
+(cffi:defcstruct (array :conc-name array-)
+  (size :size)
+  (alloc :size)
+  (data :pointer))
+
 (cffi:defcstruct (message :conc-name message-)
   (name :string)
   (signature :string)
@@ -283,6 +288,43 @@
 (defconstant SUBSURFACE-PLACE-BELOW 3)
 (defconstant SUBSURFACE-SET-SYNC 4)
 (defconstant SUBSURFACE-SET-DESYNC 5)
+(defconstant XDG-WM-BASE-DESTROY 0)
+(defconstant XDG-WM-BASE-CREATE-POSITIONER 1)
+(defconstant XDG-WM-BASE-GET-XDG-SURFACE 2)
+(defconstant XDG-WM-BASE-PONG 3)
+(defconstant XDG-POSITIONER-DESTROY 0)
+(defconstant XDG-POSITIONER-SET-SIZE 1)
+(defconstant XDG-POSITIONER-SET-ANCHOR-RECT 2)
+(defconstant XDG-POSITIONER-SET-ANCHOR 3)
+(defconstant XDG-POSITIONER-SET-GRAVITY 4)
+(defconstant XDG-POSITIONER-SET-CONSTRAINT-ADJUSTMENT 5)
+(defconstant XDG-POSITIONER-SET-OFFSET 6)
+(defconstant XDG-POSITIONER-SET-REACTIVE 7)
+(defconstant XDG-POSITIONER-SET-PARENT-SIZE 8)
+(defconstant XDG-POSITIONER-SET-PARENT-CONFIGURE 9)
+(defconstant XDG-SURFACE-DESTROY 0)
+(defconstant XDG-SURFACE-GET-TOPLEVEL 1)
+(defconstant XDG-SURFACE-GET-POPUP 2)
+(defconstant XDG-SURFACE-SET-WINDOW-GEOMETRY 3)
+(defconstant XDG-SURFACE-ACK-CONFIGURE 4)
+(defconstant XDG-TOPLEVEL-DESTROY 0)
+(defconstant XDG-TOPLEVEL-SET-PARENT 1)
+(defconstant XDG-TOPLEVEL-SET-TITLE 2)
+(defconstant XDG-TOPLEVEL-SET-APP-ID 3)
+(defconstant XDG-TOPLEVEL-SHOW-WINDOW-MENU 4)
+(defconstant XDG-TOPLEVEL-MOVE 5)
+(defconstant XDG-TOPLEVEL-RESIZE 6)
+(defconstant XDG-TOPLEVEL-SET-MAX-SIZE 7)
+(defconstant XDG-TOPLEVEL-SET-MIN-SIZE 8)
+(defconstant XDG-TOPLEVEL-SET-MAXIMIZED 9)
+(defconstant XDG-TOPLEVEL-UNSET-MAXIMIZED 10)
+(defconstant XDG-TOPLEVEL-SET-FULLSCREEN 11)
+(defconstant XDG-TOPLEVEL-UNSET-FULLSCREEN 12)
+(defconstant XDG-TOPLEVEL-SET-MINIMIZED 13)
+(defconstant XDG-POPUP-DESTROY 0)
+(defconstant XDG-POPUP-GRAB 1)
+(defconstant XDG-POPUP-REPOSITION 2)
+(defconstant ZXDG-TOPLEVEL-DECORATION-V1-DESTROY 0)
 
 (cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
 (cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
@@ -297,6 +339,20 @@
 (cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
 (cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
 (cffi:defcvar (touch-interface "wl_touch_interface") (:struct interface))
+(cffi:defcvar (xdg-toplevel-interface "xdg_toplevel_interface") (:struct interface))
+(cffi:defcvar (xdg-wm-base-interface "xdg_wm_base_interface") (:struct interface))
+(cffi:defcvar (zxdg-decoration-manager-v1-interface "zxdg_decoration_manager_v1_interface") (:struct interface))
+
+(cffi:defcenum (xdg-toplevel-state :uint32)
+  (:maximized 1)
+  (:fullscreen 2)
+  (:resizing 3)
+  (:activated 4)
+  (:tiled-left 5)
+  (:tiled-right 6)
+  (:tiled-top 7)
+  (:tiled-bottom 8)
+  (:state-suspended 9))
 
 (cffi:defbitfield seat-capabilities
   :pointer :keyboard :touch)
@@ -365,3 +421,28 @@
 (define-marshal-fun surface-damage NIL (x y width height))
 
 (define-marshal-fun surface-frame callback-interface (NIL))
+
+(define-marshal-fun xdg-wm-base-get-xdg-surface xdg-surface-interface ((cffi:null-pointer) surface))
+
+(define-marshal-fun xdg-wm-base-pong NIL (serial))
+
+(define-marshal-fun xdg-surface-get-toplevel xdg-toplevel-interface ())
+
+(define-marshal-fun xdg-surface-ack-configure NIL (serial))
+
+(define-marshal-fun xdg-toplevel-set-maximized NIL ())
+
+(define-marshal-fun xdg-toplevel-set-max-size NIL (width height))
+
+(define-marshal-fun xdg-toplevel-unset-maximized NIL ())
+
+(define-marshal-fun xdg-toplevel-set-fullscreen NIL (output))
+
+(define-marshal-fun xdg-toplevel-unset-fullscreen NIL ())
+
+(define-marshal-fun xdg-toplevel-set-minimized NIL ())
+
+(define-marshal-fun xdg-toplevel-set-title NIL (title))
+
+(defun zxdg-toplevel-decoration-v1-destroy (object)
+  (proxy-marshal-flags object ZXDG-TOPLEVEL-DECORATION-V1-DESTROY (cffi:null-pointer) (proxy-get-version object) MARSHAL-FLAG-DESTROY))

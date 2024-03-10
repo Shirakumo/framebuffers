@@ -1,8 +1,12 @@
 (defpackage #:org.shirakumo.framebuffers.wayland.cffi
   (:use #:cl)
+  (:shadow #:array)
   (:export
    #:wayland
    #:marshal-flag-destroy
+   #:array-size
+   #:array-alloc
+   #:array-data
    #:message
    #:message-name
    #:message-signature
@@ -65,6 +69,13 @@
    #:shm-interface
    #:shm-pool-interface
    #:surface-interface
+   #:touch-interface
+   #:xdg-toplevel-interface
+   #:keyboard-interface
+   #:pointer-interface
+   #:zxdg-decoration-manager-v1-interface
+   #:xdg-wm-base-interface
+   #:xdg-toplevel-state
    #:seat-capabilities
    #:buffer-destroy
    #:compositor-create-surface
@@ -84,7 +95,19 @@
    #:surface-attach
    #:surface-commit
    #:surface-damage
-   #:surface-frame))
+   #:surface-frame
+   #:xdg-wm-base-get-xdg-surface
+   #:xdg-wm-base-pong
+   #:xdg-surface-get-toplevel
+   #:xdg-surface-ack-configure
+   #:xdg-toplevel-set-maximized
+   #:xdg-toplevel-set-max-size
+   #:xdg-toplevel-unset-maximized
+   #:xdg-toplevel-set-fullscreen
+   #:xdg-toplevel-unset-fullscreen
+   #:xdg-toplevel-set-minimized
+   #:xdg-toplevel-set-title
+   #:zxdg-toplevel-decoration-v1-destroy))
 
 (defpackage #:org.shirakumo.framebuffers.wayland
   (:use #:cl)

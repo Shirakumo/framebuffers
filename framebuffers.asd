@@ -37,6 +37,7 @@
                :trivial-features
                :trivial-indent
                :cffi
+               (:feature :windows :com-on)
                (:feature :linux :mmap)))
 
 (asdf:defsystem framebuffers/test

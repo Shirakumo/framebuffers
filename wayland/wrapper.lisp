@@ -11,6 +11,7 @@
 (defmethod fb-int:init-backend ((backend (eql :wayland)))
   (unless (cffi:foreign-library-loaded-p 'wl:wayland)
     (cffi:use-foreign-library wl:wayland)
+    (cffi:use-foreign-library wl:xkbcommon)
     (let ((display (wl:display-connect (cffi:null-pointer))))
       (if (cffi:null-pointer-p display)
           (error 'wayland-error :message "Failed to connect to Wayland display.")
@@ -42,9 +43,15 @@
    (xdg-decoration :initform NIL :accessor xdg-decoration)
    (xdg-toplevel :initform NIL :accessor xdg-toplevel)
    (xdg-surface :initform NIL :accessor xdg-surface)
+   (xkb-context :initform NIL :accessor xkb-context)
+   (xkb-compose-state :initform NIL :accessor xkb-compose-state)
+   (xkb-state :initform NIL :accessor xkb-state)
+   (xkb-keymap :initform NIL :accessor xkb-keymap)
    (mmap-fd :initform NIL :accessor mmap-fd)
    (mmap-addr :initform NIL :accessor mmap-addr)
-   
+
+   (moddefs :initform (copy-tree *moddef-table*) :accessor moddefs)
+   (modifiers :initform () :accessor modifiers)
    (buffer :initform NIL :reader fb:buffer :accessor buffer)
    (content-scale :initform (cons 1 1) :reader fb:content-scale :accessor content-scale)
    (close-requested-p :initform NIL :reader fb:close-requested-p :accessor close-requested-p)
@@ -71,6 +78,7 @@
           (error 'wayland-error :message "Failed to roundtrip display."))
         (when (= -1 (compositor window))
           (error 'wayland-error :message "Couldn't find a compositor."))
+        (setf (xkb-context window) (wl:xkb-context-new 0))
         (let ((size (* w h 4)))
           (multiple-value-bind (addr fd) (mmap:mmap :anonymous :protection '(:read :write) :mmap '(:shared) :size size)
             (setf (mmap-addr window) addr)
@@ -79,9 +87,12 @@
         (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1))
         (setf (surface window) (wl:compositor-create-surface (compositor window)))
         (setf (shell-surface window) (wl:shell-get-shell-surface (shell window) (surface window)))
-        (wl:proxy-add-listener (shell-surface window) (shell-surface-listener (listener window)) display)
-        (wl:shell-surface-set-title (shell-surface window) title)
-        (wl:shell-surface-set-toplevel (shell-surface window))
+        (when (cffi:null-pointer-p (shell-surface window))
+          (setf (shell-surface window) NIL))
+        (when (shell-surface window)
+          (wl:proxy-add-listener (shell-surface window) (shell-surface-listener (listener window)) display)
+          (wl:shell-surface-set-title (shell-surface window) title)
+          (wl:shell-surface-set-toplevel (shell-surface window)))
         (wl:surface-attach (surface window) (draw-buffer window) 0 0)
         (wl:surface-damage (surface window) 0 0 w h)
         (wl:surface-commit (surface window))
@@ -143,7 +154,10 @@
   location)
 
 (defmethod (setf fb:title) (title (window window))
-  (wl:shell-surface-set-title (shell-surface window) title)
+  (when (xdg-toplevel window)
+    (wl:xdg-toplevel-set-title (xdg-toplevel window) (title window)))
+  (when (shell-surface window)
+    (wl:shell-surface-set-title (shell-surface window) title))
   (setf (title window) title))
 
 (defun create-shell-objects (window)
@@ -180,16 +194,16 @@
   (setf (visible-p window) state))
 
 (defmethod (setf fb:maximized-p) (state (window window))
-  (cond (state
-         (wl:xdg-toplevel-set-maximized (xdg-toplevel window)))
-        (T
-         (wl:xdg-toplevel-unset-maximized (xdg-toplevel window)))))
+  (when (xdg-toplevel window)
+    (if state
+        (wl:xdg-toplevel-set-maximized (xdg-toplevel window))
+        (wl:xdg-toplevel-unset-maximized (xdg-toplevel window))))
+  (setf (maximized-p window) state))
 
 (defmethod (setf fb:iconified-p) (state (window window))
-  (cond (state
-         (wl:xdg-toplevel-set-minimized (xdg-toplevel window)))
-        (T ;; Can't do this.
-         ))
+  (when (xdg-toplevel window)
+    (if state
+        (wl:xdg-toplevel-set-minimized (xdg-toplevel window))))
   (setf (iconified-p window) state))
 
 (defmethod fb:clipboard-string ((window window))
@@ -343,8 +357,18 @@
     (fb:mouse-moved window (/ sx 256) (/ sy 256)))
   
   (button ((pointer :pointer) (serial :uint32) (time :uint32) (button :uint32) (state :uint32))
-    ;; TODO: mouse button translation
-    (fb:mouse-button-changed window ))
+    ;; TODO: double click
+    (fb:mouse-button-changed
+     window
+     (case button
+       (110 :left)
+       (111 :right)
+       (112 :middle)
+       (T (- button 110)))
+     (case state
+       (0 :released)
+       (1 :pressed))
+     (modifiers window)))
   
   (axis ((pointer :pointer) (time :uint32) (axis :uint32) (value :uint32))
     (case axis
@@ -360,7 +384,22 @@
   (axis-discrete ((pointer :pointer) (axis :uint32) (discrete :int32))))
 
 (define-listener keyboard-listener
-  (keymap ((keyboard :pointer) (format :uint32) (fd :int) (size :uint32)))
+  (keymap ((keyboard :pointer) (format :uint32) (fd :int) (size :uint32))
+    (mmap:with-mmap (addr fd size fd :size size :mmap '(:shared))
+      (let* ((keymap (wl:xkb-keymap-new-from-string (xkb-context window) addr 0 0))
+             (state (wl:xkb-state-new keymap))
+             (locale (or (getenv "LC_ALL") (getenv "LC_CTYPE") (getenv "LANG") "C"))
+             (compose-table (wl:xkb-compose-table-new-from-locale (xkb-context window) locale 0))
+             (compose-state (wl:xkb-compose-state-new compose-table 0)))
+        (setf (xkb-compose-state window) compose-state)
+        (setf (xkb-state window) state)
+        (setf (xkb-keymap window) keymap)
+        (dolist (mod (moddefs window))
+          (setf (second mod) (wl:xkb-keymap-mod-get-index keymap (third mod))))
+        (wl:xkb-compose-table-unref compose-table)
+        (wl:xkb-keymap-unref keymap)
+        (wl:xkb-state-unref state)))
+    (cffi:foreign-funcall "close" :int fd))
   
   (enter ((keyboard :pointer) (serial :uint32) (surface :pointer) (keys :pointer))
     (fb:window-focused window T))
@@ -368,14 +407,18 @@
   (leave ((keyboard :pointer) (serial :uint32) (surface :pointer))
     (fb:window-focused window NIL))
   
-  (key ((keyboard :pointer) (serial :uint32) (time :uint32) (key :uint32) (state :uint32))
-    ;; TODO: key translation
-    (fb:key-changed window ))
+  (key ((keyboard :pointer) (serial :uint32) (time :uint32) (scancode :uint32) (state :uint32))
+    (fb:key-changed window (translate-key scancode) scancode (ecase state (1 :pressed) (0 :released))
+                    (modifiers window)))
   
   (modifiers ((keyboard :pointer) (serial :uint32) (mods-depressed :uint32) (mods-latched :uint32) (mods-locked :uint32) (group :uint32))
-    )
+    (wl:xkb-state-update-mask (xkb-state window) mods-depressed mods-latched mods-locked 0 0 group)
+    (setf (modifiers window) (loop for (mod index) in (moddefs window)
+                                   when (< 0 (wl:xkb-state-mod-index-is-active (xkb-state window) index 1))
+                                   collect mod)))
   
   (repeat-info ((keyboard :pointer) (rate :int32) (delay :int32))
+    ;; TODO: key repeats
     ))
 
 (define-listener shell-surface-listener

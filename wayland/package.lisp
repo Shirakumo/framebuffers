@@ -3,6 +3,7 @@
   (:shadow #:array)
   (:export
    #:wayland
+   #:xkbcommon
    #:marshal-flag-destroy
    #:array-size
    #:array-alloc
@@ -107,7 +108,27 @@
    #:xdg-toplevel-unset-fullscreen
    #:xdg-toplevel-set-minimized
    #:xdg-toplevel-set-title
-   #:zxdg-toplevel-decoration-v1-destroy))
+   #:zxdg-toplevel-decoration-v1-destroy
+   #:xkb-context-new
+   #:xkb-context-unref
+   #:xkb-keymap-new-from-string
+   #:xkb-keymap-unref
+   #:xkb-keymap-mod-get-index
+   #:xkb-keymap-key-repeats
+   #:xkb-keymap-key-get-syms-by-level
+   #:xkb-state-new
+   #:xkb-state-unref
+   #:xkb-state-key-get-syms
+   #:xkb-state-update-mask
+   #:xkb-state-key-get-layout
+   #:xkb-state-mod-index-is-active
+   #:xkb-compose-table-new-from-locale
+   #:xkb-compose-table-unref
+   #:xkb-compose-state-new
+   #:xkb-compose-state-unref
+   #:xkb-compose-state-feed
+   #:xkb-compose-state-get-status
+   #:xkb-compose-state-get-one-sym))
 
 (defpackage #:org.shirakumo.framebuffers.wayland
   (:use #:cl)

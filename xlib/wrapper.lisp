@@ -440,6 +440,7 @@
     (process-key-event window :release event)))
 
 (flet ((process-mouse-event (window action event)
+         ;; TODO: double click
          (case (xlib:button-event-button event)
            (1 (fb:mouse-button-changed window :left action (xlib:button-event-state event)))
            (2 (fb:mouse-button-changed window :middle action (xlib:button-event-state event)))

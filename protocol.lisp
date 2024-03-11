@@ -47,6 +47,8 @@
 ;; (defgeneric (setf minimum-size) (value window))
 ;; (defgeneric maximum-size (window))
 ;; (defgeneric (setf maximum-size) (value window))
+;; (defgeneric focused-p (window))
+;; (defgeneric (setf focused-p) (window))
 ;; (defgeneric borderless-p (window))
 ;; (defgeneric (setf borderless-p) (value window))
 ;; (defgeneric always-on-top-p (window))

@@ -22,6 +22,7 @@
                 :if-feature :linux
                 :components ((:file "package")
                              (:file "bindings")
+                             (:file "keycodes")
                              (:file "wrapper")))
                #++
                (:module "win32"

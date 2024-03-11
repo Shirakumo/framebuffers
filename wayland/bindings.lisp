@@ -3,6 +3,9 @@
 (cffi:define-foreign-library wayland
   (T (:or (:default "libwayland-client") (:default "wayland-client"))))
 
+(cffi:define-foreign-library xkbcommon
+  (T (:or (:default "libxkbcommon") (:default "xkbcommon"))))
+
 ;;; core defs
 (defconstant MARSHAL-FLAG-DESTROY 1)
 
@@ -446,3 +449,44 @@
 
 (defun zxdg-toplevel-decoration-v1-destroy (object)
   (proxy-marshal-flags object ZXDG-TOPLEVEL-DECORATION-V1-DESTROY (cffi:null-pointer) (proxy-get-version object) MARSHAL-FLAG-DESTROY))
+
+;;; xkbcommon
+(cffi:defcfun (xkb-context-new "xkb_context_new"))
+
+(cffi:defcfun (xkb-context-unref "xkb_context_unref"))
+
+(cffi:defcfun (xkb-keymap-new-from-string "xkb_keymap_new_from_string"))
+
+(cffi:defcfun (xkb-keymap-unref "xkb_keymap_unref"))
+
+(cffi:defcfun (xkb-keymap-mod-get-index "xkb_keymap_mod_get_index"))
+
+(cffi:defcfun (xkb-keymap-key-repeats "xkb_keymap_key_repeats"))
+
+(cffi:defcfun (xkb-keymap-key-get-syms-by-level "xkb_keymap_key_get_syms_by_level"))
+
+(cffi:defcfun (xkb-state-new "xkb_state_new"))
+
+(cffi:defcfun (xkb-state-unref "xkb_state_unref"))
+
+(cffi:defcfun (xkb-state-key-get-syms "xkb_state_key_get_syms"))
+
+(cffi:defcfun (xkb-state-update-mask "xkb_state_update_mask"))
+
+(cffi:defcfun (xkb-state-key-get-layout "xkb_state_key_get_layout"))
+
+(cffi:defcfun (xkb-state-mod-index-is-active "xkb_state_mod_index_is_active"))
+
+(cffi:defcfun (xkb-compose-table-new-from-locale "xkb_compose_table_new_from_locale"))
+
+(cffi:defcfun (xkb-compose-table-unref "xkb_compose_table_unref"))
+
+(cffi:defcfun (xkb-compose-state-new "xkb_compose_state_new"))
+
+(cffi:defcfun (xkb-compose-state-unref "xkb_compose_state_unref"))
+
+(cffi:defcfun (xkb-compose-state-feed "xkb_compose_state_feed"))
+
+(cffi:defcfun (xkb-compose-state-get-status "xkb_compose_state_get_status"))
+
+(cffi:defcfun (xkb-compose-state-get-one-sym "xkb_compose_state_get_one_sym"))

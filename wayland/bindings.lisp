@@ -556,3 +556,8 @@
 
 (cffi:defcfun (xkb-compose-state-get-one-sym "xkb_compose_state_get_one_sym") :uint32
   (state :pointer))
+
+(cffi:defcfun (xkb-compose-state-get-utf8 "xkb_compose_state_get_utf8") :int
+  (state :pointer)
+  (buffer :pointer)
+  (size :size))

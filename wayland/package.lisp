@@ -128,7 +128,8 @@
    #:xkb-compose-state-unref
    #:xkb-compose-state-feed
    #:xkb-compose-state-get-status
-   #:xkb-compose-state-get-one-sym))
+   #:xkb-compose-state-get-one-sym
+   #:xkb-compose-state-get-utf8))
 
 (defpackage #:org.shirakumo.framebuffers.wayland
   (:use #:cl)

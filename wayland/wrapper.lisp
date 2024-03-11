@@ -388,6 +388,23 @@
   
   (axis-discrete ((pointer :pointer) (axis :uint32) (discrete :int32))))
 
+(defun handle-input-text (window scancode)
+  (cffi:with-foreign-objects ((keysyms :pointer)
+                              (str :char 8))
+    (when (= 1 (wl:xkb-state-key-get-syms (xkb-state window) (+ scancode 8) keysyms))
+      (let* ((keysym (cffi:mem-aref (cffi:mem-ref keysyms :pointer) :uint32 0))
+             (str (if (or (= 0 keysym)
+                          (null (xkb-compose-state window))
+                          (not (eql :accepted (wl:xkb-compose-state-feed (xkb-compose-state window) keysym))))
+                      (org.shirakumo.framebuffers.xlib::keysym-string keysym)
+                      (case (wl:xkb-compose-state-get-status (xkb-compose-state window))
+                        (:composed
+                         (wl:xkb-compose-state-get-utf8 (xkb-compose-state window) str 8)
+                         (cffi:mem-ref str :string))
+                        ((:composing :cancelled))
+                        (T (org.shirakumo.framebuffers.xlib::keysym-string keysym))))))
+        (when str (fb:string-entered window str))))))
+
 (define-listener keyboard-listener
   (keymap ((keyboard :pointer) (format :uint32) (fd :int) (size :uint32))
     (mmap:with-mmap (addr fd size fd :size size :mmap '(:shared))
@@ -413,6 +430,8 @@
     (fb:window-focused window NIL))
   
   (key ((keyboard :pointer) (serial :uint32) (time :uint32) (scancode :uint32) (state :uint32))
+    (when (= state 1)
+      (handle-input-text window scancode))
     (fb:key-changed window (translate-key scancode) scancode (ecase state (1 :pressed) (0 :released))
                     (modifiers window)))
   

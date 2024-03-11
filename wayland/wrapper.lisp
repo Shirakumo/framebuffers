@@ -1,5 +1,10 @@
 (in-package #:org.shirakumo.framebuffers.wayland)
 
+(defun getenv (name)
+  (let ((res (cffi:foreign-funcall "getenv" :string name :string)))
+    (when (and res (string/= "" res))
+      res)))
+
 (pushnew :wayland fb-int:*available-backends*)
 
 (define-condition wayland-error (fb:framebuffer-error)
@@ -386,7 +391,7 @@
 (define-listener keyboard-listener
   (keymap ((keyboard :pointer) (format :uint32) (fd :int) (size :uint32))
     (mmap:with-mmap (addr fd size fd :size size :mmap '(:shared))
-      (let* ((keymap (wl:xkb-keymap-new-from-string (xkb-context window) addr 0 0))
+      (let* ((keymap (wl:xkb-keymap-new-from-string (xkb-context window) addr 1 0))
              (state (wl:xkb-state-new keymap))
              (locale (or (getenv "LC_ALL") (getenv "LC_CTYPE") (getenv "LANG") "C"))
              (compose-table (wl:xkb-compose-table-new-from-locale (xkb-context window) locale 0))

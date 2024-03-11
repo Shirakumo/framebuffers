@@ -451,42 +451,108 @@
   (proxy-marshal-flags object ZXDG-TOPLEVEL-DECORATION-V1-DESTROY (cffi:null-pointer) (proxy-get-version object) MARSHAL-FLAG-DESTROY))
 
 ;;; xkbcommon
-(cffi:defcfun (xkb-context-new "xkb_context_new"))
+(cffi:defbitfield xkb-state-component
+  (:mods-depressed 1)
+  :mods-latched
+  :mods-locked
+  :mods-effective
+  :layout-depressed
+  :layout-latched
+  :layout-locked
+  :layout-effective
+  :state-leds)
 
-(cffi:defcfun (xkb-context-unref "xkb_context_unref"))
 
-(cffi:defcfun (xkb-keymap-new-from-string "xkb_keymap_new_from_string"))
+(cffi:defcenum xkb-compose-feed-result
+  :ignored
+  :accepted)
 
-(cffi:defcfun (xkb-keymap-unref "xkb_keymap_unref"))
+(cffi:defcenum xkb-compose-status
+  :nothing
+  :composing
+  :composed
+  :cancelled)
 
-(cffi:defcfun (xkb-keymap-mod-get-index "xkb_keymap_mod_get_index"))
+(cffi:defcfun (xkb-context-new "xkb_context_new") :pointer
+  (flags :int))
 
-(cffi:defcfun (xkb-keymap-key-repeats "xkb_keymap_key_repeats"))
+(cffi:defcfun (xkb-context-unref "xkb_context_unref") :void
+  (context :pointer))
 
-(cffi:defcfun (xkb-keymap-key-get-syms-by-level "xkb_keymap_key_get_syms_by_level"))
+(cffi:defcfun (xkb-keymap-new-from-string "xkb_keymap_new_from_string") :pointer
+  (context :pointer)
+  (string :pointer)
+  (format :int)
+  (flags :int))
 
-(cffi:defcfun (xkb-state-new "xkb_state_new"))
+(cffi:defcfun (xkb-keymap-unref "xkb_keymap_unref") :void
+  (keymap :pointer))
 
-(cffi:defcfun (xkb-state-unref "xkb_state_unref"))
+(cffi:defcfun (xkb-keymap-mod-get-index "xkb_keymap_mod_get_index") :uint32
+  (keymap :pointer)
+  (name :string))
 
-(cffi:defcfun (xkb-state-key-get-syms "xkb_state_key_get_syms"))
+(cffi:defcfun (xkb-keymap-key-repeats "xkb_keymap_key_repeats") :int
+  (keymap :pointer)
+  (key :uint32))
 
-(cffi:defcfun (xkb-state-update-mask "xkb_state_update_mask"))
+(cffi:defcfun (xkb-keymap-key-get-syms-by-level "xkb_keymap_key_get_syms_by_level") :int
+  (keymap :pointer)
+  (key :uint32)
+  (layout :int)
+  (level :int)
+  (syms :pointer))
 
-(cffi:defcfun (xkb-state-key-get-layout "xkb_state_key_get_layout"))
+(cffi:defcfun (xkb-state-new "xkb_state_new") :pointer
+  (keymap :pointer))
 
-(cffi:defcfun (xkb-state-mod-index-is-active "xkb_state_mod_index_is_active"))
+(cffi:defcfun (xkb-state-unref "xkb_state_unref") :void
+  (state :pointer))
 
-(cffi:defcfun (xkb-compose-table-new-from-locale "xkb_compose_table_new_from_locale"))
+(cffi:defcfun (xkb-state-key-get-syms "xkb_state_key_get_syms") :int
+  (state :pointer)
+  (key :uint32)
+  (syms :pointer))
 
-(cffi:defcfun (xkb-compose-table-unref "xkb_compose_table_unref"))
+(cffi:defcfun (xkb-state-update-mask "xkb_state_update_mask") :int
+  (state :pointer)
+  (depressed-mods :uint32)
+  (latched-mods :uint32)
+  (locked-mods :uint32)
+  (depressed-layout :uint32)
+  (latched-layout :uint32)
+  (locked-layout :uint32))
 
-(cffi:defcfun (xkb-compose-state-new "xkb_compose_state_new"))
+(cffi:defcfun (xkb-state-key-get-layout "xkb_state_key_get_layout") :uint32
+  (state :pointer)
+  (key :uint32))
 
-(cffi:defcfun (xkb-compose-state-unref "xkb_compose_state_unref"))
+(cffi:defcfun (xkb-state-mod-index-is-active "xkb_state_mod_index_is_active") :int
+  (state :pointer)
+  (mod :uint32)
+  (type xkb-state-component))
 
-(cffi:defcfun (xkb-compose-state-feed "xkb_compose_state_feed"))
+(cffi:defcfun (xkb-compose-table-new-from-locale "xkb_compose_table_new_from_locale") :pointer
+  (context :pointer)
+  (locale :string)
+  (flags :int))
 
-(cffi:defcfun (xkb-compose-state-get-status "xkb_compose_state_get_status"))
+(cffi:defcfun (xkb-compose-table-unref "xkb_compose_table_unref") :void
+  (table :pointer))
 
-(cffi:defcfun (xkb-compose-state-get-one-sym "xkb_compose_state_get_one_sym"))
+(cffi:defcfun (xkb-compose-state-new "xkb_compose_state_new") :pointer
+  (table :pointer)
+  (flags :int))
+
+(cffi:defcfun (xkb-compose-state-unref "xkb_compose_state_unref") :void
+  (state :pointer))
+
+(cffi:defcfun (xkb-compose-state-feed "xkb_compose_state_feed") xkb-compose-feed-result
+  (state :pointer)
+  (keysym :uint32))
+
+(cffi:defcfun (xkb-compose-state-get-status "xkb_compose_state_get_status") xkb-compose-status
+  (state :pointer))
+
+(cffi:defcfun (xkb-compose-state-get-one-sym "xkb_compose_state_get_one_sym") :uint32
+  (state :pointer))

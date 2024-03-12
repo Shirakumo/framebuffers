@@ -52,6 +52,10 @@
    (xkb-compose-state :initform NIL :accessor xkb-compose-state)
    (xkb-state :initform NIL :accessor xkb-state)
    (xkb-keymap :initform NIL :accessor xkb-keymap)
+   (activation-manager :initform NIL :accessor activation-manager)
+   (idle-inhibit-manager :initform NIL :accessor idle-inhibit-manager)
+   (fractional-scale-manager :initform NIL :accessor fractional-scale-manager)
+   (fractional-scale :initform NIL :accessor fractional-scale)
    (mmap-fd :initform NIL :accessor mmap-fd)
    (mmap-addr :initform NIL :accessor mmap-addr)
 
@@ -91,6 +95,9 @@
             (setf (shm-pool window) (wl:shm-create-pool (shm window) fd size))))
         (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1))
         (setf (surface window) (wl:compositor-create-surface (compositor window)))
+        (when (fractional-scale-manager window)
+          (setf (fractional-scale window) (wl:wp-fractional-scale-manager-v1-get-fractional-scale (fractional-scale-manager window) (surface window)))
+          (wl:proxy-add-listener (fractional-scale-manager window) (wp-fractional-scale-listener (listener window)) (display window)))
         (setf (shell-surface window) (wl:shell-get-shell-surface (shell window) (surface window)))
         (when (cffi:null-pointer-p (shell-surface window))
           (setf (shell-surface window) NIL))
@@ -103,9 +110,7 @@
         (wl:surface-commit (surface window))
         (setf (car (size window)) w)
         (setf (cdr (size window)) h)
-        (setf (visible-p window) visible-p)
-        ;; TODO: fetch content-scale
-        ))))
+        (setf (visible-p window) visible-p)))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (display window))))
@@ -115,6 +120,7 @@
     (when (slot-value window slot)
       (wl:proxy-destroy (slot-value window slot))
       (setf (slot-value window slot) NIL)))
+  ;; TODO: cleanup xkb stuff, managers
   (when (listener window)
     (cffi:foreign-free (listener window))
     (setf (listener window) NIL))
@@ -330,7 +336,13 @@
            (wl:proxy-add-listener (seat window) (seat-listener (listener window)) (display window)))
           ((string= interface "xdg_wm_base")
            (setf (xdg-wm-base window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:xdg-wm-base-interface) 1))
-           (wl:proxy-add-listener (xdg-wm-base window) (xdg-wm-base-listener (listener window)) (display window)))))
+           (wl:proxy-add-listener (xdg-wm-base window) (xdg-wm-base-listener (listener window)) (display window)))
+          ((string= interface "xdg_activation_v1")
+           (setf (activation-manager window) (wl:registry-bind registry id wl:xdg-activation-v1-interface 1)))
+          ((string= interface "zwp_idle_inhibit_manager_v1")
+           (setf (idle-inhibit-manager window) (wl:registry-bind registry id wl:zwp-idle-inhibit-manager-v1-interface 1)))
+          ((string= interface "wp_fractional_scale_manager_v1")
+           (setf (fractional-scale-manager window) (wl:registry-bind registry id wl:wp-fractional-scale-manager-v1-interface 1)))))
 
   (global-remove))
 
@@ -494,8 +506,14 @@
 
   (wm-capabilities ((xdg-toplevel :pointer) (capabilities :pointer))))
 
+(define-listener wp-fractional-scale-listener
+  (preferred-scale ((fractional-scale :pointer) (numerator :uint32))
+    (let ((scale (/ numerator 120)))
+      (setf (car (content-scale window)) scale
+            (cdr (content-scale window)) scale))))
+
 (define-whole-listener
-  display-listener
+    display-listener
   registry-listener
   seat-listener
   pointer-listener
@@ -504,4 +522,5 @@
   frame-listener
   xdg-wm-base-listener
   xdg-surface-listener
-  xdg-toplevel-listener)
+  xdg-toplevel-listener
+  wp-fractional-scale-listener)

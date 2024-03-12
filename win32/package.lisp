@@ -1,5 +1,7 @@
 (defpackage #:org.shirakumo.framebuffers.win32.cffi
   (:use #:cl)
+  (:local-nicknames
+   (#:com #:org.shirakumo.com-on))
   (:export))
 
 (defpackage #:org.shirakumo.framebuffers.win32

@@ -64,7 +64,7 @@
    (modifiers :initform () :accessor modifiers)
    (buffer :initform NIL :reader fb:buffer :accessor buffer)
    (content-scale :initform (cons 1 1) :reader fb:content-scale :accessor content-scale)
-   (close-requested-p :initform NIL :reader fb:close-requested-p :accessor close-requested-p)
+   (close-requested-p :initform NIL :accessor fb:close-requested-p :accessor close-requested-p)
    (size :initform (cons 1 1) :reader fb:size :accessor size)
    (pending-size :initform (cons 0 0) :accessor pending-size)
    (location :initform (cons 0 0) :reader fb:location :accessor location)

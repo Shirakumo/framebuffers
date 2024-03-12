@@ -168,7 +168,7 @@
    (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
    (title :initform "" :initarg :title :reader fb:title :accessor title)
-   (close-requested-p :initform NIL :initarg :close-requested-p :reader fb:close-requested-p :accessor close-requested-p)
+   (close-requested-p :initform NIL :initarg :close-requested-p :accessor fb:close-requested-p :accessor close-requested-p)
    (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)

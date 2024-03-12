@@ -64,14 +64,14 @@
    (pending-size :initform (cons 0 0) :accessor pending-size)
    (location :initform (cons 0 0) :reader fb:location :accessor location)
    (title :initform NIL :reader fb:title :accessor title)
-   (visible-p :initform NIL :reader fb:visible-p :accessor visible-p)
+   (visible-p :initform T :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :reader fb:iconified-p :accessor iconified-p)))
 
-(defmethod initialize-instance :after ((window window) &key title size)
+(defmethod initialize-instance :after ((window window) &key (title (fb-int:default-title)) (size '(800 . 600)) (visible-p T))
   (let ((display (display window)))
     ;; FIXME: default size to screen size
-    (destructuring-bind (w . h) (or size '(800 . 600))
+    (destructuring-bind (w . h) size
       (fb-int:with-cleanup (fb:close window)
         (setf (fb-int:ptr-window display) window)
         (setf (registry window) (wl:display-get-registry display))
@@ -103,6 +103,7 @@
         (wl:surface-commit (surface window))
         (setf (car (size window)) w)
         (setf (cdr (size window)) h)
+        (setf (visible-p window) visible-p)
         ;; TODO: fetch content-scale
         ))))
 

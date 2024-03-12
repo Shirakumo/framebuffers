@@ -328,6 +328,20 @@
 (defconstant XDG-POPUP-GRAB 1)
 (defconstant XDG-POPUP-REPOSITION 2)
 (defconstant ZXDG-TOPLEVEL-DECORATION-V1-DESTROY 0)
+(defconstant XDG-ACTIVATION-V1-DESTROY 0)
+(defconstant XDG-ACTIVATION-V1-GET-ACTIVATION-TOKEN 1)
+(defconstant XDG-ACTIVATION-V1-ACTIVATE 2)
+(defconstant XDG-ACTIVATION-TOKEN-V1-SET-SERIAL 0)
+(defconstant XDG-ACTIVATION-TOKEN-V1-SET-APP-ID 1)
+(defconstant XDG-ACTIVATION-TOKEN-V1-SET-SURFACE 2)
+(defconstant XDG-ACTIVATION-TOKEN-V1-COMMIT 3)
+(defconstant XDG-ACTIVATION-TOKEN-V1-DESTROY 4)
+(defconstant ZWP-IDLE-INHIBIT-MANAGER-V1-DESTROY 0)
+(defconstant ZWP-IDLE-INHIBIT-MANAGER-V1-CREATE-INHIBITOR 1)
+(defconstant ZWP-IDLE-INHIBITOR-V1-DESTROY 0)
+(defconstant WP-FRACTIONAL-SCALE-MANAGER-V1-DESTROY 0)
+(defconstant WP-FRACTIONAL-SCALE-MANAGER-V1-GET-FRACTIONAL-SCALE 1)
+(defconstant WP-FRACTIONAL-SCALE-V1-DESTROY 0)
 
 (cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
 (cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
@@ -345,6 +359,12 @@
 (cffi:defcvar (xdg-toplevel-interface "xdg_toplevel_interface") (:struct interface))
 (cffi:defcvar (xdg-wm-base-interface "xdg_wm_base_interface") (:struct interface))
 (cffi:defcvar (zxdg-decoration-manager-v1-interface "zxdg_decoration_manager_v1_interface") (:struct interface))
+(cffi:defcvar (xdg-activation-v1-interface "xdg_activation_v1_interface") (:struct interface))
+(cffi:defcvar (xdg-activation-token-v1-interface "xdg_activation_token_v1_interface") (:struct interface))
+(cffi:defcvar (zwp-idle-inhibit-manager-v1-interface "zwp_idle_inhibit_manager_v1_interface") (:struct interface))
+(cffi:defcvar (zwp-idle-inhibitor-v1-interface "zwp_idle_inhibitor_v1_interface") (:struct interface))
+(cffi:defcvar (wp-fractional-scale-manager-v1-interface "wp_fractional_scale_manager_v1_interface") (:struct interface))
+(cffi:defcvar (wp-fractional-scale-v1-interface "wp_fractional_scale_v1_interface") (:struct interface))
 
 (cffi:defcenum (xdg-toplevel-state :uint32)
   (:maximized 1)
@@ -385,8 +405,11 @@
                             0
                             ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))
 
-(defun buffer-destroy (buffer)
-  (proxy-marshal-flags buffer BUFFER-DESTROY (cffi:null-pointer) (proxy-get-version buffer) MARSHAL-FLAG-DESTROY))
+(defmacro define-destroy-fun (name)
+  `(defun ,name (object)
+     (proxy-marshal-flags object ,name (cffi:null-pointer) (proxy-get-version object) MARSHAL-FLAG-DESTROY)))
+
+(define-destroy-fun buffer-destroy)
 
 (define-marshal-fun compositor-create-surface surface-interface (NIL))
 
@@ -447,8 +470,33 @@
 
 (define-marshal-fun xdg-toplevel-set-title NIL (title))
 
-(defun zxdg-toplevel-decoration-v1-destroy (object)
-  (proxy-marshal-flags object ZXDG-TOPLEVEL-DECORATION-V1-DESTROY (cffi:null-pointer) (proxy-get-version object) MARSHAL-FLAG-DESTROY))
+(define-destroy-fun zxdg-toplevel-decoration-v1-destroy)
+
+(define-destroy-fun xdg-activation-v1-destroy)
+
+(define-marshal-fun xdg-activation-v1-get-activation-token xdg-activation-token-v1-interface (NIL))
+
+(define-marshal-fun xdg-activation-v1-activate NIL (token surface))
+
+(define-marshal-fun xdg-activation-token-v1-set-serial NIL (serial seat))
+
+(define-marshal-fun xdg-activation-token-v1-set-surface NIL (surface))
+
+(define-marshal-fun xdg-activation-token-v1-commit NIL ())
+
+(define-destroy-fun xdg-activation-token-v1-destroy)
+
+(define-destroy-fun zwp-idle-inhibit-manager-v1-destroy)
+
+(define-marshal-fun zwp-idle-inhibit-manager-v1-create-inhibitor zwp-idle-inhibitor-v1-interface (NIL surface))
+
+(define-destroy-fun zwp-idle-inhibitor-v1-destroy)
+
+(define-destroy-fun wp-fractional-scale-manager-v1-destroy)
+
+(define-marshal-fun wp-fractional-scale-manager-v1-get-fractional-scale wp-fractional-scale-v1-interface (surface))
+
+(define-destroy-fun wp-fractional-scale-v1-destroy)
 
 ;;; xkbcommon
 (cffi:defbitfield xkb-state-component
@@ -461,7 +509,6 @@
   :layout-locked
   :layout-effective
   :state-leds)
-
 
 (cffi:defcenum xkb-compose-feed-result
   :ignored

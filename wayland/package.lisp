@@ -76,6 +76,12 @@
    #:pointer-interface
    #:zxdg-decoration-manager-v1-interface
    #:xdg-wm-base-interface
+   #:xdg-activation-v1-interface
+   #:xdg-activation-token-v1-interface
+   #:zwp-idle-inhibit-manager-v1-interface
+   #:zwp-idle-inhibitor-v1-interface
+   #:wp-fractional-scale-manager-v1-interface
+   #:wp-fractional-scale-v1-interface
    #:xdg-toplevel-state
    #:seat-capabilities
    #:buffer-destroy
@@ -109,6 +115,19 @@
    #:xdg-toplevel-set-minimized
    #:xdg-toplevel-set-title
    #:zxdg-toplevel-decoration-v1-destroy
+   #:xdg-activation-v1-destroy
+   #:xdg-activation-v1-get-activation-token
+   #:xdg-activation-v1-activate
+   #:xdg-activation-token-v1-set-serial
+   #:xdg-activation-token-v1-set-surface
+   #:xdg-activation-token-v1-commit
+   #:xdg-activation-token-v1-destroy
+   #:zwp-idle-inhibit-manager-v1-destroy
+   #:zwp-idle-inhibit-manager-v1-create-inhibitor
+   #:zwp-idle-inhibitor-v1-destroy
+   #:wp-fractional-scale-manager-v1-destroy
+   #:wp-fractional-scale-manager-v1-get-fractional-scale
+   #:wp-fractional-scale-v1-destroy
    #:xkb-context-new
    #:xkb-context-unref
    #:xkb-keymap-new-from-string

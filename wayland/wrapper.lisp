@@ -16,11 +16,11 @@
 (defmethod fb-int:init-backend ((backend (eql :wayland)))
   (unless (cffi:foreign-library-loaded-p 'wl:wayland)
     (cffi:use-foreign-library wl:wayland)
-    (cffi:use-foreign-library wl:xkbcommon)
-    (let ((display (wl:display-connect (cffi:null-pointer))))
-      (if (cffi:null-pointer-p display)
-          (error 'wayland-error :message "Failed to connect to Wayland display.")
-          (wl:display-disconnect display)))))
+    (cffi:use-foreign-library wl:xkbcommon))
+  (let ((display (wl:display-connect (cffi:null-pointer))))
+    (if (cffi:null-pointer-p display)
+        (error 'wayland-error :message "Failed to connect to Wayland display.")
+        (wl:display-disconnect display))))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :wayland))))
 

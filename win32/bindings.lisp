@@ -16,6 +16,13 @@
   (:system-dpi-aware 1)
   (:per-monitor-dpi-aware 2))
 
+(cffi:defcenum (dpi-awareness-context :ssize)
+  (:unaware -1)
+  (:system-aware -2)
+  (:per-monitor-aware -3)
+  (:per-monitor-aware-2 -4)
+  (:unaware-gdiscaled -5))
+
 (cffi:defcstruct (rect :conc-name rect-)
   (left :long)
   (top :long)
@@ -86,7 +93,7 @@
   (y :pointer))
 
 (cffi:defcfun (get-dpi-for-window "GetDpiForWindow") :uint
-  (pointer :window))
+  (window :pointer))
 
 (cffi:defcfun (get-message-time "GetMessageTime") :long)
 
@@ -125,7 +132,7 @@
 (cffi:defcfun (set-process-dpi-aware "SetProcessDPIAware") :boolean)
 
 (cffi:defcfun (set-process-dpi-awareness-context "SetProcessDpiAwarenessContext") :boolean
-  (context :pointer))
+  (context dpi-awareness-context))
 
 (cffi:defcfun (set-process-dpi-awareness "SetProcessDpiAwareness") com:hresult
   (awareness dpi-awareness))

@@ -1,16 +1,16 @@
-(in-package #:org.shirakumo.framebuffers.BACKEND)
+(in-package #:org.shirakumo.framebuffers.win32)
 
-(pushnew :BACKEND sb-int:*available-backends*)
+(pushnew :win32 sb-int:*available-backends*)
 
-(define-condition BACKEND-error (fb:framebuffer-error)
+(define-condition win32-error (fb:framebuffer-error)
   ()
   (:report (lambda (c s) (format s ""))))
 
-(defmethod fb-int:init-backend ((backend (eql :BACKEND))))
+(defmethod fb-int:init-backend ((backend (eql :win32))))
 
-(defmethod fb-int:shutdown-backend ((backend (eql :BACKEND))))
+(defmethod fb-int:shutdown-backend ((backend (eql :win32))))
 
-(defmethod fb-int:open-backend ((backend (eql :BACKEND)) &key))
+(defmethod fb-int:open-backend ((backend (eql :win32)) &key))
 
 (defclass window (fb:window)
   ())

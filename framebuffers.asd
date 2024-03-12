@@ -24,10 +24,12 @@
                              (:file "bindings")
                              (:file "keycodes")
                              (:file "wrapper")))
-               #++
                (:module "win32"
                 :if-feature :windows
-                :components ((:file "package")))
+                :components ((:file "package")
+                             (:file "bindings")
+                             (:file "keycodes")
+                             (:file "wrapper")))
                #++
                (:module "cocoa"
                 :if-feature :darwin

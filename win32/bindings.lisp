@@ -16,12 +16,18 @@
   (:system-dpi-aware 1)
   (:per-monitor-dpi-aware 2))
 
-(cffi:defcfun ("AdjustWindowRect") :boolean
+(cffi:defcstruct (rect :conc-name rect-)
+  (left :long)
+  (top :long)
+  (right :long)
+  (bottom :long))
+
+(cffi:defcfun (adjust-window-rect "AdjustWindowRect") :boolean
   (rect :pointer)
   (style :int32)
   (menu :boolean))
 
-(cffi:defcfun ("BitBlt") :bool
+(cffi:defcfun (bit-blt "BitBlt") :bool
   (hdc :pointer)
   (x :int)
   (y :int)
@@ -32,11 +38,11 @@
   (y1 :int)
   (rop :int32))
 
-(cffi:defcfun ("ChangeDisplaySettingsW") :long
+(cffi:defcfun (change-display-settings "ChangeDisplaySettingsW") :long
   (dev-mode :pointer)
   (flags :int32))
 
-(cffi:defcfun ("CreateWindowExW") :pointer
+(cffi:defcfun (create-window "CreateWindowExW") :pointer
   (ex-style :int32)
   (class-name :pointer)
   (window-name :pointer)
@@ -50,86 +56,86 @@
   (instance :pointer)
   (param :pointer))
 
-(cffi:defcfun ("DefWindowProcW") :size
+(cffi:defcfun (def-window-proc "DefWindowProcW") :size
   (window :pointer)
   (message :uint)
   (wparameter :size)
   (lparameter :size))
 
-(cffi:defcfun ("DestroyWindow") :boolean
+(cffi:defcfun (destroy-window "DestroyWindow") :boolean
   (window :pointer))
 
-(cffi:defcfun ("DispatchMessageW") :size
+(cffi:defcfun (dispatch-message "DispatchMessageW") :size
   (message :pointer))
 
-(cffi:defcfun ("EnableNonClientDpiScaling") :boolean
+(cffi:defcfun (enable-non-client-dpi-scaling "EnableNonClientDpiScaling") :boolean
   (window :pointer))
 
-(cffi:defcfun ("EnumDisplaySettingsW") :boolean
+(cffi:defcfun (enum-display-settings "EnumDisplaySettingsW") :boolean
   (device-name :pointer)
   (mode-num :int32)
   (dev-mode :pointer))
 
-(cffi:defcfun ("GetDC") :pointer
+(cffi:defcfun (get-dc "GetDC") :pointer
   (window :pointer))
 
-(cffi:defcfun ("GetDpiForMonitor") com:hresult
+(cffi:defcfun (get-dpi-for-monitor "GetDpiForMonitor") com:hresult
   (monitor :pointer)
   (dpi-type monitor-dpi-type)
   (x :pointer)
   (y :pointer))
 
-(cffi:defcfun ("GetDpiForWindow") :uint
+(cffi:defcfun (get-dpi-for-window "GetDpiForWindow") :uint
   (pointer :window))
 
-(cffi:defcfun ("GetMessageTime") :long)
+(cffi:defcfun (get-message-time "GetMessageTime") :long)
 
-(cffi:defcfun ("GetSystemMetrics") :int
+(cffi:defcfun (get-system-metrics "GetSystemMetrics") :int
   (index :int))
 
-(cffi:defcfun ("GetWindowLongPtrW") :ssize
+(cffi:defcfun (get-window "GetWindowLongPtrW") :ssize
   (window :pointer)
   (index :int))
 
-(cffi:defcfun ("InvalidateRect") :boolean
+(cffi:defcfun (invalidate-rect "InvalidateRect") :boolean
   (window :pointer)
   (rect :pointer)
   (erase :boolean))
 
-(cffi:defcfun ("PeekMessageW") :boolean
+(cffi:defcfun (peek-message "PeekMessageW") :boolean
   (message :pointer)
   (window :pointer)
   (message-filter-min :uint)
   (message-filter-max :uint)
   (remove-message :uint))
 
-(cffi:defcfun ("RegisterClassW") :int16
+(cffi:defcfun (register-class "RegisterClassW") :int16
   (class :pointer))
 
-(cffi:defcfun ("ReleaseDC") :int
+(cffi:defcfun (release-dc "ReleaseDC") :int
   (window :pointer)
   (dc :pointer))
 
-(cffi:defcfun ("SendMessageW") :ssize
+(cffi:defcfun (send-message "SendMessageW") :ssize
   (window :pointer)
   (message :uint)
   (wparameter :size)
   (lparameter :size))
 
-(cffi:defcfun ("SetProcessDPIAware") :boolean)
+(cffi:defcfun (set-process-dpi-aware "SetProcessDPIAware") :boolean)
 
-(cffi:defcfun ("SetProcessDpiAwarenessContext") :boolean
+(cffi:defcfun (set-process-dpi-awareness-context "SetProcessDpiAwarenessContext") :boolean
   (context :pointer))
 
-(cffi:defcfun ("SetProcessDpiAwareness") com:hresult
+(cffi:defcfun (set-process-dpi-awareness "SetProcessDpiAwareness") com:hresult
   (awareness dpi-awareness))
 
-(cffi:defcfun ("SetWindowLongPtrW") :ssize
+(cffi:defcfun (set-window "SetWindowLongPtrW") :ssize
   (window :pointer)
   (index :int)
   (new-long :ssize))
 
-(cffi:defcfun ("SetWindowPos") :boolean
+(cffi:defcfun (set-window-pos "SetWindowPos") :boolean
   (window :pointer)
   (insert-after :pointer)
   (x :int)
@@ -138,11 +144,11 @@
   (cy :int)
   (flags :uint))
 
-(cffi:defcfun ("ShowWindow") :boolean
+(cffi:defcfun (show-window "ShowWindow") :boolean
   (window :pointer)
   (cmd-show :int))
 
-(cffi:defcfun ("StretchDIBits") :int
+(cffi:defcfun (stretch-di-bits"StretchDIBits") :int
   (window :pointer)
   (xdest :int)
   (ydest :int)
@@ -154,10 +160,10 @@
   (hsrc :int)
   (rop :int32))
 
-(cffi:defcfun ("TranslateMessage") :boolean
+(cffi:defcfun (translate-message "TranslateMessage") :boolean
   (message :pointer))
 
-(cffi:defcfun ("ValidateRect") :boolean
+(cffi:defcfun (validate-rect "ValidateRect") :boolean
   (window :pointer)
   (rect :pointer))
 

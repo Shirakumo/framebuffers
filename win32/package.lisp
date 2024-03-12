@@ -46,6 +46,7 @@
   (:local-nicknames
    (#:fb #:org.shirakumo.framebuffers)
    (#:fb-int #:org.shirakumo.framebuffers.int)
-   (#:win32 #:org.shirakumo.framebuffers.win32.cffi))
+   (#:win32 #:org.shirakumo.framebuffers.win32.cffi)
+   (#:com #:org.shirakumo.com-on))
   (:export
    #:window))

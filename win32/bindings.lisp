@@ -44,8 +44,8 @@
 
 (cffi:defcfun (create-window "CreateWindowExW") :pointer
   (ex-style :int32)
-  (class-name :pointer)
-  (window-name :pointer)
+  (class-name com:wstring)
+  (window-name com:wstring)
   (style :int32)
   (x :int)
   (y :int)

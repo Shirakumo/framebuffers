@@ -1,5 +1,6 @@
 (defpackage #:org.shirakumo.framebuffers.xlib.cffi
   (:use #:cl)
+  (:shadow #:atom)
   (:export
    #:x11
    #:xext

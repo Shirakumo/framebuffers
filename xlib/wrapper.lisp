@@ -536,6 +536,6 @@
                     (setf (xlib:base-event-window rpl) (xlib:default-root-window (display window)))
                     ;; SubstructureNotifyMask | SubstructureRedirectMask
                     (xlib:send-event (display window) (xid window) NIL 1572864 rpl))))))
-        ((atom window (xlib:client-message-event-message-type event) "XdndDrop")
+        ((atomp window (xlib:client-message-event-message-type event) "XdndDrop")
          ;; TODO: implement drops
          )))

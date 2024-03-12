@@ -367,13 +367,6 @@
   (display :pointer)
   (count :pointer))
 
-(cffi:defcfun (lookup-string "XLookupString") :int
-  (key-event :pointer)
-  (buffer-return :pointer)
-  (bytes :int)
-  (keysym-return :pointer)
-  (status-in-out :pointer))
-
 (cffi:defcfun (map-raised "XMapRaised") :int
   (display :pointer)
   (window xid))

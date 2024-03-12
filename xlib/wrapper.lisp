@@ -59,16 +59,16 @@
       (cffi:use-foreign-library xlib:x11))
     (unless (cffi:foreign-library-loaded-p 'xlib:xext)
       (ignore-errors (cffi:use-foreign-library xlib:xext)))
-    (xlib:init-threads)
-    (setf *init* T)
-    (xlib:set-error-handler (cffi:callback error-handler))
-    (xlib:set-io-error-handler (cffi:callback io-error-handler))
     ;; Try to open the display once to ensure we have a connection
     (let ((display (xlib:open-display (cffi:null-pointer))))
       (when (cffi:null-pointer-p display)
         (error "Failed to open display."))
       (unwind-protect (check-pixmap-formats display)
-        (xlib:close-display display)))))
+        (xlib:close-display display)))
+    (xlib:init-threads)
+    (setf *init* T)
+    (xlib:set-error-handler (cffi:callback error-handler))
+    (xlib:set-io-error-handler (cffi:callback io-error-handler))))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :xlib)))
   (when *init*
@@ -118,8 +118,8 @@
                               (minor :int))
     (xlib:xkb-query-extension display opcode event-base error-base major minor)))
 
-(defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T) event-handler)
-  (with-creation (display (xlib:open-display (cffi:null-pointer))) (xlib:close-display display)
+(defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T) event-handler display)
+  (with-creation (display (xlib:open-display (or display (cffi:null-pointer)))) (xlib:close-display display)
     (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer))
     (unless *keytable*
       (setf *keytable* (make-keytable display (probe-xkb display))))

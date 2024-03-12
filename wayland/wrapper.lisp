@@ -24,11 +24,12 @@
 
 (defmethod fb-int:shutdown-backend ((backend (eql :wayland))))
 
-(defmethod fb-int:open-backend ((backend (eql :wayland)) &key)
-  (let ((display (wl:display-connect (cffi:null-pointer))))
+(defmethod fb-int:open-backend ((backend (eql :wayland)) &rest args &key display)
+  (remf args :display)
+  (let ((display (wl:display-connect (or display (cffi:null-pointer)))))
     (if (cffi:null-pointer-p display)
         (error 'wayland-error :message "Failed to connect to Wayland display.")
-        (make-instance 'window :display display))))
+        (apply #'make-instance 'window :display display args))))
 
 (defclass window (fb:window)
   ((display :initarg :display :initform NIL :accessor display)

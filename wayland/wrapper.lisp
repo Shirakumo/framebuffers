@@ -53,6 +53,7 @@
    (xkb-state :initform NIL :accessor xkb-state)
    (xkb-keymap :initform NIL :accessor xkb-keymap)
    (activation-manager :initform NIL :accessor activation-manager)
+   (activation-token :initform NIL :accessor activation-token)
    (idle-inhibit-manager :initform NIL :accessor idle-inhibit-manager)
    (fractional-scale-manager :initform NIL :accessor fractional-scale-manager)
    (fractional-scale :initform NIL :accessor fractional-scale)
@@ -251,8 +252,12 @@
          (wl:surface-commit (surface window)))))
 
 (defmethod fb:request-attention ((window window))
-  ;; TODO: implement attention request
-  )
+  (when (activation-manager window)
+    (when (activation-token window)
+      (wl:xdg-activation-token-v1-destroy (activation-token window)))
+    (setf (activation-token window) (wl:xdg-activation-v1-get-activation-token (activation-manager window)))
+    (wl:proxy-add-listener (activation-token window) (xdg-activation-listener (listener window)) (display window))
+    (wl:xdg-activation-token-v1-commit (activation-token window))))
 
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)
@@ -512,8 +517,15 @@
       (setf (car (content-scale window)) scale
             (cdr (content-scale window)) scale))))
 
+(define-listener xdg-activation-listener
+  (done ((activation-token :pointer) (token :string))
+    (when (cffi:pointer-eq activation-token (activation-token window))
+      (wl:xdg-activation-v1-activate (activation-manager window) token (surface window))
+      (wl:xdg-activation-token-v1-destroy activation-token)
+      (setf (activation-token window) NIL))))
+
 (define-whole-listener
-    display-listener
+  display-listener
   registry-listener
   seat-listener
   pointer-listener
@@ -523,4 +535,5 @@
   xdg-wm-base-listener
   xdg-surface-listener
   xdg-toplevel-listener
-  wp-fractional-scale-listener)
+  wp-fractional-scale-listener
+  xdg-activation-listener)

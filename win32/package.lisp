@@ -5,6 +5,41 @@
   (:export
    #:user32
    #:shcore
+   #:window-class
+   #:window-class-style
+   #:window-class-proc
+   #:window-class-class-extra
+   #:window-class-window-extra
+   #:window-class-instance
+   #:window-class-icon
+   #:window-class-cursor
+   #:window-class-background
+   #:window-class-menu-name
+   #:window-class-class-name
+   #:message
+   #:message-window
+   #:message-type
+   #:message-wparameter
+   #:message-lparameter
+   #:message-time
+   #:message-x
+   #:message-y
+   #:bitmap-info
+   #:bitmap-info-size
+   #:bitmap-info-width
+   #:bitmap-info-height
+   #:bitmap-info-planes
+   #:bitmap-info-bit-count
+   #:bitmap-info-compression
+   #:bitmap-info-size-image
+   #:bitmap-info-x-per-meter
+   #:bitmap-info-y-per-meter
+   #:bitmap-info-clear-used
+   #:bitmap-info-clear-important
+   #:bitmap-info-red-mask
+   #:bitmap-info-green-mask
+   #:bitmap-info-blue-mask
+   #:bitmap-info-alpha-mask
    #:rect
    #:rect-left
    #:rect-top
@@ -28,6 +63,7 @@
    #:invalidate-rect
    #:peek-message
    #:register-class
+   #:unregister-class
    #:release-dc
    #:send-message
    #:set-process-dpi-aware

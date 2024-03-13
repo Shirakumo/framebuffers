@@ -280,6 +280,108 @@
   (:app #x8000)
   (:user #x0400))
 
+(cffi:defbitfield window-style
+  (:overlapped #x00000000)
+  (:popup #x80000000)
+  (:child #x40000000)
+  (:minimize #x20000000)
+  (:visible #x10000000)
+  (:disabled #x08000000)
+  (:clipsiblings #x04000000)
+  (:clipchildren #x02000000)
+  (:maximize #x01000000)
+  (:caption #x00c00000)
+  (:border #x00800000)
+  (:dlgframe #x00400000)
+  (:vscroll #x00200000)
+  (:hscroll #x00100000)
+  (:sysmenu #x00080000)
+  (:thickframe #x00040000)
+  (:group #x00020000)
+  (:tabstop #x00010000)
+  (:minimizebox #x00020000)
+  (:maximizebox #x00010000))
+
+(cffi:defbitfield window-style-ex
+  (:dlgmodalframe #x00000001)
+  (:noparentnotify #x00000004)
+  (:topmost #x00000008)
+  (:acceptfiles #x00000010)
+  (:transparent #x00000020)
+  (:mdichild #x00000040)
+  (:toolwindow #x00000080)
+  (:windowedge #x00000100)
+  (:clientedge #x00000200)
+  (:contexthelp #x00000400)
+  (:right #x00001000)
+  (:left #x00000000)
+  (:rtlreading #x00002000)
+  (:ltrreading #x00000000)
+  (:leftscrollbar #x00004000)
+  (:rightscrollbar #x00000000)
+  (:controlparent #x00010000)
+  (:staticedge #x00020000)
+  (:appwindow #x00040000)
+  (:layered #x00080000)
+  (:noinheritlayout #x00100000)
+  (:noredirectionbitmap #x00200000)
+  (:layoutrtl #x00400000)
+  (:composited #x02000000)
+  (:noactivate #x08000000))
+
+(cffi:defbitfield window-class-style
+  (:vredraw #x0001)
+  (:hredraw #x0002)
+  (:dblclks #x0008)
+  (:owndc #x0020)
+  (:classdc #x0040)
+  (:parentdc #x0080)
+  (:noclose #x0200)
+  (:savebits #x0800)
+  (:bytealignclient #x1000)
+  (:bytealignwindow #x2000)
+  (:globalclass #x4000)
+  (:ime #x00010000)
+  (:dropshadow #x00020000))
+
+(cffi:defcstruct (window-class :conc-name window-class-)
+  (style window-class-style)
+  (proc :pointer)
+  (class-extra :int)
+  (window-extra :int)
+  (instance :pointer)
+  (icon :pointer)
+  (cursor :pointer)
+  (background :pointer)
+  (menu-name com:wstring)
+  (class-name com:wstring))
+
+(cffi:defcstruct (message :conc-name message-)
+  (window :pointer)
+  (type message-type)
+  (wparameter :ssize)
+  (lparameter :ssize)
+  (time :uint32)
+  (x :long)
+  (y :long))
+
+(cffi:defcstruct (bitmap-info :conc-name bitmap-info-)
+  (size :uint32)
+  (width :long)
+  (height :long)
+  (planes :int16)
+  (bit-count :int16)
+  (compression :uint32)
+  (size-image :uint32)
+  (x-per-meter :long)
+  (y-per-meter :long)
+  (clear-used :uint32)
+  (clear-important :uint32)
+  (red-mask :uint32)
+  (green-mask :uint32)
+  (blue-mask :uint32)
+  (alpha-mask :uint32))
+
 (cffi:defcstruct (rect :conc-name rect-)
   (left :long)
   (top :long)
@@ -288,7 +390,7 @@
 
 (cffi:defcfun (adjust-window-rect "AdjustWindowRect") :boolean
   (rect :pointer)
-  (style :int32)
+  (style :uint32)
   (menu :boolean))
 
 (cffi:defcfun (bit-blt "BitBlt") :bool
@@ -300,17 +402,17 @@
   (hdc-src :pointer)
   (x1 :int)
   (y1 :int)
-  (rop :int32))
+  (rop :uint32))
 
 (cffi:defcfun (change-display-settings "ChangeDisplaySettingsW") :long
   (dev-mode :pointer)
-  (flags :int32))
+  (flags :uint32))
 
 (cffi:defcfun (create-window "CreateWindowExW") :pointer
-  (ex-style :int32)
+  (ex-style window-style-ex)
   (class-name com:wstring)
   (window-name com:wstring)
-  (style :int32)
+  (style window-style)
   (x :int)
   (y :int)
   (w :int)
@@ -337,7 +439,7 @@
 
 (cffi:defcfun (enum-display-settings "EnumDisplaySettingsW") :boolean
   (device-name :pointer)
-  (mode-num :int32)
+  (mode-num :uint32)
   (dev-mode :pointer))
 
 (cffi:defcfun (get-dc "GetDC") :pointer
@@ -375,6 +477,10 @@
 
 (cffi:defcfun (register-class "RegisterClassW") :int16
   (class :pointer))
+
+(cffi:defcfun (unregister-class "UnregisterClassW") :bool
+  (name com:wstring)
+  (window :pointer))
 
 (cffi:defcfun (release-dc "ReleaseDC") :int
   (window :pointer)
@@ -422,7 +528,7 @@
   (ysrc :int)
   (wsrc :int)
   (hsrc :int)
-  (rop :int32))
+  (rop :uint32))
 
 (cffi:defcfun (translate-message "TranslateMessage") :boolean
   (message :pointer))

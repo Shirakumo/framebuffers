@@ -16,6 +16,10 @@
 (defun win32-error (&key function-name message)
   (com:win32-error T :function-name function-name :message message :type 'win32-error))
 
+(defmacro check-result (form)
+  `(unless ,form
+     (win32-error :function-name ',(car form))))
+
 (defmethod fb-int:init-backend ((backend (eql :win32)))
   (unless (cffi:foreign-library-loaded-p 'win32:user32)
     (cffi:load-foreign-library 'win32:user32)
@@ -30,8 +34,8 @@
   (com:shutdown))
 
 (defmethod fb-int:open-backend ((backend (eql :win32)) &key (title (fb-int:default-title)) location size (visible-p T))
-  (let* ((screen-w (win32:get-system-metrics :cx-screen))
-         (screen-h (win32:get-system-metrics :cy-screen))
+  (let* ((screen-w (win32:get-system-metrics :cxscreen))
+         (screen-h (win32:get-system-metrics :cyscreen))
          (w (or (car size) screen-w))
          (h (or (cdr size) screen-h))
          (x (or (car location) (round (- screen-w w) 2)))
@@ -41,9 +45,9 @@
     (setf (win32:window-class-style class) '(:owndc :vredraw :hredraw))
     (setf (win32:window-class-proc class) (cffi:callback handle-event))
     (setf (win32:window-class-cursor class) (win32:load-cursor (cffi:null-pointer) :arrow))
-    (setf (win32:window-class-class-name class) "framebuffer")
+    (setf (win32:window-class-class-name class) "clframebuffer")
     (win32:register-class class)
-    (let ((ptr (win32:create-window 0 "framebuffer" title style x y w h 0 0 0 0)))
+    (let ((ptr (win32:create-window 0 "clframebuffer" title style x y w h 0 0 0 0)))
       (when (cffi:null-pointer-p ptr)
         (win32-error :function-name 'win32:create-window))
       (make-instance 'window :ptr ptr
@@ -85,7 +89,15 @@
     (setf (win32:bitmap-info-blue-mask bi)  #x000000FF)
     (update-buffer window (fb:width window) (fb:height window))
     (when (visible-p window)
-      (win32:show-window ptr :normal))))
+      (win32:show-window ptr :normal))
+    (or (ignore-errors
+         (cffi:with-foreign-objects ((x :uint) (y :uint))
+           (win32:get-dpi-for-monitor (win32:monitor-from-window ptr 2) 0 x y)
+           (setf (car (content-scale window)) (/ (cffi:mem-ref x :uint) 96))
+           (setf (car (content-scale window)) (/ (cffi:mem-ref y :uint) 96))))
+        (progn
+          (setf (car (content-scale window)) (/ (win32:get-device-caps (dc window) :logpixelsx) 96))
+          (setf (car (content-scale window)) (/ (win32:get-device-caps (dc window) :logpixelsy) 96))))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (ptr window))))
@@ -189,13 +201,13 @@
 
 (defun enc32 (x y)
   (let ((xy 0))
-    (setf (ldb (byte 32  0) xy) x)
-    (setf (ldb (byte 32 32) xy) y)
+    (setf (ldb (byte 16  0) xy) x)
+    (setf (ldb (byte 16 16) xy) y)
     xy))
 
 (defun dec32 (xy)
-  (values (ldb (byte 32  0) xy)
-          (ldb (byte 32 32) xy)))
+  (values (ldb (byte 16  0) xy)
+          (ldb (byte 16 16) xy)))
 
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   (with-rect (rect x y w h)
@@ -320,8 +332,9 @@
         (:killfocus
          (fb:window-focused window NIL))
         (:dpichanged
-         ;; TODO: capture dpi
-         )
+         (multiple-value-bind (x y) (dec32 wparam)
+           (setf (car (content-scale window)) x)
+           (setf (cdr (content-scale window)) y)))
         (:dropfiles
          ;; TODO: implement dnd
          )

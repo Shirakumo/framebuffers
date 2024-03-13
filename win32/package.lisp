@@ -60,6 +60,7 @@
    #:enable-non-client-dpi-scaling
    #:enum-display-settings
    #:get-dc
+   #:get-device-caps
    #:get-dpi-for-monitor
    #:get-dpi-for-window
    #:get-message-time
@@ -69,6 +70,7 @@
    #:invalidate-rect
    #:load-cursor
    #:map-virtual-key
+   #:monitor-from-window
    #:msg-wait-for-multiple-objects
    #:peek-message
    #:register-class

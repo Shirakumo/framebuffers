@@ -68,6 +68,7 @@
    #:get-window
    #:invalidate-rect
    #:load-cursor
+   #:map-virtual-key
    #:peek-message
    #:register-class
    #:unregister-class

@@ -228,10 +228,21 @@
          (fb:window-closed window))
         (:destroy
          (fb:close window))
-        ((:keydown :syskeydown :keyup :syskeyup)
-         (update-modifiers window)
-         ;; TODO: key translation
+        (:syscommand
+         ;; TODO: prevent power save in fullscreen
          )
+        (:inputlangchange
+         ;; TODO: update key names
+         )
+        ((:keydown :syskeydown :keyup :syskeyup)
+         (let ((scancode (logand (ldb (byte 16 16) lparam) #x1FF))
+               (action (if (logtest #x8000 (ldb (byte 16 16) lparam)) :release :press)))
+           (when (= #x000 scancode) (setf scancode (win32:map-virtual-key wparam 0)))
+           (when (= #x054 scancode) (setf scancode #x137))
+           (when (= #x146 scancode) (setf scancode #x045))
+           (when (= #x136 scancode) (setf scancode #x036))
+           ;; TODO: special handling of some crap
+           (fb:key-changed window (translate-keycode scancode) scancode action (update-modifiers window))))
         ((:char :syschar)
          ;; TODO: unicode translation
          )
@@ -252,9 +263,9 @@
          (let ((action (case message (:xbuttonup :press) (:xbuttondown :release) (:xbuttondblclk :double-click))))
            (fb:mouse-button-changed window (ldb (byte 16 16) wparam) action (update-modifiers window))))
         (:mousewheel
-         (fb:mouse-scrolled window 0 (/ wparam 0)))
+         (fb:mouse-scrolled window 0 (/ (ldb (byte 16 16) wparam) 120)))
         (:mousehwheel
-         (fb:mouse-scrolled window (/ wparam -0) 0))
+         (fb:mouse-scrolled window (/ (ldb (byte 16 16) wparam) -120) 0))
         (:mousemove
          (unless (mouse-entered-p window)
            (setf (mouse-entered-p window) T)
@@ -269,14 +280,33 @@
         (:mouseleave
          (setf (mouse-entered-p window) NIL)
          (fb:mouse-entered window NIL))
+        (:move
+         (multiple-value-bind (x y) (dec32 lparam)
+           (setf (car (location window)) x)
+           (setf (cdr (location window)) y)
+           (fb:window-moved window x y)))
         (:size
          (unless (iconified-p window)
            (multiple-value-bind (w h) (dec32 lparam)
              (update-buffer window w h)
-             (fb:window-resized window w h))))
+             (fb:window-resized window w h)))
+         (let ((iconified (= wparam 1)))
+           (unless (eq iconified (iconified-p window))
+             (setf (iconified-p window) iconified)
+             (fb:window-iconified window iconified)))
+         (let ((maximized (= wparam 2)))
+           (unless (eq maximized (maximized-p window))
+             (setf (maximized-p window) maximized)
+             (fb:window-maximized window maximized))))
         (:setfocus
          (fb:window-focused window T))
         (:killfocus
          (fb:window-focused window NIL))
+        (:dpichanged
+         ;; TODO: capture dpi
+         )
+        (:dropfiles
+         ;; TODO: implement dnd
+         )
         (T
          (default))))))

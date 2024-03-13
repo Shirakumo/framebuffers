@@ -694,6 +694,10 @@
   (window :pointer)
   (cursor-name com:wstring))
 
+(cffi:defcfun (map-virtual-key "MapVirtualKeyW") :uint
+  (code :uint)
+  (map-type :uint))
+
 (cffi:defcfun (peek-message "PeekMessageW") :boolean
   (message :pointer)
   (window :pointer)

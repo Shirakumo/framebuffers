@@ -476,6 +476,23 @@
   (:app #x8000)
   (:user #x0400))
 
+(cffi:defcenum show-command
+  (:hide 0)
+  (:shownormal 1)
+  (:normal 1)
+  (:showminimized 2)
+  (:showmaximized 3)
+  (:maximize 3)
+  (:shownoactivate 4)
+  (:show 5)
+  (:minimize 6)
+  (:showminnoactive 7)
+  (:showna 8)
+  (:restore 9)
+  (:showdefault 10)
+  (:forceminimize 11)
+  (:max 11))
+
 (cffi:defbitfield window-style
   (:overlapped #x00000000)
   (:popup #x80000000)
@@ -725,7 +742,7 @@
 
 (cffi:defcfun (show-window "ShowWindow") :boolean
   (window :pointer)
-  (cmd-show :int))
+  (command show-command))
 
 (cffi:defcfun (stretch-di-bits "StretchDIBits") :int
   (device :pointer)

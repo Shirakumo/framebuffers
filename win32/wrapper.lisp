@@ -107,23 +107,61 @@
 (defmethod fb:height ((window window))
   (cdr (size window)))
 
-(defmethod (setf fb:size) (size (window window)))
+(defun get-window-style (window)
+  '(:clipsiblings
+    :clipchildren
+    :sysmenu
+    :minimizebox
+    :caption
+    :maximizebox
+    :thickframe))
 
-(defmethod (setf fb:location) (location (window window)))
+(defmethod (setf fb:size) (size (window window))
+  (with-rect (rect 0 0 (car size) (cdr size))
+    (win32:adjust-window-rect rect (get-window-style window) NIL)
+    (let ((w (- (win32:rect-right rect) (win32:rect-left rect)))
+          (h (- (win32:rect-bottom rect) (win32:rect-top rect))))
+      (win32:set-window-pos (ptr window) (cffi:null-pointer) 0 0 w h '(:noactivate :nozorder :nomove :noownerzorder))
+      (setf (car (size window)) w)
+      (setf (cdr (size window)) h)
+      size)))
 
-(defmethod (setf fb:title) (title (window window)))
+(defmethod (setf fb:location) (location (window window))
+  (with-rect (rect (car location) (cdr location) 0 0)
+    (win32:adjust-window-rect rect (get-window-style window) NIL)
+    (let ((x (win32:rect-left rect))
+          (y (win32:rect-top rect)))
+      (win32:set-window-pos (ptr window) (cffi:null-pointer) x y 0 0 '(:noactivate :nozorder :nosize))
+      (setf (car (location window)) x)
+      (setf (cdr (location window)) y))
+    location))
 
-(defmethod (setf fb:visible-p) (state (window window)))
+(defmethod (setf fb:title) (title (window window))
+  (win32:set-window-text (ptr window) title)
+  title)
 
-(defmethod (setf fb:maximized-p) (state (window window)))
+(defmethod (setf fb:visible-p) (state (window window))
+  (win32:show-window (ptr window) (if state :showna :hide))
+  (setf (visible-p window) state))
 
-(defmethod (setf fb:iconified-p) (state (window window)))
+(defmethod (setf fb:maximized-p) (state (window window))
+  (win32:show-window (ptr window) (if state :maximize :restore))
+  (setf (maximized-p window) state))
 
-(defmethod fb:clipboard-string ((window window)))
+(defmethod (setf fb:iconified-p) (state (window window))
+  (win32:show-window (ptr window) (if state :minimize :restore))
+  (setf (iconified-p window) state))
 
-(defmethod (setf fb:clipboard-string) (string (window window)))
+(defmethod fb:clipboard-string ((window window))
+  ;; TODO: get clipboard string
+  )
 
-(defmethod fb:request-attention ((window window)))
+(defmethod (setf fb:clipboard-string) (string (window window))
+  ;; TODO: set clipboard string
+  )
+
+(defmethod fb:request-attention ((window window))
+  (win32:flash-window (ptr window) T))
 
 (defun update-buffer (window w h)
   (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (size window)) (cdr (size window))))

@@ -63,6 +63,7 @@
    (buffer :reader fb:buffer :accessor buffer)
    (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-info)) :accessor bitmap-info)
    (modifiers :initform () :accessor modifiers)
+   (surrogate :initform 0 :accessor surrogate)
    (close-requested-p :initform NIL :initarg :close-requested-p :accessor fb:close-requested-p :accessor close-requested-p)
    (size :initform (cons 1 1) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
@@ -238,105 +239,123 @@
 
 (cffi:defcallback handle-event :ssize ((ptr :pointer) (message win32::message-type) (wparam :size) (lparam :size))
   (let ((window (fb-int:ptr-window ptr)))
-    (flet ((default ()
-             (return-from handle-event (win32:def-window-proc ptr message wparam lparam))))
-      (unless window
-        (default))
-      (case message
-        (:nccreate
-         (ignore-errors (win32:enable-non-client-dpi-scaling ptr))
-         (default))
-        (:paint
-         (multiple-value-bind (x y) (dec32 wparam)
-           (multiple-value-bind (w h) (dec32 lparam)
-             (win32:stretch-di-bits (dc window) x y w h x y w h
-                                    (static-vectors:static-vector-pointer (buffer window))
-                                    (bitmap-info window) 0 #x00CC0020))))
-        (:close
-         (setf (fb:close-requested-p window) T)
-         (fb:window-closed window))
-        (:destroy
-         (fb:close window))
-        (:syscommand
-         ;; TODO: prevent power save in fullscreen
-         )
-        (:inputlangchange
-         ;; TODO: update key names
-         )
-        ((:keydown :syskeydown :keyup :syskeyup)
-         (let ((scancode (logand (ldb (byte 16 16) lparam) #x1FF))
-               (action (if (logtest #x8000 (ldb (byte 16 16) lparam)) :release :press)))
-           (when (= #x000 scancode) (setf scancode (win32:map-virtual-key wparam 0)))
-           (when (= #x054 scancode) (setf scancode #x137))
-           (when (= #x146 scancode) (setf scancode #x045))
-           (when (= #x136 scancode) (setf scancode #x036))
-           ;; TODO: special handling of some crap
-           (fb:key-changed window (translate-keycode scancode) scancode action (update-modifiers window))))
-        ((:char :syschar)
-         ;; TODO: unicode translation
-         )
-        (:unichar
-         (if (= wparam #xFFFF)
-             1
-             (fb:string-entered window (string (code-char wparam)))))
-        ((:lbuttonup :lbuttondown :lbuttondblclk)
-         (let ((action (case message (:lbuttonup :press) (:lbuttondown :release) (:lbuttondblclk :double-click))))
-           (fb:mouse-button-changed window :left action (update-modifiers window))))
-        ((:rbuttonup :rbuttondown :rbuttondblclk)
-         (let ((action (case message (:rbuttonup :press) (:rbuttondown :release) (:rbuttondblclk :double-click))))
-           (fb:mouse-button-changed window :right action (update-modifiers window))))
-        ((:mbuttonup :mbuttondown :mbuttondblclk)
-         (let ((action (case message (:mbuttonup :press) (:mbuttondown :release) (:mbuttondblclk :double-click))))
-           (fb:mouse-button-changed window :middle action (update-modifiers window))))
-        ((:xbuttonup :xbuttondown :xbuttondblclk)
-         (let ((action (case message (:xbuttonup :press) (:xbuttondown :release) (:xbuttondblclk :double-click))))
-           (fb:mouse-button-changed window (ldb (byte 16 16) wparam) action (update-modifiers window))))
-        (:mousewheel
-         (fb:mouse-scrolled window 0 (/ (ldb (byte 16 16) wparam) 120)))
-        (:mousehwheel
-         (fb:mouse-scrolled window (/ (ldb (byte 16 16) wparam) -120) 0))
-        (:mousemove
-         (unless (mouse-entered-p window)
-           (setf (mouse-entered-p window) T)
-           (cffi:with-foreign-objects ((track '(:struct win32:track-mouse-event)))
-             (setf (win32:track-mouse-event-size track) (cffi:foreign-type-size '(:struct win32:track-mouse-event)))
-             (setf (win32:track-mouse-event-flags track) 2)
-             (setf (win32:track-mouse-event-track track) ptr)
-             (setf (win32:track-mouse-event-hover-time track) 0)
-             (win32:track-mouse-event track)))
-         (multiple-value-bind (x y) (dec32 lparam)
-           (fb:mouse-moved window x y)))
-        (:mouseleave
-         (setf (mouse-entered-p window) NIL)
-         (fb:mouse-entered window NIL))
-        (:move
-         (multiple-value-bind (x y) (dec32 lparam)
-           (setf (car (location window)) x)
-           (setf (cdr (location window)) y)
-           (fb:window-moved window x y)))
-        (:size
-         (unless (iconified-p window)
-           (multiple-value-bind (w h) (dec32 lparam)
-             (update-buffer window w h)
-             (fb:window-resized window w h)))
-         (let ((iconified (= wparam 1)))
-           (unless (eq iconified (iconified-p window))
-             (setf (iconified-p window) iconified)
-             (fb:window-iconified window iconified)))
-         (let ((maximized (= wparam 2)))
-           (unless (eq maximized (maximized-p window))
-             (setf (maximized-p window) maximized)
-             (fb:window-maximized window maximized))))
-        (:setfocus
-         (fb:window-focused window T))
-        (:killfocus
-         (fb:window-focused window NIL))
-        (:dpichanged
-         (multiple-value-bind (x y) (dec32 wparam)
-           (setf (car (content-scale window)) x)
-           (setf (cdr (content-scale window)) y)))
-        (:dropfiles
-         ;; TODO: implement dnd
-         )
-        (T
-         (default))))))
+    (block NIL
+      (when window
+        (case message
+          (:nccreate
+           (ignore-errors (win32:enable-non-client-dpi-scaling ptr)))
+          (:paint
+           (multiple-value-bind (x y) (dec32 wparam)
+             (multiple-value-bind (w h) (dec32 lparam)
+               (win32:stretch-di-bits (dc window) x y w h x y w h
+                                      (static-vectors:static-vector-pointer (buffer window))
+                                      (bitmap-info window) 0 #x00CC0020))))
+          (:close
+           (setf (fb:close-requested-p window) T)
+           (fb:window-closed window)
+           (return 0))
+          (:syscommand
+           ;; TODO: prevent power save in fullscreen
+           )
+          (:inputlangchange
+           ;; TODO: update key names
+           )
+          ((:keydown :syskeydown :keyup :syskeyup)
+           (let ((scancode (logand (ldb (byte 16 16) lparam) #x1FF))
+                 (action (if (logtest #x8000 (ldb (byte 16 16) lparam)) :release :press)))
+             (when (= #x000 scancode) (setf scancode (win32:map-virtual-key wparam 0)))
+             (when (= #x054 scancode) (setf scancode #x137))
+             (when (= #x146 scancode) (setf scancode #x045))
+             (when (= #x136 scancode) (setf scancode #x036))
+             ;; TODO: special handling of some crap
+             (fb:key-changed window (translate-keycode scancode) scancode action (update-modifiers window))))
+          ((:char :syschar)
+           (cond ((<= #xD800 wparam #xDBFF)
+                  (setf (surrogate window) wparam))
+                 ((<= #xDC00 wparam #xDFFF)
+                  (fb:string-entered window (string (code-char (+ (ash (- (surrogate window) #xD800) 10)
+                                                                  (- wparam #xDC00)
+                                                                  #x10000))))
+                  (setf (surrogate window) NIL))
+                 (T
+                  (fb:string-entered window (string (code-char wparam)))
+                  (setf (surrogate window) NIL)))
+           (return 0))
+          (:unichar
+           (cond ((= wparam #xFFFF)
+                  (return 1))
+                 (T
+                  (fb:string-entered window (string (code-char wparam)))
+                  (return 0))))
+          ((:lbuttonup :lbuttondown :lbuttondblclk)
+           (let ((action (case message (:lbuttonup :press) (:lbuttondown :release) (:lbuttondblclk :double-click))))
+             (fb:mouse-button-changed window :left action (update-modifiers window)))
+           (return 0))
+          ((:rbuttonup :rbuttondown :rbuttondblclk)
+           (let ((action (case message (:rbuttonup :press) (:rbuttondown :release) (:rbuttondblclk :double-click))))
+             (fb:mouse-button-changed window :right action (update-modifiers window)))
+           (return 0))
+          ((:mbuttonup :mbuttondown :mbuttondblclk)
+           (let ((action (case message (:mbuttonup :press) (:mbuttondown :release) (:mbuttondblclk :double-click))))
+             (fb:mouse-button-changed window :middle action (update-modifiers window)))
+           (return 0))
+          ((:xbuttonup :xbuttondown :xbuttondblclk)
+           (let ((action (case message (:xbuttonup :press) (:xbuttondown :release) (:xbuttondblclk :double-click))))
+             (fb:mouse-button-changed window (ldb (byte 16 16) wparam) action (update-modifiers window)))
+           (return 0))
+          (:mousewheel
+           (fb:mouse-scrolled window 0 (/ (ldb (byte 16 16) wparam) 120))
+           (return 0))
+          (:mousehwheel
+           (fb:mouse-scrolled window (/ (ldb (byte 16 16) wparam) -120) 0)
+           (return 0))
+          (:mousemove
+           (unless (mouse-entered-p window)
+             (setf (mouse-entered-p window) T)
+             (cffi:with-foreign-objects ((track '(:struct win32:track-mouse-event)))
+               (setf (win32:track-mouse-event-size track) (cffi:foreign-type-size '(:struct win32:track-mouse-event)))
+               (setf (win32:track-mouse-event-flags track) 2)
+               (setf (win32:track-mouse-event-track track) ptr)
+               (setf (win32:track-mouse-event-hover-time track) 0)
+               (win32:track-mouse-event track)))
+           (multiple-value-bind (x y) (dec32 lparam)
+             (fb:mouse-moved window x y))
+           (return 0))
+          (:mouseleave
+           (setf (mouse-entered-p window) NIL)
+           (fb:mouse-entered window NIL)
+           (return 0))
+          (:move
+           (multiple-value-bind (x y) (dec32 lparam)
+             (setf (car (location window)) x)
+             (setf (cdr (location window)) y)
+             (fb:window-moved window x y))
+           (return 0))
+          (:size
+           (unless (iconified-p window)
+             (multiple-value-bind (w h) (dec32 lparam)
+               (update-buffer window w h)
+               (fb:window-resized window w h)))
+           (let ((iconified (= wparam 1)))
+             (unless (eq iconified (iconified-p window))
+               (setf (iconified-p window) iconified)
+               (fb:window-iconified window iconified)))
+           (let ((maximized (= wparam 2)))
+             (unless (eq maximized (maximized-p window))
+               (setf (maximized-p window) maximized)
+               (fb:window-maximized window maximized)))
+           (return 0))
+          (:setfocus
+           (fb:window-focused window T)
+           (return 0))
+          (:killfocus
+           (fb:window-focused window NIL)
+           (return 0))
+          (:dpichanged
+           (multiple-value-bind (x y) (dec32 wparam)
+             (setf (car (content-scale window)) x)
+             (setf (cdr (content-scale window)) y)))
+          (:dropfiles
+           ;; TODO: implement dnd
+           )))
+      (return (win32:def-window-proc ptr message wparam lparam)))))

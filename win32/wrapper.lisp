@@ -58,6 +58,7 @@
    (class :initarg :class :accessor window-class)
    (buffer :reader fb:buffer :accessor buffer)
    (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-info)) :accessor bitmap-info)
+   (modifiers :initform () :accessor modifiers)
    (close-requested-p :initform NIL :initarg :close-requested-p :accessor fb:close-requested-p :accessor close-requested-p)
    (size :initform (cons 1 1) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
@@ -65,6 +66,7 @@
    (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
+   (mouse-entered-p :initform NIL :initarg :mouse-entered-p :accessor mouse-entered-p)
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
 
 (defmethod initialize-instance :after ((window window) &key)
@@ -166,5 +168,55 @@
              (win32:stretch-di-bits (dc window) x y w h x y w h
                                     (static-vectors:static-vector-pointer (buffer window))
                                     (bitmap-info window) 0 #x00CC0020))))
+        (:close
+         (setf (fb:close-requested-p window) T)
+         (fb:window-closed window))
+        (:destroy
+         (fb:close window))
+        ((:keydown :syskeydown :keyup :syskeyup))
+        ((:char :syschar))
+        (:unichar
+         (if (= wparam #xFFFF)
+             1
+             (fb:string-entered window (string (code-char wparam)))))
+        ((:lbuttonup :lbuttondown :lbuttondblclk)
+         (let ((action (case message (:lbuttonup :press) (:lbuttondown :release) (:lbuttondblclk :double-click))))
+           (fb:mouse-button-changed window :left action (modifiers window))))
+        ((:rbuttonup :rbuttondown :rbuttondblclk)
+         (let ((action (case message (:rbuttonup :press) (:rbuttondown :release) (:rbuttondblclk :double-click))))
+           (fb:mouse-button-changed window :right action (modifiers window))))
+        ((:mbuttonup :mbuttondown :mbuttondblclk)
+         (let ((action (case message (:mbuttonup :press) (:mbuttondown :release) (:mbuttondblclk :double-click))))
+           (fb:mouse-button-changed window :middle action (modifiers window))))
+        ((:xbuttonup :xbuttondown :xbuttondblclk)
+         (let ((action (case message (:xbuttonup :press) (:xbuttondown :release) (:xbuttondblclk :double-click))))
+           (fb:mouse-button-changed window (ldb (byte 16 16) wparam) action (modifiers window))))
+        (:mousewheel
+         (fb:mouse-scrolled window 0 (/ wparam 0)))
+        (:mousehwheel
+         (fb:mouse-scrolled window (/ wparam -0) 0))
+        (:mousemove
+         (unless (mouse-entered-p window)
+           (setf (mouse-entered-p window) T)
+           (cffi:with-foreign-objects ((track '(:struct win32:track-mouse-event)))
+             (setf (win32:track-mouse-event-size track) (cffi:foreign-type-size '(:struct win32:track-mouse-event)))
+             (setf (win32:track-mouse-event-flags track) 2)
+             (setf (win32:track-mouse-event-track track) ptr)
+             (setf (win32:track-mouse-event-hover-time track) 0)
+             (win32:track-mouse-event track)))
+         (multiple-value-bind (x y) (dec32 lparam)
+           (fb:mouse-moved window x y)))
+        (:mouseleave
+         (setf (mouse-entered-p window) NIL)
+         (fb:mouse-entered window NIL))
+        (:size
+         (unless (iconified-p window)
+           (multiple-value-bind (w h) (dec32 lparam)
+             (update-buffer window w h)
+             (fb:window-resized window w h))))
+        (:setfocus
+         (fb:window-focused window T))
+        (:killfocus
+         (fb:window-focused window NIL))
         (T
          (default))))))

@@ -45,6 +45,11 @@
    #:rect-top
    #:rect-right
    #:rect-bottom
+   #:track-mouse-event
+   #:track-mouse-event-size
+   #:track-mouse-event-flags
+   #:track-mouse-event-track
+   #:track-mouse-event-hover-time
    #:adjust-window-rect
    #:bit-blt
    #:change-display-settings

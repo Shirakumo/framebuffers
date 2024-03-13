@@ -388,6 +388,12 @@
   (right :long)
   (bottom :long))
 
+(cffi:defcstruct (track-mouse-event :conc-name track-mouse-event-)
+  (size :uint32)
+  (flags :uint32)
+  (track :pointer)
+  (hover-time :uint32))
+
 (cffi:defcfun (adjust-window-rect "AdjustWindowRect") :boolean
   (rect :pointer)
   (style :uint32)
@@ -536,6 +542,9 @@
   (bitmapinfo :pointer)
   (usage :uint)
   (rop :uint32))
+
+(cffi:defcfun (track-mouse-event "TrackMouseEvent") :bool
+  (event :pointer))
 
 (cffi:defcfun (translate-message "TranslateMessage") :boolean
   (message :pointer))

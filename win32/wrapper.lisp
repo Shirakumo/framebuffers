@@ -40,14 +40,14 @@
          (class (cffi:foreign-alloc '(:struct win32:window-class))))
     (setf (win32:window-class-style class) '(:owndc :vredraw :hredraw))
     (setf (win32:window-class-proc class) (cffi:callback handle-event))
-    (setf (win32:window-class-cursor class) (win32:load-cursor 0 :arrow))
+    (setf (win32:window-class-cursor class) (win32:load-cursor (cffi:null-pointer) :arrow))
     (setf (win32:window-class-class-name class) "framebuffer")
     (win32:register-class class)
     (let ((ptr (win32:create-window 0 "framebuffer" title style x y w h 0 0 0 0)))
       (when (cffi:null-pointer-p ptr)
         (win32-error :function-name 'win32:create-window))
-      (make-instance 'window :ptr ptr 
-                             :dc (win32:get-dc ptr)
+      (make-instance 'window :ptr ptr
+                             :class class
                              :size (cons w h)
                              :location (cons x y)
                              :visible-p visible-p))))
@@ -55,8 +55,9 @@
 (defclass window (fb:window)
   ((ptr :initarg :ptr :accessor ptr)
    (dc :initarg :dc :accessor dc)
-   (class :initarg :class :accessor class)
+   (class :initarg :class :accessor window-class)
    (buffer :reader fb:buffer :accessor buffer)
+   (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-info)) :accessor bitmap-info)
    (close-requested-p :initform NIL :initarg :close-requested-p :accessor fb:close-requested-p :accessor close-requested-p)
    (size :initform (cons 1 1) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
@@ -67,18 +68,32 @@
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
 
 (defmethod initialize-instance :after ((window window) &key)
-  (let ((ptr (ptr window)))
+  (let ((ptr (ptr window))
+        (bi (bitmap-info window)))
     (setf (fb-int:ptr-window ptr) window)
     (win32:set-window ptr :userdata ptr)
-    (when visible-p
+    (setf (dc window) (win32:get-dc ptr))
+    (setf (win32:bitmap-info-size bi) (- (cffi:foreign-type-size '(:struct win32:bitmap-info)) 16))
+    (setf (win32:bitmap-info-planes bi) 1)
+    (setf (win32:bitmap-info-bit-count bi) 32)
+    (setf (win32:bitmap-info-compression bi) 3)
+    (setf (win32:bitmap-info-alpha-mask bi) #xFF000000)
+    (setf (win32:bitmap-info-red-mask bi)   #x00FF0000)
+    (setf (win32:bitmap-info-green-mask bi) #x0000FF00)
+    (setf (win32:bitmap-info-blue-mask bi)  #x000000FF)
+    (update-buffer window (fb:width window) (fb:height window))
+    (when (visible-p window)
       (win32:show-window ptr :normal))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (ptr window))))
 
 (defmethod fb:close ((window window))
+  (when (bitmap-info window)
+    (cffi:foreign-free (bitmap-info window))
+    (setf (bitmap-info window) NIL))
   (when (dc window)
-    (win32:release-dc (dc window))
+    (win32:release-dc (ptr window) (dc window))
     (setf (dc window) NIL))
   (when (ptr window)
     (win32:destroy-window (ptr window))
@@ -108,12 +123,48 @@
 
 (defmethod fb:request-attention ((window window)))
 
+(defun update-buffer (window w h)
+  (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (size window)) (cdr (size window))))
+  (setf (win32:bitmap-info-width (bitmap-info window)) w)
+  (setf (win32:bitmap-info-height (bitmap-info window)) h)
+  (setf (car (size window)) w)
+  (setf (cdr (size window)) h))
+
+(defun enc32 (x y)
+  (let ((xy 0))
+    (setf (ldb (byte 32  0) xy) x)
+    (setf (ldb (byte 32 32) xy) y)
+    xy))
+
+(defun dec32 (xy)
+  (values (ldb (byte 32  0) xy)
+          (ldb (byte 32 32) xy)))
+
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   (with-rect (rect x y w h)
     (win32:invalidate-rect (ptr window) rect T)
-    (win32:send-message (ptr window) :paint 0 0))
+    (win32:send-message (ptr window) :paint (enc32 x y) (enc32 w h)))
   (when sync
     ;; TODO: sync
     ))
 
 (defmethod fb:process-events ((window window) &key timeout))
+
+(cffi:defcallback handle-event :ssize ((ptr :pointer) (message win32::message-type) (wparam :size) (lparam :size))
+  (let ((window (fb-int:ptr-window ptr)))
+    (flet ((default ()
+             (return-from handle-event (win32:def-window-proc ptr message wparam lparam))))
+      (unless window
+        (default))
+      (case message
+        (:nccreate
+         (ignore-errors (win32:enable-non-client-dpi-scaling ptr))
+         (default))
+        (:paint
+         (multiple-value-bind (x y) (dec32 wparam)
+           (multiple-value-bind (w h) (dec32 lparam)
+             (win32:stretch-di-bits (dc window) x y w h x y w h
+                                    (static-vectors:static-vector-pointer (buffer window))
+                                    (bitmap-info window) 0 #x00CC0020))))
+        (T
+         (default))))))

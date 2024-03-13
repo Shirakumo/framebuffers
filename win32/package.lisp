@@ -61,6 +61,7 @@
    #:get-system-metrics
    #:get-window
    #:invalidate-rect
+   #:load-cursor
    #:peek-message
    #:register-class
    #:unregister-class

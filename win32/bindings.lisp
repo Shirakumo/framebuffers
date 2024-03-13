@@ -468,6 +468,10 @@
   (rect :pointer)
   (erase :boolean))
 
+(cffi:defcfun (load-cursor "LoadCursorW") :pointer
+  (window :pointer)
+  (cursor-name com:wstring))
+
 (cffi:defcfun (peek-message "PeekMessageW") :boolean
   (message :pointer)
   (window :pointer)
@@ -518,8 +522,8 @@
   (window :pointer)
   (cmd-show :int))
 
-(cffi:defcfun (stretch-di-bits"StretchDIBits") :int
-  (window :pointer)
+(cffi:defcfun (stretch-di-bits "StretchDIBits") :int
+  (device :pointer)
   (xdest :int)
   (ydest :int)
   (wdest :int)
@@ -528,6 +532,9 @@
   (ysrc :int)
   (wsrc :int)
   (hsrc :int)
+  (bits :pointer)
+  (bitmapinfo :pointer)
+  (usage :uint)
   (rop :uint32))
 
 (cffi:defcfun (translate-message "TranslateMessage") :boolean

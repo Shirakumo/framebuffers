@@ -246,7 +246,7 @@
            (ignore-errors (win32:enable-non-client-dpi-scaling ptr)))
           (:paint
            (multiple-value-bind (x y) (dec32 wparam)
-             (multiple-value-bind (w h) (dec32 lparam)
+             (multiple-value-bind (w h) (if (= 0 lparam) (values (fb:width window) (fb:height window)) (dec32 lparam))
                (win32:stretch-di-bits (dc window) x y w h x y w h
                                       (static-vectors:static-vector-pointer (buffer window))
                                       (bitmap-info window) 0 #x00CC0020))))

@@ -65,8 +65,13 @@
 ;; (defgeneric (setf cursor-state) (value window))
 ;; (defgeneric cursor-icon (window))
 ;; (defgeneric (setf cursor-icon) (value window))
+;; (defgeneric mouse-location (window))
+;; (defgeneric list-monitors ())
+;; (defgeneric list-modes (monitor))
 ;; (defgeneric monitor (window))
 ;; (defgeneric (setf monitor) (value window))
+;; (defgeneric local-key-string (key window))
+;; (defgeneric content-scale-changed (window xscale yscale))
 ;; IM support
 
 ;;; Backend Internals

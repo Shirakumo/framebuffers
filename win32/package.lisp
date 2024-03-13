@@ -69,6 +69,7 @@
    #:invalidate-rect
    #:load-cursor
    #:map-virtual-key
+   #:msg-wait-for-multiple-objects
    #:peek-message
    #:register-class
    #:unregister-class

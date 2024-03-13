@@ -200,12 +200,29 @@
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   (with-rect (rect x y w h)
     (win32:invalidate-rect (ptr window) rect T)
-    (win32:send-message (ptr window) :paint (enc32 x y) (enc32 w h)))
-  (when sync
     ;; TODO: sync
-    ))
+    (win32:send-message (ptr window) :paint (enc32 x y) (enc32 w h))))
 
-(defmethod fb:process-events ((window window) &key timeout))
+(defmethod fb:process-events ((window window) &key timeout)
+  (cffi:with-foreign-objects ((msg '(:struct win32:message)))
+    (flet ((poll-events ()
+             (loop while (win32:peek-message msg (ptr window) 0 0 :remove)
+                   do (case (win32:message-type msg)
+                        (:quit
+                         (fb:shutdown))
+                        (T
+                         (win32:translate-message msg)
+                         (win32:dispatch-message msg))))))
+      (etypecase timeout
+        (null
+         (poll-events))
+        ((eql T)
+         (loop while (ptr window)
+               do (win32:msg-wait-for-multiple-objects 0 (cffi:null-pointer) NIL (truncate 1000) #xFFFF)
+                  (poll-events)))
+        (real
+         (win32:msg-wait-for-multiple-objects 0 (cffi:null-pointer) NIL (truncate 1000) #xFFFF)
+         (poll-events))))))
 
 (cffi:defcallback handle-event :ssize ((ptr :pointer) (message win32::message-type) (wparam :size) (lparam :size))
   (let ((window (fb-int:ptr-window ptr)))

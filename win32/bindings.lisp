@@ -698,6 +698,13 @@
   (code :uint)
   (map-type :uint))
 
+(cffi:defcfun (msg-wait-for-multiple-objects "MsgWaitForMultipleObjects") :uint32
+  (count :uint32)
+  (handles :pointer)
+  (wait-all :bool)
+  (milliseconds :uint32)
+  (wake-mask :uint32))
+
 (cffi:defcfun (peek-message "PeekMessageW") :boolean
   (message :pointer)
   (window :pointer)

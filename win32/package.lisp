@@ -63,6 +63,7 @@
    #:get-dpi-for-monitor
    #:get-dpi-for-window
    #:get-message-time
+   #:get-key-state
    #:get-system-metrics
    #:get-window
    #:invalidate-rect

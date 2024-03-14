@@ -1,0 +1,456 @@
+<!DOCTYPE html> <html lang="EN"> <head> <meta charset="utf-8"> <title>Framebuffers</title> <style>html body{margin:0 auto 0 auto;padding:20px;max-width:1024px;font-family:sans-serif;font-size:14pt;overflow-y:scroll;}html body a{text-decoration:none;}html body a[href]{color:#0055AA;}html body a[href]:hover{color:#0088EE;}html body pre{background:#FAFAFA;border:1px solid #DDDDDD;padding:0.75em;overflow-x:auto;}html body pre >code a[href]{color:#223388;}article.project h1{font-size:1.7em;}article.project h1,article.project h2,article.project h3,article.project h4,article.project h5,article.project h6{margin:0.2em 0 0.1em 0;text-indent:1em;}article.project >header{text-align:center;}article.project >header img.logo{display:block;margin:auto;max-height:170px;}article.project >header h1{display:inline-block;text-indent:0;font-size:2.5em;}article.project >header .version{vertical-align:bottom;}article.project >header .languages{margin-top:-0.5em;text-transform:capitalize;}article.project >header .description{margin:0;}article.project >header .pages{margin-top:0.5em;font-size:1.2em;text-transform:capitalize;}article.project >header .pages a{display:inline-block;padding:0 0.2em;}article.project >section{margin:1em 0 1em 0;}article.project #index >ul{list-style:none;margin:0;padding:0;}article.project .row label{display:inline-block;min-width:8em;}article.project #system .row{display:flex;}article.project #system #dependencies{display:inline;margin:0;padding:0;}article.project #system #dependencies li{display:inline;padding:0 0.2em;}article.project #system #author label{vertical-align:top;}article.project #system #author ul{display:inline-block;margin:0;padding:0;list-style:none;}article.definition{margin:1em 0 0 0;}article.definition >header h1,article.definition >header h2,article.definition >header h3,article.definition >header h4,article.definition >header h5,article.definition >header h6{text-indent:0;display:inline-block;}article.definition >header ul{display:inline-block;list-style:none;margin:0;padding:0;}article.definition >header ul li{display:inline-block;padding:0 0.2em 0 0;}article.definition >header .visibility{display:none;}article.definition >header .visibility,article.definition >header .type{text-transform:lowercase;}article.definition >header .source-link{visibility:hidden;float:right;}article.definition >header .source-link:after{visibility:visible;content:"[SRC]";}article.definition .docstring{margin:0 0 0 1em;}article.definition .docstring pre{font-size:0.8em;white-space:pre-wrap;}.definition.package >header ul.nicknames{display:inline-block;list-style:none;margin:0;padding:0 0 0 1em;}.definition.package >header ul.nicknames li{display:inline;}.definition.package >header ul.nicknames:before{content:"(";}.definition.package >header ul.nicknames:after{content:")";}.definition.package ul.definitions{margin:0;list-style:none;padding:0 0 0 0.5em;}.definition.callable >header .name:before,.definition.type >header .name:before{content:"(";font-weight:normal;}.definition.callable >header .arguments:after,.definition.type >header .arguments:after{content:")";}.definition.callable >header .arguments .arguments:before,.definition.type >header .arguments .arguments:before{content:"(";}.definition.callable >header .arguments .argument,.definition.type >header .arguments .argument{padding:0;}.definition.callable >header .arguments .argument.lambda-list-keyword,.definition.type >header .arguments .argument.lambda-list-keyword{color:#991155;}.definition li>mark{background:none;border-left:0.3em solid #0088EE;padding-left:0.3em;display:block;}</style> </head> <body> <article class="project"> <header>   <h1>framebuffers</h1>   <span class="version">0.0.0</span>    <p class="description"></p>   </header> <section id="documentation"><article><h1 id="about framebuffers">About Framebuffers</h1><p>This library implements direct access to underlying operating system framebuffer mechanisms, including input handling. With it you can create native windows on Windows (win32), Linux (x11/wayland), Mac (Cocoa), and Mezzano, all without relying on external C libraries.</p><h2 id="how to">How To</h2><p>A trivial example is as follows, assuming <code>org.shirakumo.framebuffers</code> is locally nicknamed to <code>fb</code>:</p><code style="display:block" class="code-block" data-language="common lisp"><pre>(fb:with-window (w :size '(800 . 600))</pre></code><p>This will open a window and start its event loop. When the user requests a close, it'll automatically close it and clean it back up again.</p><p>To watch what events are going on, we can add a catchall handler:</p><code style="display:block" class="code-block" data-language="common lisp"><pre>(fb:with-window (w :size '(800 . 600))
+  (T (type &amp;rest args)
+    (print (list* type args))))</pre></code><p>However, this being a framebuffer library, you're likely most interested in how to actually push pixels to the screen. Let's fill the window with a repeating gradient:</p><code style="display:block" class="code-block" data-language="common lisp"><pre>(fb:with-window (w :size '(800 . 600))
+  (fb:window-refreshed ()
+    (fb:do-pixels (buf i x y) w
+      (setf (aref buf (+ 0 i)) (mod x 256))
+      (setf (aref buf (+ 1 i)) (mod y 256))
+      (setf (aref buf (+ 2 i)) 0)
+      (setf (aref buf (+ 3 i)) 255))
+    (fb:swap-buffers w)))</pre></code><p><code><a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ADO-PIXELS" class="xref">do-pixels</a></code> simply iterates over the pixels in the backing <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ABUFFER" class="xref">buffer</a></code>, using an BGRA layout. You can use whatever method you like to fill the buffer with pixel data, and call <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASWAP-BUFFERS" class="xref">swap-buffers</a></code> to display it.</p><p>The API also exposes various functions to manage the window properties and let you handle events that occur. Please refer to the documentation of <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">window</a></code> and <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">event-handler</a></code> for a listing of each.</p><h2 id="supported backends">Supported Backends</h2><p>Currently this library supports the following backends:</p><!-- - Cocoa--><!-- - Mezzano--><ul><li><p>Wayland</p></li><li><p>Win32</p></li><li><p>X11</p></li></ul></article></section>   <section id="system"> <h2>System Information</h2>  <div class="row"> <label for="version">Version:</label> <a id="version">0.0.0</a> </div>   <div class="row"> <label for="dependencies">Dependencies:</label> <ul id="dependencies"><li><a class="external" href="https://Shinmera.github.io/documentation-utils/">documentation-utils</a></li><li><a class="external">trivial-features</a></li><li><a class="external" href="https://shinmera.github.io/trivial-indent/">trivial-indent</a></li><li><a class="external">static-vectors</a></li><li><a class="external">cffi</a></li><li><a class="external" href="https://shinmera.github.io/mmap/">mmap</a></li></ul> </div>   <div class="row" id="author"> <label for="author">Author:</label> <a href="mailto:shinmera@tymoon.eu">Yukari Hafner</a> </div>   <div class="row"> <label for="license">License:</label> <a id="license" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/LICENSE">zlib</a> </div>   <div class="row"> <label for="homepage">Homepage:</label> <a id="homepage" href="https://shirakumo.github.io/framebuffers/">https://shirakumo.github.io/framebuffers/</a> </div>   <div class="row"> <label for="bug-tracker">Bug Tracker:</label> <a id="bug-tracker" href="https://github.com/shirakumo/framebuffers/issues">https://github.com/shirakumo/framebuffers/issues</a> </div>   <div class="row"> <label for="sources">Sources:</label> <a id="sources" href="https://github.com/shirakumo/framebuffers.git">https://github.com/shirakumo/framebuffers.git</a> </div>  </section>    <section id="index"> <h2>Definition Index</h2> <ul> <li> <article class="definition package" id="PACKAGE ORG.SHIRAKUMO.FRAMEBUFFERS"> <header> <h3> <a href="#PACKAGE%20ORG.SHIRAKUMO.FRAMEBUFFERS">ORG.SHIRAKUMO.FRAMEBUFFERS</a> </h3> <ul class="nicknames"></ul>  </header> <div class="docstring"><i>No documentation provided.</i></div> <ul class="definitions"> <li> <article class="definition class" id="CLASS ORG.SHIRAKUMO.FRAMEBUFFERS:EVENT-HANDLER"> <header> <span class="visibility">EXTERNAL</span> <span class="type">CLASS</span> <h4 class="name"> <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER">EVENT-HANDLER</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  </header> <div class="docstring"><pre>Accesses the event handler of the window.
+
+Event callbacks to the window will be delegated to this handler.
+You can change the event handler at any time.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-MOVED" class="xref">WINDOW-MOVED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-RESIZED" class="xref">WINDOW-RESIZED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-REFRESHED" class="xref">WINDOW-REFRESHED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-FOCUSED" class="xref">WINDOW-FOCUSED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-ICONIFIED" class="xref">WINDOW-ICONIFIED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-MAXIMIZED" class="xref">WINDOW-MAXIMIZED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-CLOSED" class="xref">WINDOW-CLOSED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-BUTTON-CHANGED" class="xref">MOUSE-BUTTON-CHANGED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-MOVED" class="xref">MOUSE-MOVED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-ENTERED" class="xref">MOUSE-ENTERED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-SCROLLED" class="xref">MOUSE-SCROLLED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AKEY-CHANGED" class="xref">KEY-CHANGED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASTRING-ENTERED" class="xref">STRING-ENTERED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AFILE-DROPPED" class="xref">FILE-DROPPED</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACONTENT-SCALE-CHANGED" class="xref">CONTENT-SCALE-CHANGED</a></pre></div> </article> </li>  <li> <article class="definition class" id="CLASS ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW"> <header> <span class="visibility">EXTERNAL</span> <span class="type">CLASS</span> <h4 class="name"> <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW">WINDOW</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  </header> <div class="docstring"><pre>Representation of a framebuffer.
+
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWITH-WINDOW" class="xref">WITH-WINDOW</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER</a>
+See <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AOPEN" class="xref">OPEN</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AVALID-P" class="xref">VALID-P</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLOSE-REQUESTED-P" class="xref">CLOSE-REQUESTED-P</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLOSE" class="xref">CLOSE</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWIDTH" class="xref">WIDTH</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AHEIGHT" class="xref">HEIGHT</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASIZE" class="xref">SIZE</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ALOCATION" class="xref">LOCATION</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ATITLE" class="xref">TITLE</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AVISIBLE-P" class="xref">VISIBLE-P</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMAXIMIZED-P" class="xref">MAXIMIZED-P</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AICONIFIED-P" class="xref">ICONIFIED-P</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLIPBOARD-STRING" class="xref">CLIPBOARD-STRING</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACONTENT-SCALE" class="xref">CONTENT-SCALE</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ABUFFER" class="xref">BUFFER</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASWAP-BUFFERS" class="xref">SWAP-BUFFERS</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3APROCESS-EVENTS" class="xref">PROCESS-EVENTS</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AREQUEST-ATTENTION" class="xref">REQUEST-ATTENTION</a></pre></div> </article> </li>  <li> <article class="definition condition" id="CONDITION ORG.SHIRAKUMO.FRAMEBUFFERS:FRAMEBUFFER-ERROR"> <header> <span class="visibility">EXTERNAL</span> <span class="type">CONDITION</span> <h4 class="name"> <a href="#CONDITION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AFRAMEBUFFER-ERROR">FRAMEBUFFER-ERROR</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  </header> <div class="docstring"><pre>Error signalled when a backend fails to perform an operation.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW</a></pre></div> </article> </li>  <li> <article class="definition function callable" id="FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:INIT"> <header> <span class="visibility">EXTERNAL</span> <span class="type">FUNCTION</span> <h4 class="name"> <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AINIT">INIT</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  </header> <div class="docstring"><pre>Initialises the backend.
+
+This will try all available backends until one is found that works. If
+a working one is found, its name is returned. If none is found, an
+error is signalled.
+
+See <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASHUTDOWN" class="xref">SHUTDOWN</a></pre></div> </article> </li>  <li> <article class="definition function callable" id="FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:OPEN"> <header> <span class="visibility">EXTERNAL</span> <span class="type">FUNCTION</span> <h4 class="name"> <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AOPEN">OPEN</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument lambda-list-keyword">&amp;REST</li>    <li class="argument">ARGS</li>    <li class="argument lambda-list-keyword">&amp;KEY</li>    <li class="argument">SIZE</li>    <li class="argument">LOCATION</li>    <li class="argument">TITLE</li>    <li class="argument">VISIBLE-P</li>    <li class="argument lambda-list-keyword">&amp;ALLOW-OTHER-KEYS</li>  </ul>  </header> <div class="docstring"><pre>Creates a new framebuffer window.
+
+This implicitly calls INIT if it hasn't been called yet.
+If successful returns a new WINDOW instance suitable for the selected
+backend.
+
+The window will have the following default properties unless
+customised:
+
+  EVENT-HANDLER   --- EVENT-HANDLER
+  SIZE            --- (NIL . NIL)          Fills the screen
+  LOCATION        --- (NIL . NIL)          Centers on screen
+  TITLE           --- &quot;Framebuffer&quot;
+  VISIBLE-P       --- T
+  MAXIMIZED-P     --- NIL
+  ICONIFIED-P     --- NIL
+  MINIMUM-SIZE    --- (1 . 1)
+  MAXIMUM-SIZE    --- (NIL . NIL)
+  FOCUSED-P       --- T
+  BORDERLESS-P    --- NIL
+  ALWAYS-ON-TOP-P --- NIL
+  FULLSCREEN-P    --- NIL
+  RESIZABLE-P     --- T
+  FLOATING-P      --- NIL
+  ICON            --- NIL
+  CURSOR-STATE    --- :NORMAL
+  CURSOR-ICON     --- :POINTER
+
+See <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AINIT" class="xref">INIT</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWITH-WINDOW" class="xref">WITH-WINDOW</a></pre></div> </article> </li>  <li> <article class="definition function callable" id="FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:SHUTDOWN"> <header> <span class="visibility">EXTERNAL</span> <span class="type">FUNCTION</span> <h4 class="name"> <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASHUTDOWN">SHUTDOWN</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  </header> <div class="docstring"><pre>Shuts the backend down (if any).
+
+This will also close all windows that are still open.
+
+See <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AINIT" class="xref">INIT</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:BUFFER"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ABUFFER">BUFFER</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L24">Source</a>  </header> <div class="docstring"><pre>Returns the framebuffer contents as an (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (*))
+
+The framebuffer is guaranteed to have a length of (* 4 WIDTH HEIGHT),
+with the pixels stored in row(width)-major order. 
+
+Each pixel is stored as a quadruplet of (UNSIGNED-BYTE 8) values, in
+the order of Blue Green Red Alpha.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:CLIPBOARD-STRING"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLIPBOARD-STRING">CLIPBOARD-STRING</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L21">Source</a>  </header> <div class="docstring"><pre>Accesses the clipboard contents.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF CLIPBOARD-STRING)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20CLIPBOARD-STRING%29">(SETF CLIPBOARD-STRING)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">STRING</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L22">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:CLOSE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLOSE">CLOSE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L5">Source</a>  </header> <div class="docstring"><pre>Closes and deallocates the window permanently.
+
+After this the window will no longer be valid and cannot be used
+further.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AVALID-P" class="xref">VALID-P</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:CLOSE-REQUESTED-P"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLOSE-REQUESTED-P">CLOSE-REQUESTED-P</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L6">Source</a>  </header> <div class="docstring"><pre>Accesses whether the user has requested a close of the window.
+
+You should set this to NIL again to avoid an automatic closure of the
+window.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF CLOSE-REQUESTED-P)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20CLOSE-REQUESTED-P%29">(SETF CLOSE-REQUESTED-P)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NEW-VALUE</li>    <li class="argument">OBJECT</li>  </ul>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:CONTENT-SCALE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACONTENT-SCALE">CONTENT-SCALE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L23">Source</a>  </header> <div class="docstring"><pre>Returns the content scaling factor the OS reports for the window as a (XSCALE . YSCALE) cons.
+
+Ideally you should scale your window contents by these factors for
+optimal DPI-aware display.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:CONTENT-SCALE-CHANGED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACONTENT-SCALE-CHANGED">CONTENT-SCALE-CHANGED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>    <li class="argument">XSCALE</li>    <li class="argument">YSCALE</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L44">Source</a>  </header> <div class="docstring"><pre>Callback for when the desired content-scale of the window has changed.
+
+This can occur due to a monitor reconfiguration or the window being
+moved to another monitor with different requirements.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACONTENT-SCALE" class="xref">CONTENT-SCALE</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:EVENT-HANDLER"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER">EVENT-HANDLER</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">OBJECT</li>  </ul>  </header> <div class="docstring"><pre>Accesses the event handler for the window.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF EVENT-HANDLER)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20EVENT-HANDLER%29">(SETF EVENT-HANDLER)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NEW-VALUE</li>    <li class="argument">OBJECT</li>  </ul>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:FILE-DROPPED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AFILE-DROPPED">FILE-DROPPED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">PATHS</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L43">Source</a>  </header> <div class="docstring"><pre>Callback for when one or more files have been dragged and dropped onto the window.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:HEIGHT"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AHEIGHT">HEIGHT</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L8">Source</a>  </header> <div class="docstring"><pre>Returns the height of the window in pixels.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:ICONIFIED-P"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AICONIFIED-P">ICONIFIED-P</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L19">Source</a>  </header> <div class="docstring"><pre>Accesses whether the window should be iconified/minimized or not.
+
+[Wayland] The window cannot be un-minimized programmatically. Trying
+          to do so will simply be a no-op.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF ICONIFIED-P)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20ICONIFIED-P%29">(SETF ICONIFIED-P)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">STATE</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L20">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:KEY-CHANGED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AKEY-CHANGED">KEY-CHANGED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">KEY</li>    <li class="argument">SCAN-CODE</li>    <li class="argument">ACTION</li>    <li class="argument">MODIFIERS</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L41">Source</a>  </header> <div class="docstring"><pre>Callback for when a key's state has changed.
+
+KEY is a keyword description of the ANSI-US label of the key that was
+pressed, or NIL if no description is known. In addition to the basic
+alphanumerics, this library also defines the following key names:
+
+  :F1
+  :F2
+  :F3
+  :F4
+  :F5
+  :F6
+  :F7
+  :F8
+  :F9
+  :F10
+  :F11
+  :F12
+  :F13
+  :F14
+  :F15
+  :F16
+  :F17
+  :F18
+  :F19
+  :F20
+  :F21
+  :F22
+  :F23
+  :F24
+  :KP-7
+  :KP-8
+  :KP-9
+  :KP-4
+  :KP-5
+  :KP-6
+  :KP-1
+  :KP-2
+  :KP-3
+  :KP-0
+  :KP-SUBTRACT
+  :KP-ADD
+  :KP-DECIMAL
+  :KP-EQUAL
+  :KP-ENTER
+  :KP-DIVIDE
+  :KP-MULTIPLY
+  :LEFT-ALT
+  :LEFT-BRACKET
+  :LEFT-CONTROL
+  :LEFT-SHIFT
+  :LEFT-SUPER
+  :RIGHT-ALT
+  :RIGHT-BRACKET
+  :RIGHT-CONTROL
+  :RIGHT-SHIFT
+  :RIGHT-SUPER
+  :APOSTROPHE
+  :BACKSLASH
+  :BACKSPACE
+  :CAPS-LOCK
+  :COMMA
+  :DELETE
+  :DOWN
+  :END
+  :ENTER
+  :EQUAL
+  :ESCAPE
+  :GRAVE-ACCENT
+  :HOME
+  :INSERT
+  :LEFT
+  :MENU
+  :MINUS
+  :NUM-LOCK
+  :PAGE-DOWN
+  :PAGE-UP
+  :PAUSE
+  :PERIOD
+  :PRINT-SCREEN
+  :RIGHT
+  :SCROLL-LOCK
+  :SEMICOLON
+  :SLASH
+  :SPACE
+  :TAB
+  :UP
+  :WORLD-2
+
+SCAN-CODE is the internal integer code of the key that was pressed.
+
+ACTION may be one of:
+  :PRESS   --- The key is now held down
+  :RELEASE --- The key is no longer held down
+  :REPEAT  --- The key is still left down and is being repeated by the
+               system
+
+MODIFIERS is a set of the following modifiers that wer active at the
+time:
+  :CONTROL
+  :ALT
+  :SHIFT
+  :SUPER
+  :HYPER
+  :CAPS-LOCK
+  :NUM-LOCK
+  :SCROLL-LOCK
+
+Note that you should not use this function to process textual input,
+as it is not aware of keyboard layout translation mechanisms. Use
+STRING-ENTERED instead for such purposes.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASTRING-ENTERED" class="xref">STRING-ENTERED</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:LOCATION"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ALOCATION">LOCATION</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L11">Source</a>  </header> <div class="docstring"><pre>Accesses the location of the window as a (X . Y) cons in pixels.
+
+[Wayland] The window location cannot be accessed and will simply
+          return (0 . 0) always.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF LOCATION)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20LOCATION%29">(SETF LOCATION)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">LOCATION</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L12">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:MAXIMIZED-P"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMAXIMIZED-P">MAXIMIZED-P</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L17">Source</a>  </header> <div class="docstring"><pre>Accesses whether the window should be maximized or not.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF MAXIMIZED-P)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20MAXIMIZED-P%29">(SETF MAXIMIZED-P)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">STATE</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L18">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:MOUSE-BUTTON-CHANGED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-BUTTON-CHANGED">MOUSE-BUTTON-CHANGED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">BUTTON</li>    <li class="argument">ACTION</li>    <li class="argument">MODIFIERS</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L37">Source</a>  </header> <div class="docstring"><pre>Callback for when a mouse button has changed.
+
+BUTTON may be one of:
+  :LEFT   --- The left mouse button
+  :RIGHT  --- The right mouse button
+  :MIDDLE --- The middle/scroll wheel mouse button
+  integer --- An extra button identified by its number
+
+ACTION may be one of:
+  :PRESS        --- The button is now held down
+  :RELEASE      --- The button is no longer held down
+  :DOUBLE-CLICK --- The button has been clicked twice in succession
+
+MODIFIERS is a set of the following modifiers that wer active at the
+time:
+  :CONTROL
+  :ALT
+  :SHIFT
+  :SUPER
+  :HYPER
+  :CAPS-LOCK
+  :NUM-LOCK
+  :SCROLL-LOCK
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:MOUSE-ENTERED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-ENTERED">MOUSE-ENTERED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">ENTERED-P</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L39">Source</a>  </header> <div class="docstring"><pre>Callback for when the mouse cursor has entered or left the window.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:MOUSE-MOVED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-MOVED">MOUSE-MOVED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">XPOS</li>    <li class="argument">YPOS</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L38">Source</a>  </header> <div class="docstring"><pre>Callback for when the mouse cursor has moved over the window.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:MOUSE-SCROLLED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMOUSE-SCROLLED">MOUSE-SCROLLED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">XOFFSET</li>    <li class="argument">YOFFSET</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L40">Source</a>  </header> <div class="docstring"><pre>Callback for when the mouse scroll wheel has moved.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:PROCESS-EVENTS"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3APROCESS-EVENTS">PROCESS-EVENTS</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>    <li class="argument lambda-list-keyword">&amp;KEY</li>    <li class="argument">TIMEOUT</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L26">Source</a>  </header> <div class="docstring"><pre>Processes pending events for the window.
+
+This will cause the event handler functions to be invoked for any
+pending events that may be queued for the window.
+
+TIMEOUT may be one of the following:
+  NIL  --- Process only immediately pending events.
+  T    --- Process events in a loop until the window is closed or
+           CLOSE-REQUESTED-P is true.
+  REAL --- A real number representing the maximum number of seconds to
+           wait for events to arrive. If there are pending events
+           already this option is equivalent to NIL.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:REQUEST-ATTENTION"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AREQUEST-ATTENTION">REQUEST-ATTENTION</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L27">Source</a>  </header> <div class="docstring"><pre>Request the user to pay attention to the window.
+
+This usually makes the window or its icon representation flash in some
+way.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:SIZE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASIZE">SIZE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L9">Source</a>  </header> <div class="docstring"><pre>Accesses the size of the window as a (W . H) cons in pixels.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF SIZE)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20SIZE%29">(SETF SIZE)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">SIZE</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L10">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:STRING-ENTERED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASTRING-ENTERED">STRING-ENTERED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">STRING</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L42">Source</a>  </header> <div class="docstring"><pre>Callback for when some text has been entered into the window.
+
+This text has been properly processed by whatever keyboard layout
+translation mechanisms or input method translations may be
+applicable.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:SWAP-BUFFERS"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASWAP-BUFFERS">SWAP-BUFFERS</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>    <li class="argument lambda-list-keyword">&amp;KEY</li>    <li class="argument">X</li>    <li class="argument">Y</li>    <li class="argument">W</li>    <li class="argument">H</li>    <li class="argument">SYNC</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L25">Source</a>  </header> <div class="docstring"><pre>Swaps the framebuffer to display its contents to the user.
+
+X, Y, W, H may be used to designate a sub-region of the framebuffer to
+swap for more efficient updates.
+If SYNC is T, the function will block until the swap has flushed
+through. Otherwise it may return immediately before the contents are
+visible.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:TITLE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ATITLE">TITLE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L13">Source</a>  </header> <div class="docstring"><pre>Accesses the title of the window.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF TITLE)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20TITLE%29">(SETF TITLE)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">TITLE</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L14">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:VALID-P"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AVALID-P">VALID-P</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L4">Source</a>  </header> <div class="docstring"><pre>Returns whether the window is usable or not.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLOSE" class="xref">CLOSE</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:VISIBLE-P"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AVISIBLE-P">VISIBLE-P</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L15">Source</a>  </header> <div class="docstring"><pre>Accesses whether the window is visible at all.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF VISIBLE-P)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20VISIBLE-P%29">(SETF VISIBLE-P)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">STATE</li>    <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L16">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WIDTH"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWIDTH">WIDTH</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">WINDOW</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L7">Source</a>  </header> <div class="docstring"><pre>Returns the width of the window in pixels.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW">WINDOW</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">CONDITION</li>  </ul>  </header> <div class="docstring"><pre>Accesses the window associated with the object.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a>
+See <a href="#CONDITION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AFRAMEBUFFER-ERROR" class="xref">FRAMEBUFFER-ERROR (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:(SETF WINDOW)"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3A%28SETF%20WINDOW%29">(SETF WINDOW)</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NEW-VALUE</li>    <li class="argument">OBJECT</li>  </ul>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-CLOSED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-CLOSED">WINDOW-CLOSED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L36">Source</a>  </header> <div class="docstring"><pre>Callback for when the window is requested to be closed by the user.
+
+On call CLOSE-REQUESTED-P will be set to T. You should set it back to
+NIL if you would like to reject the window close request.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ACLOSE-REQUESTED-P" class="xref">CLOSE-REQUESTED-P</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-FOCUSED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-FOCUSED">WINDOW-FOCUSED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">FOCUSED-P</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L33">Source</a>  </header> <div class="docstring"><pre>Callback for when the window's focus state has changed.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-ICONIFIED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-ICONIFIED">WINDOW-ICONIFIED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">ICONIFIED-P</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L34">Source</a>  </header> <div class="docstring"><pre>Callback for when the window's iconified/minimized status has changed.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AICONIFIED-P" class="xref">ICONIFIED-P</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-MAXIMIZED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-MAXIMIZED">WINDOW-MAXIMIZED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">MAXIMIZED-P</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L35">Source</a>  </header> <div class="docstring"><pre>Callback for when the window's maximized status has changed.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AMAXIMIZED-P" class="xref">MAXIMIZED-P</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-MOVED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-MOVED">WINDOW-MOVED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">XPOS</li>    <li class="argument">YPOS</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L30">Source</a>  </header> <div class="docstring"><pre>Callback for when the window has moved on screen.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ALOCATION" class="xref">LOCATION</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-REFRESHED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-REFRESHED">WINDOW-REFRESHED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L32">Source</a>  </header> <div class="docstring"><pre>Callback for when the window has been damaged in some way and should have its contents redrawn.
+
+You should probably invoke SWAP-BUFFERS from this.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASWAP-BUFFERS" class="xref">SWAP-BUFFERS</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WINDOW-RESIZED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW-RESIZED">WINDOW-RESIZED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">EVENT-HANDLER</li>    <li class="argument">WIDTH</li>    <li class="argument">HEIGHT</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/framebuffers/blob/26a320e9054bf2ef0095839a057d031786f1da35/protocol.lisp#L31">Source</a>  </header> <div class="docstring"><pre>Callback for when the window and framebuffer have been resized.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ASIZE" class="xref">SIZE</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:DO-PIXELS"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3ADO-PIXELS">DO-PIXELS</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <ul class="arguments"> <li class="argument">BUF</li>  <li class="argument">I</li>  <li class="argument">X</li>  <li class="argument">Y</li> </ul>    <li class="argument">WINDOW</li>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">BODY</li>  </ul>  </header> <div class="docstring"><pre>Iterate over the pixels in the buffer.
+
+BUF is bound to the (USIGNED-BYTE 8) array
+I   is bound to the pixel starting index
+X   is bound to the pixel's X coordinate
+Y   is bound to the pixel's Y coordinate
+
+WINDOW should be the framebuffer window to iterate over.
+
+BODY are forms to be executed for each pixel.
+
+Each pixel is stored as a quadruplet of (UNSIGNED-BYTE 8) values, in
+the order of Blue Green Red Alpha.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.FRAMEBUFFERS:WITH-WINDOW"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWITH-WINDOW">WITH-WINDOW</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <ul class="arguments"> <li class="argument">WINDOW</li>  <li class="argument lambda-list-keyword">&amp;REST</li>  <li class="argument">INITARGS</li> </ul>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">HANDLERS</li>  </ul>  </header> <div class="docstring"><pre>Convenience function to establish a window and event loop.
+
+WINDOW is bound to the window instance.
+INITARGS are argument spassed to OPEN.
+HANDLERS should be event handler bodies:
+
+  HANDLER    ::= (event-type (arg...) . body)
+               | (T (event-name arg...) . body)
+  EVENT-TYPE --- The name of an event-handler function
+  EVENT-NMAE --- Variable bound to the name of the event type called.
+  ARG        --- Varibale bound to the respective event type argument.
+  BODY       --- Body forms to execute when the event is handled.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AWINDOW" class="xref">WINDOW (type)</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.FRAMEBUFFERS%3AEVENT-HANDLER" class="xref">EVENT-HANDLER (type)</a></pre></div> </article> </li> </ul> </article> </li> </ul> </section>  </article> <script>window.addEventListener("DOMContentLoaded", function(){
+    var unmarkElement = function(el){
+        if(el.tagName === "mark" || el.tagName === "MARK"){
+            [].forEach.call(el.childNodes, function(child){
+                el.parentNode.insertBefore(child, el);
+            });
+            el.parentNode.removeChild(el);
+        }else if(el.parentNode.tagName === "mark"){
+            return unmarkElement(el.parentNode);
+        }
+        return null;
+    }
+
+    var unmarkAll = function(root){
+        root = root || document;
+        [].forEach.call(root.querySelectorAll("mark"), unmarkElement);
+    }
+    
+    var markElement = function(el){
+        if(el.parentNode.tagName === "mark" || el.parentNode.tagName === "MARK"){
+            return el.parentNode;
+        } else {
+            unmarkAll();
+            var marked = document.createElement("mark");
+            el.parentNode.insertBefore(marked, el);
+            marked.appendChild(el);
+            return marked;
+        }
+    }
+
+    var markFragmented = function(){
+        if(window.location.hash){
+            var el = document.getElementById(decodeURIComponent(window.location.hash.substr(1)));
+            if(el) markElement(el);
+        }
+    }
+
+    var registerXrefLink = function(link){
+        var el = document.getElementById(decodeURIComponent(link.getAttribute("href").substr(1)));
+        if(el){
+            link.addEventListener("click", function(){
+                markElement(el);
+            });
+        }
+    }
+
+    var registerXrefLinks = function(root){
+        root = root || document;
+        [].forEach.call(root.querySelectorAll("a.xref"), registerXrefLink);
+    }
+
+    markFragmented();
+    registerXrefLinks();
+}); </script> </body> </html> 

@@ -229,7 +229,7 @@
         (null
          (poll-events))
         ((eql T)
-         (loop while (ptr window)
+         (loop while (and (ptr window) (not (close-requested-p window)))
                do (win32:msg-wait-for-multiple-objects 0 (cffi:null-pointer) NIL (truncate 1000) #xFFFF)
                   (poll-events)))
         (real

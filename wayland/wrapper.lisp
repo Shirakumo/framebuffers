@@ -296,7 +296,7 @@
                   (wl:display-flush display)
                   (poll (truncate (* 1000 timeout))))))
           ((eql T)
-           (loop while (display window)
+           (loop while (and (display window) (not (close-requested-p window)))
                  do (loop while (/= 0 (wl:display-prepare-read display))
                           do (wl:display-dispatch-pending display))
                     (poll 1000))))))))

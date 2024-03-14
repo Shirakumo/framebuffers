@@ -252,6 +252,9 @@
                     do (process-events ,window :timeout T))
            (close ,window))))))
 
+(trivial-indent:define-indentation with-window
+    (4 &rest (&whole 2 6 &body)))
+
 (defun resize-buffer (w h &optional old-buffer ow oh)
   (let ((buffer (static-vectors:make-static-vector (* 4 w h) :initial-element 0)))
     (when old-buffer

@@ -1,0 +1,45 @@
+# About Framebuffers
+This library implements direct access to underlying operating system framebuffer mechanisms, including input handling. With it you can create native windows on Windows (win32), Linux (x11/wayland), Mac (Cocoa), and Mezzano, all without relying on external C libraries.
+
+## How To
+A trivial example is as follows, assuming ``org.shirakumo.framebuffers`` is locally nicknamed to ``fb``:
+
+:: common lisp
+(fb:with-window (w :size '(800 . 600))
+::
+
+This will open a window and start its event loop. When the user requests a close, it'll automatically close it and clean it back up again.
+
+To watch what events are going on, we can add a catchall handler:
+
+:: common lisp
+(fb:with-window (w :size '(800 . 600))
+  (T (type &rest args)
+    (print (list* type args))))
+::
+
+However, this being a framebuffer library, you're likely most interested in how to actually push pixels to the screen. Let's fill the window with a repeating gradient:
+
+:: common lisp
+(fb:with-window (w :size '(800 . 600))
+  (fb:window-refreshed ()
+    (fb:do-pixels (buf i x y) w
+      (setf (aref buf (+ 0 i)) (mod x 256))
+      (setf (aref buf (+ 1 i)) (mod y 256))
+      (setf (aref buf (+ 2 i)) 0)
+      (setf (aref buf (+ 3 i)) 255))
+    (fb:swap-buffers w)))
+::
+
+``do-pixels`` simply iterates over the pixels in the backing ``buffer``, using an BGRA layout. You can use whatever method you like to fill the buffer with pixel data, and call ``swap-buffers`` to display it.
+
+The API also exposes various functions to manage the window properties and let you handle events that occur. Please refer to the documentation of ``window`` and ``event-handler`` for a listing of each.
+
+## Supported Backends
+Currently this library supports the following backends:
+
+; - Cocoa
+; - Mezzano
+- Wayland
+- Win32
+- X11

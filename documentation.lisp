@@ -381,7 +381,91 @@ See WINDOW (type)")
     "Callback for when a key's state has changed.
 
 KEY is a keyword description of the ANSI-US label of the key that was
-pressed, or NIL if no description is known.
+pressed, or NIL if no description is known. In addition to the basic
+alphanumerics, this library also defines the following key names:
+
+  :F1
+  :F2
+  :F3
+  :F4
+  :F5
+  :F6
+  :F7
+  :F8
+  :F9
+  :F10
+  :F11
+  :F12
+  :F13
+  :F14
+  :F15
+  :F16
+  :F17
+  :F18
+  :F19
+  :F20
+  :F21
+  :F22
+  :F23
+  :F24
+  :KP-7
+  :KP-8
+  :KP-9
+  :KP-4
+  :KP-5
+  :KP-6
+  :KP-1
+  :KP-2
+  :KP-3
+  :KP-0
+  :KP-SUBTRACT
+  :KP-ADD
+  :KP-DECIMAL
+  :KP-EQUAL
+  :KP-ENTER
+  :KP-DIVIDE
+  :KP-MULTIPLY
+  :LEFT-ALT
+  :LEFT-BRACKET
+  :LEFT-CONTROL
+  :LEFT-SHIFT
+  :LEFT-SUPER
+  :RIGHT-ALT
+  :RIGHT-BRACKET
+  :RIGHT-CONTROL
+  :RIGHT-SHIFT
+  :RIGHT-SUPER
+  :APOSTROPHE
+  :BACKSLASH
+  :BACKSPACE
+  :CAPS-LOCK
+  :COMMA
+  :DELETE
+  :DOWN
+  :END
+  :ENTER
+  :EQUAL
+  :ESCAPE
+  :GRAVE-ACCENT
+  :HOME
+  :INSERT
+  :LEFT
+  :MENU
+  :MINUS
+  :NUM-LOCK
+  :PAGE-DOWN
+  :PAGE-UP
+  :PAUSE
+  :PERIOD
+  :PRINT-SCREEN
+  :RIGHT
+  :SCROLL-LOCK
+  :SEMICOLON
+  :SLASH
+  :SPACE
+  :TAB
+  :UP
+  :WORLD-2
 
 SCAN-CODE is the internal integer code of the key that was pressed.
 

@@ -13,7 +13,7 @@
                (:file "common")
                (:file "documentation")
                (:module "xlib"
-                :if-feature (:or :bsd :linux)
+                :if-feature :unix
                 :components ((:file "package")
                              (:file "bindings")
                              (:file "keycodes")
@@ -33,15 +33,24 @@
                #++
                (:module "cocoa"
                 :if-feature :darwin
-                :components ((:file "package"))))
+                :components ((:file "package")
+                             (:file "bindings")
+                             (:file "keycodes")
+                             (:file "wrapper")))
+               #++
+               (:module "mezzano"
+                :if-feature :mezzano
+                :components ((:file "package")
+                             (:file "keycodes")
+                             (:file "wrapper"))))
   :depends-on (:documentation-utils
-               :float-features
-               :static-vectors
                :trivial-features
                :trivial-indent
-               :cffi
+               (:feature (:not :mezzano) :static-vectors)
+               (:feature (:not :mezzano) :cffi)
+               (:feature :darwin :float-features)
                (:feature :windows :com-on)
-               (:feature :linux :mmap)))
+               (:feature :unix :mmap)))
 
 (asdf:defsystem framebuffers/test
   :components ((:module "test"

@@ -5,6 +5,7 @@
   (:export
    #:user32
    #:shcore
+   #:key
    #:window-class
    #:window-class-style
    #:window-class-proc

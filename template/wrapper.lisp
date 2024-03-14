@@ -27,31 +27,31 @@
 
 (defmethod fb:size ((window window)))
 
-(defmethod (setf fb:size) ((window size) window))
+(defmethod (setf fb:size) (size (window window)))
 
 (defmethod fb:location ((window window)))
 
-(defmethod (setf fb:location) ((window location) window))
+(defmethod (setf fb:location) (location (window window)))
 
 (defmethod fb:title ((window window)))
 
-(defmethod (setf fb:title) ((window title) window))
+(defmethod (setf fb:title) (title (window window)))
 
 (defmethod fb:visible-p ((window window)))
 
-(defmethod (setf fb:visible-p) ((window state) window))
+(defmethod (setf fb:visible-p) (state (window window)))
 
 (defmethod fb:maximized-p ((window window)))
 
-(defmethod (setf fb:maximized-p) ((window state) window))
+(defmethod (setf fb:maximized-p) (state (window window)))
 
 (defmethod fb:iconified-p ((window window)))
 
-(defmethod (setf fb:iconified-p) ((window state) window))
+(defmethod (setf fb:iconified-p) (state (window window)))
 
 (defmethod fb:clipboard-string ((window window)))
 
-(defmethod (setf fb:clipboard-string) ((window string) window))
+(defmethod (setf fb:clipboard-string) (string (window window)))
 
 (defmethod fb:content-scale ((window window)))
 

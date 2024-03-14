@@ -373,8 +373,9 @@
            (return 0))
           (:dpichanged
            (multiple-value-bind (x y) (dec32 wparam)
-             (setf (car (content-scale window)) x)
-             (setf (cdr (content-scale window)) y)))
+             (setf (car (content-scale window)) (/ x 96))
+             (setf (cdr (content-scale window)) (/ y 96))
+             (fb:content-scale-changed window (/ x 96) (/ y 96))))
           (:dropfiles
            ;; TODO: implement dnd
            )))

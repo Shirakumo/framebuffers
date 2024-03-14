@@ -41,6 +41,7 @@
 (defgeneric key-changed (event-handler key scan-code action modifiers))
 (defgeneric string-entered (event-handler string))
 (defgeneric file-dropped (event-handler paths))
+(defgeneric content-scale-changed (window xscale yscale))
 
 ;;; TODO:
 ;; (defgeneric minimum-size (window))
@@ -71,7 +72,6 @@
 ;; (defgeneric monitor (window))
 ;; (defgeneric (setf monitor) (value window))
 ;; (defgeneric local-key-string (key window))
-;; (defgeneric content-scale-changed (window xscale yscale))
 ;; IM support
 
 ;;; Backend Internals

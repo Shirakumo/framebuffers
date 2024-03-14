@@ -40,7 +40,8 @@
    #:mouse-scrolled
    #:key-changed
    #:string-entered
-   #:file-dropped))
+   #:file-dropped
+   #:content-scale-changed))
 
 (defpackage #:org.shirakumo.framebuffers.int
   (:use #:cl #:org.shirakumo.framebuffers)

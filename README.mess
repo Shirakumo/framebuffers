@@ -35,6 +35,28 @@ However, this being a framebuffer library, you're likely most interested in how 
 
 The API also exposes various functions to manage the window properties and let you handle events that occur. Please refer to the documentation of ``window`` and ``event-handler`` for a listing of each.
 
+## Controlling the Event Loop
+The previously used ``with-window`` macro uses a dynamically established event handler to let you conveniently create an event loop. However, for larger projects you'll usually want a more decentralised code structure, in which case you'll instead want to manually manage the loop and how events are handled. To do so, you'll first want to define your own ``event-handler`` class, and methods for the events you care about:
+
+:: common lisp
+(defclass event-handler (fb:event-handler) ())
+
+(defmethod fb:key-changed ((handler event-handler) key scan-code modifiers)
+  (print key))
+::
+
+Then when you create your window using ``open``, pass an instance of your event handler as an initarg.
+
+:: common lisp
+(fb:open :event-handler (make-instance 'event-handler))
+::
+
+Alternatively you can set it later using the ``event-handler`` accessor. The ``window`` object returned by ``open`` is specific to the type of backend used, which is why you must use an ``event-handler`` subclass to specialise methods on, instead.
+
+In order to retrieve the associated ``window`` for the handler within a callback method, simply use the ``window`` accessor function.
+
+Once you have your window instance, you must periodically call ``process-events`` on it in order to handle whatever has been queued for it. ``process-events`` also has a couple of options to more efficiently wait for events in a loop.
+
 ## Supported Backends
 Currently this library supports the following backends:
 

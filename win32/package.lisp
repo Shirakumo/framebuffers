@@ -60,6 +60,7 @@
    #:dispatch-message
    #:enable-non-client-dpi-scaling
    #:enum-display-settings
+   #:flash-window
    #:get-dc
    #:get-device-caps
    #:get-dpi-for-monitor
@@ -83,6 +84,7 @@
    #:set-process-dpi-awareness
    #:set-window
    #:set-window-pos
+   #:set-window-text
    #:show-window
    #:stretch-di-bits
    #:translate-message

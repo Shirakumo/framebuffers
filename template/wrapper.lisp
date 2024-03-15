@@ -1,6 +1,6 @@
 (in-package #:org.shirakumo.framebuffers.BACKEND)
 
-(pushnew :BACKEND sb-int:*available-backends*)
+(pushnew :BACKEND fb-int:*available-backends*)
 
 (define-condition BACKEND-error (fb:framebuffer-error)
   ()

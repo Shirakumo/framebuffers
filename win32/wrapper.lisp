@@ -1,6 +1,6 @@
 (in-package #:org.shirakumo.framebuffers.win32)
 
-(pushnew :win32 sb-int:*available-backends*)
+(pushnew :win32 fb-int:*available-backends*)
 
 (defmacro with-rect ((rect x y w h) &body body)
   `(cffi:with-foreign-objects ((,rect '(:struct win32:rect)))

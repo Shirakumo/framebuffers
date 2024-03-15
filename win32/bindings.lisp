@@ -802,6 +802,10 @@
   (mode-num :uint32)
   (dev-mode :pointer))
 
+(cffi:defcfun (flash-window "FlashWindow") :boolean
+  (window :pointer)
+  (invert :boolean))
+
 (cffi:defcfun (get-dc "GetDC") :pointer
   (window :pointer))
 
@@ -899,6 +903,10 @@
   (cx :int)
   (cy :int)
   (flags :uint))
+
+(cffi:defcfun (set-window-text "SetWindowText") :boolean
+  (window :pointer)
+  (title com:wstring))
 
 (cffi:defcfun (show-window "ShowWindow") :boolean
   (window :pointer)

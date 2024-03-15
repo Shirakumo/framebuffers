@@ -219,7 +219,7 @@
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   (with-rect (rect x y w h)
     (win32:invalidate-rect (ptr window) rect T)
-    (win32:stretch-di-bits (dc window) x y w h x y w h
+    (win32:stretch-di-bits (dc window) x (- h y) w (- h) x y w h
                            (static-vectors:static-vector-pointer (buffer window))
                            (bitmap-info window) 0 #x00CC0020)))
 

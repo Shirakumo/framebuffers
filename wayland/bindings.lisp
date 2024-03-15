@@ -356,15 +356,154 @@
 (cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
 (cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
 (cffi:defcvar (touch-interface "wl_touch_interface") (:struct interface))
-(cffi:defcvar (xdg-toplevel-interface "xdg_toplevel_interface") (:struct interface))
-(cffi:defcvar (xdg-wm-base-interface "xdg_wm_base_interface") (:struct interface))
-(cffi:defcvar (zxdg-decoration-manager-v1-interface "zxdg_decoration_manager_v1_interface") (:struct interface))
-(cffi:defcvar (xdg-activation-v1-interface "xdg_activation_v1_interface") (:struct interface))
-(cffi:defcvar (xdg-activation-token-v1-interface "xdg_activation_token_v1_interface") (:struct interface))
-(cffi:defcvar (zwp-idle-inhibit-manager-v1-interface "zwp_idle_inhibit_manager_v1_interface") (:struct interface))
-(cffi:defcvar (zwp-idle-inhibitor-v1-interface "zwp_idle_inhibitor_v1_interface") (:struct interface))
-(cffi:defcvar (wp-fractional-scale-manager-v1-interface "wp_fractional_scale_manager_v1_interface") (:struct interface))
-(cffi:defcvar (wp-fractional-scale-v1-interface "wp_fractional_scale_v1_interface") (:struct interface))
+
+(defun make-message-types (types)
+  (if types
+      (let ((ptrs (cffi:foreign-alloc :pointer :count (length types))))
+        (loop for i from 0
+              for type in types
+              do (setf (cffi:mem-aref ptrs :pointer i)
+                       (etypecase type
+                         (nil (cffi:null-pointer))
+                         (cffi:foreign-pointer type)
+                         (symbol (or (cffi:get-var-pointer type)
+                                     (error "No such variable ~s" type)))
+                         (string (or (cffi:foreign-symbol-pointer type)
+                                     (error "No such variable ~s" type))))))
+        ptrs)
+      (cffi:null-pointer)))
+
+(defun make-messages (messages)
+  (let ((ptrs (cffi:foreign-alloc '(:struct message) :count (length messages))))
+    (loop for i from 0
+          for (name signature . types) in messages
+          for ptr = (cffi:mem-aptr ptrs '(:struct message) i)
+          do (setf (message-name ptr) name)
+             (setf (message-signature ptr) signature)
+             (setf (message-types ptr) (make-message-types types)))
+    ptrs))
+
+(defun make-interface (name version methods events)
+  (let ((iface (cffi:foreign-alloc '(:struct interface))))
+    (setf (interface-name iface) name)
+    (setf (interface-version iface) version)
+    (setf (interface-event-count iface) (length events))
+    (setf (interface-events iface) (make-messages events))
+    (setf (interface-method-count iface) (length methods))
+    (setf (interface-methods iface) (make-messages methods))
+    iface))
+
+(defvar *interfaces* (make-hash-table :test 'eql))
+
+(defmacro define-interface (sname &body body)
+  (destructuring-bind (&key name (version 1) methods events) body
+      `(progn
+         (defun ,sname ()
+           (or (gethash ',sname *interfaces*)
+               (setf (gethash ',sname *interfaces*)
+                     (make-interface ,name ,version ',methods ',events))))
+
+         (define-symbol-macro ,sname (,sname)))))
+
+(define-interface xdg-activation-interface
+  :name "xdg_activation_v1"
+  :methods (("destroy" "")
+            ("get_activation_token" "n" xdg-activation-token-v1-interface)
+            ("activate" "so" NIL wl-surface-interface)))
+
+(define-interface xdg-activation-token-v1-interface
+  :name "xdg_activation_token_v1"
+  :methods (("set_serial" "uo" NIL wl-seat-interface)
+            ("set_app_id" "s" NIL)
+            ("set_surface" "o" wl-seat-interface)
+            ("commit" "")
+            ("destroy" ""))
+  :events (("done" "s" NIL)))
+
+(define-interface wp-fractional-scale-manager-v1-interface
+  :name "wp_fractional_scale_manager_v1"
+  :methods (("destroy" "")
+            ("get_fractional_scale" "no" wp-fractional-scale-v1-interface wl-surface-interface)))
+
+(define-interface wp-fractional-scale-v1-interface
+  :name "wp_fractional_scale_v1"
+  :methods (("destroy" ""))
+  :events (("preferred_scale" "u" NIL)))
+
+(define-interface zwp-idle-inhibit-manager-v1-interface
+  :name "zwp_idle_inhibit_manager_v1"
+  :methods (("destroy" "")
+            ("create_inhibitor" "no" zwp-idle-inhibitor-v1-interface wl-surface-interface)))
+
+(define-interface zwp-idle-inhibitor-v1-interface
+  :name "zwp_idle_inhibitor_v1"
+  :methods (("destroy" "")))
+
+(define-interface zxdg-decoration-manager-v1-interface
+  :name "zxdg_decoration_manager_v1"
+  :methods (("destroy" "")
+            ("get_toplevel_decoration" "no" zxdg-toplevel-decoration-v1-interface xdg-toplevel-interface)))
+
+(define-interface zxdg-toplevel-decoration-v1-interface
+  :name "zxdg_toplevel_decoration_v1"
+  :methods (("destroy" "")
+            ("set_mode" "u" NIL)
+            ("unset_mode" "")))
+
+(define-interface xdg-wm-base-interface
+  :name "xdg_wm_base"
+  :version 6
+  :methods (("destroy" "")
+            ("create_positioner" "n" xdg-positioner-interface)
+            ("get_xdg_surface" "no" xdg-surface-interface wl-surface-interface)
+            ("pong" "u" NIL))
+  :events (("ping" "u" NIL)))
+
+(define-interface xdg-positioner-interface
+  :name "xdg_positioner"
+  :version 6
+  :methods (("destroy" "")
+            ("set_size" "ii" NIL NIL)
+            ("set_anchor_rect" "iiii" NIL NIL NIL NIL)
+            ("set_anchor" "u" NIL)
+            ("set_gravity" "u" NIL)
+            ("set_constraint_adjustment" "u" NIL)
+            ("set_offset" "ii" NIL NIL)
+            ("set_reactive" "3" NIL NIL NIL)
+            ("set_parent_size" "3ii" NIL NIL NIL)
+            ("set_parent_configure" "3u" NIL NIL NIL)))
+
+(define-interface xdg-surface-interface
+  :name "xdg_surface"
+  :version 6
+  :methods (("destroy" "")
+            ("get_toplevel" "n" xdg-toplevel-interface)
+            ("get_popup" "n?oo" xdg-popup-interface xdg-surface-interface xdg-positioner-interface)
+            ("set_window_geometry" "iiii" NIL NIL NIL NIL)
+            ("ack_configure" "u" NIL))
+  :events (("configure" "u" NIL)))
+
+(define-interface xdg-toplevel-interface
+  :name "xdg_toplevel"
+  :version 6
+  :methods (("destroy" "")
+            ("set_parent" "?o" xdg-toplevel-interface)
+            ("set_title" "s" NIL)
+            ("set_app_id" "s" NIL)
+            ("show_window_menu" "ouii" wl-seat-interface NIL NIL NIL)
+            ("move" "ou" wl-seat-interface NIL)
+            ("resize" "ouu" wl-seat-interface NIL NIL)
+            ("set_max_size" "ii" NIL NIL)
+            ("set_min_size" "ii" NIL NIL)
+            ("set_maximized" "")
+            ("unset_maximized" "")
+            ("set_fullscreen" "?o" wl-output-interface)
+            ("unset_fullscreen" "")
+            ("set_minimized" ""))
+  :events (("configure" "iia" NIL NIL NIL)
+           ("close" "")
+           ("configure_bounds" "4ii" NIL NIL NIL)
+           ("wm_capabilities" "5a" NIL NIL NIL xdg-positioner-interface)))
 
 (cffi:defcenum (xdg-toplevel-state :uint32)
   (:maximized 1)

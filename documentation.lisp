@@ -146,7 +146,8 @@ WINDOW should be the framebuffer window to iterate over.
 BODY are forms to be executed for each pixel.
 
 Each pixel is stored as a quadruplet of (UNSIGNED-BYTE 8) values, in
-the order of Blue Green Red Alpha.
+the order of Blue Green Red Alpha, with the first pixel being in the
+top left corner of the framebuffer, growing in X then Y.
 
 See WINDOW (type)")
   
@@ -236,7 +237,8 @@ See WINDOW (type)")
     "Returns the framebuffer contents as an (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (*))
 
 The framebuffer is guaranteed to have a length of (* 4 WIDTH HEIGHT),
-with the pixels stored in row(width)-major order. 
+with the pixels stored in row(width)-major order and the first pixel
+being in the top-left corner.
 
 Each pixel is stored as a quadruplet of (UNSIGNED-BYTE 8) values, in
 the order of Blue Green Red Alpha.

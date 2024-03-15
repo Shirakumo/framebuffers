@@ -13,23 +13,35 @@
   (:report (lambda (c s) (format s "A Wayland call failed~@[ (~a)~]~@[:~%  ~a~]"
                                  (code c) (message c)))))
 
+(defun try-display (display)
+  (let ((display (wl:display-connect display)))
+    (if (cffi:null-pointer-p display)
+        NIL
+        display)))
+
 (defmethod fb-int:init-backend ((backend (eql :wayland)))
   (unless (cffi:foreign-library-loaded-p 'wl:wayland)
     (cffi:use-foreign-library wl:wayland)
     (cffi:use-foreign-library wl:xkbcommon))
-  (let ((display (wl:display-connect (cffi:null-pointer))))
-    (if (cffi:null-pointer-p display)
-        (error 'wayland-error :message "Failed to connect to Wayland display.")
-        (wl:display-disconnect display))))
+  (let ((display (or (try-display (cffi:null-pointer))
+                     (try-display "wayland-0")
+                     (try-display "wayland-1"))))
+    (if display
+        (wl:display-disconnect display)
+        (error 'wayland-error :message "Failed to connect to Wayland display."))))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :wayland))))
 
-(defmethod fb-int:open-backend ((backend (eql :wayland)) &rest args &key display)
+(defmethod fb-int:open-backend ((backend (eql :wayland)) &rest args &key display &allow-other-keys)
   (remf args :display)
-  (let ((display (wl:display-connect (or display (cffi:null-pointer)))))
-    (if (cffi:null-pointer-p display)
-        (error 'wayland-error :message "Failed to connect to Wayland display.")
-        (apply #'make-instance 'window :display display args))))
+  (let ((display (if display
+                     (try-display display)
+                     (or (try-display (cffi:null-pointer))
+                         (try-display "wayland-0")
+                         (try-display "wayland-1")))))
+    (if display
+        (apply #'make-instance 'window :display display args)
+        (error 'wayland-error :message "Failed to connect to Wayland display."))))
 
 (defclass window (fb:window)
   ((display :initarg :display :initform NIL :accessor display)

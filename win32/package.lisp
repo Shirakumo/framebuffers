@@ -4,6 +4,7 @@
    (#:com #:org.shirakumo.com-on))
   (:export
    #:user32
+   #:gdi32
    #:shcore
    #:key
    #:window-class
@@ -61,16 +62,19 @@
    #:enable-non-client-dpi-scaling
    #:enum-display-settings
    #:flash-window
+   #:get-class-info
    #:get-dc
    #:get-device-caps
    #:get-dpi-for-monitor
    #:get-dpi-for-window
    #:get-message-time
+   #:get-module-handle
    #:get-key-state
    #:get-system-metrics
    #:get-window
    #:invalidate-rect
    #:load-cursor
+   #:load-cursor*
    #:map-virtual-key
    #:monitor-from-window
    #:msg-wait-for-multiple-objects

@@ -1,10 +1,13 @@
 (in-package #:org.shirakumo.framebuffers.win32.cffi)
 
 (cffi:define-foreign-library user32
-  (T (:defaults "user32")))
+  (T (:default "user32")))
 
 (cffi:define-foreign-library shcore
-  (T (:defaults "shcore")))
+  (T (:default "shcore")))
+
+(cffi:define-foreign-library gdi32
+  (T (:default "gdi32")))
 
 (cffi:defcenum monitor-dpi-type
   (:effective-dpi 0)
@@ -219,7 +222,7 @@
   (:pa1 #xfd)
   (:oem-clear #xfe))
 
-(cffi:defcenum (message-type :uint)
+(cffi:defcenum (message-type :uint :allow-undeclared-values T)
   (:null #x0000)
   (:create #x0001)
   (:destroy #x0002)
@@ -634,6 +637,26 @@
   (:convertibleslatemode #x2003)
   (:systemdocked #x2004))
 
+(cffi:defcenum cursor
+  (:arrow 32512)
+  (:ibeam 32513)
+  (:wait 32514)
+  (:cross 32515)
+  (:uparrow 32516)
+  (:size 32640)
+  (:icon 32641)
+  (:sizenwse 32642)
+  (:sizenesw 32643)
+  (:sizewe 32644)
+  (:sizens 32645)
+  (:sizeall 32646)
+  (:no 32648)
+  (:hand 32649)
+  (:appstarting 32650)
+  (:help 32651)
+  (:pin 32671)
+  (:person 32672))
+
 (cffi:defbitfield window-style
   (:overlapped #x00000000)
   (:popup #x80000000)
@@ -784,7 +807,7 @@
 
 (cffi:defcfun (def-window-proc "DefWindowProcW") :size
   (window :pointer)
-  (message :uint)
+  (message message-type)
   (wparameter :size)
   (lparameter :size))
 
@@ -806,6 +829,11 @@
   (window :pointer)
   (invert :boolean))
 
+(cffi:defcfun (get-class-info "GetClassInfoW") :bool
+  (hinstance :pointer)
+  (class-name com:wstring)
+  (class :pointer))
+
 (cffi:defcfun (get-dc "GetDC") :pointer
   (window :pointer))
 
@@ -824,6 +852,9 @@
 
 (cffi:defcfun (get-message-time "GetMessageTime") :long)
 
+(cffi:defcfun (get-module-handle "GetModuleHandleW") :pointer
+  (arg :pointer))
+
 (cffi:defcfun (get-key-state "GetKeyState") :short
   (key key))
 
@@ -841,7 +872,11 @@
 
 (cffi:defcfun (load-cursor "LoadCursorW") :pointer
   (window :pointer)
-  (cursor-name com:wstring))
+  (cursor-name cursor))
+
+(cffi:defcfun (load-cursor* "LoadCursorW") :pointer
+  (window :pointer)
+  (cursor :pointer))
 
 (cffi:defcfun (map-virtual-key "MapVirtualKeyW") :uint
   (code :uint)
@@ -865,7 +900,7 @@
   (message-filter-max :uint)
   (remove-message :uint))
 
-(cffi:defcfun (register-class "RegisterClassW") :int16
+(cffi:defcfun (register-class "RegisterClassW") :uint16
   (class :pointer))
 
 (cffi:defcfun (unregister-class "UnregisterClassW") :bool

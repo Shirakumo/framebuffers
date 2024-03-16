@@ -205,6 +205,9 @@
   (window-focused (event-handler window) focused-p))
 
 (defmethod window-iconified ((window window) iconified-p)
+  (when iconified-p
+    (fill (mouse-states window) 0)
+    (fill (key-states window) 0))
   (window-iconified (event-handler window) iconified-p))
 
 (defmethod window-maximized ((window window) maximized-p)
@@ -248,6 +251,9 @@
 (defmethod file-dropped ((window window) paths)
   (file-dropped (event-handler window) paths))
 
+(defmethod content-scale-changed ((window window) xscale yscale)
+  (content-scale-changed (event-handler window) xscale yscale))
+
 (defmethod window-moved ((handler event-handler) xpos ypos))
 (defmethod window-resized ((handler event-handler) width height))
 (defmethod window-refreshed ((handler event-handler)))
@@ -262,6 +268,7 @@
 (defmethod key-changed ((handler event-handler) key scan-code action modifiers))
 (defmethod string-entered ((handler event-handler) string))
 (defmethod file-dropped ((handler event-handler) paths))
+(defmethod content-scale-changed ((handler event-handler) xscale yscale))
 
 (defclass dynamic-event-handler (event-handler)
   ((handler :initarg :handler :accessor handler)))
@@ -294,6 +301,8 @@
   (funcall (handler handler) 'string-entered (window handler) string))
 (defmethod file-dropped ((handler dynamic-event-handler) paths)
   (funcall (handler handler) 'file-dropped (window handler) paths))
+(defmethod content-scale-changed ((handler dynamic-event-handler) xscale yscale)
+  (funcall (handler handler) 'content-scale-changed (window handler) xscale yscale))
 
 (defmacro with-window ((window &rest initargs) &body handlers)
   (let ((handle (gensym "HANDLE"))

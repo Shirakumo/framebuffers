@@ -84,7 +84,22 @@
 ;;;; Monitor API to allow fullscreening
 ;; (defgeneric fullscreen-on (window))
 ;; (defgeneric (setf fullscreen-on) (value window))
-;; (defgeneric list-monitors ())
-;; (defgeneric list-modes (monitor))
+;; (defun list-monitors ())
+;; (defgeneric modes (monitor))
 ;;
 ;;;; Input Method support
+;;
+;;;; Pen pressure events
+;; (defgeneric pen-moved (event-handler mode xpos ypos pressure xtilt ytilt))
+;;
+;;;; Touch events
+;; (defstruct touchpoint x y x-radius y-radius angle pressure)
+;; (defgeneric touch-started (event-handler points))
+;; (defgeneric touch-moved (event-handler points))
+;; (defgeneric touch-ended (event-handler points))
+;; (defgeneric touch-cancelled (event-handler points))
+;;
+;;;; Timers
+;; (defgeneric set-timer (window delay &optional repeat))
+;; (defgeneric cancel-timer (window timer)
+;; (defgeneric timer-ended (event-handler timer))

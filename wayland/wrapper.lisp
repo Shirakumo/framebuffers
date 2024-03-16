@@ -13,6 +13,9 @@
   (:report (lambda (c s) (format s "A Wayland call failed~@[ (~a)~]~@[:~%  ~a~]"
                                  (code c) (message c)))))
 
+(defun wayland-error (window message &rest args)
+  (error 'wayland-error :window window :message (format NIL "~?" message args)))
+
 (defun try-display (display)
   (let ((display (wl:display-connect display)))
     (if (cffi:null-pointer-p display)
@@ -95,36 +98,32 @@
         (setf (registry window) (wl:display-get-registry display))
         (wl:proxy-add-listener (display window) (display-listener (listener window)) display)
         (wl:proxy-add-listener (registry window) (registry-listener (listener window)) display)
-        (when (= -1 (wl:display-dispatch display))
-          (error 'wayland-error :message "Failed to dispatch display."))
-        (when (= -1 (wl:display-roundtrip display))
-          (error 'wayland-error :message "Failed to roundtrip display."))
-        (when (= -1 (compositor window))
-          (error 'wayland-error :message "Couldn't find a compositor."))
+        (wl:display-dispatch display)
+        (wl:display-roundtrip display)
+        (unless (compositor window)
+          (wayland-error window "Couldn't find a compositor."))
         (setf (xkb-context window) (wl:xkb-context-new 0))
         (let ((size (* w h 4)))
           (multiple-value-bind (addr fd) (mmap:mmap :anonymous :protection '(:read :write) :mmap '(:shared) :size size)
             (setf (mmap-addr window) addr)
-            (setf (mmap-fd window) addr)
+            (setf (mmap-fd window) fd)
             (setf (shm-pool window) (wl:shm-create-pool (shm window) fd size))))
         (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1))
         (setf (surface window) (wl:compositor-create-surface (compositor window)))
         (when (fractional-scale-manager window)
           (setf (fractional-scale window) (wl:wp-fractional-scale-manager-v1-get-fractional-scale (fractional-scale-manager window) (surface window)))
           (wl:proxy-add-listener (fractional-scale-manager window) (wp-fractional-scale-listener (listener window)) (display window)))
-        (setf (shell-surface window) (wl:shell-get-shell-surface (shell window) (surface window)))
-        (when (cffi:null-pointer-p (shell-surface window))
-          (setf (shell-surface window) NIL))
         (when (shell-surface window)
-          (wl:proxy-add-listener (shell-surface window) (shell-surface-listener (listener window)) display)
           (wl:shell-surface-set-title (shell-surface window) title)
           (wl:shell-surface-set-toplevel (shell-surface window)))
+        (when (xdg-toplevel window)
+          (wl:xdg-toplevel-set-title (xdg-toplevel window) (title window)))
         (wl:surface-attach (surface window) (draw-buffer window) 0 0)
         (wl:surface-damage (surface window) 0 0 w h)
         (wl:surface-commit (surface window))
         (setf (car (size window)) w)
         (setf (cdr (size window)) h)
-        (setf (visible-p window) visible-p)))))
+        (setf (fb:visible-p window) visible-p)))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (display window))))
@@ -327,23 +326,9 @@
 (trivial-indent:define-indentation define-listener
     (4 &rest (&whole 2 6 &body)))
 
-(defmacro define-whole-listener (&rest listeners)
-  `(progn 
-     (cffi:defcstruct listener
-       ,@(loop for listener in listeners
-               collect `(,listener (:struct ,listener))))
-
-     ,@(loop for listener in listeners
-             collect `(defun ,listener (struct)
-                        (cffi:foreign-slot-pointer struct '(:struct listener) ',listener)))
-
-     (defun make-listener (&optional (struct (cffi:foreign-alloc '(:struct listener))))
-       ,@(loop for listener in listeners
-               collect `(,(intern (format NIL "~a-~a" (symbol-name 'make) (symbol-name listener))) (,listener struct)))
-       struct)))
-
 (define-listener display-listener
   (error ((display :pointer) (object-id :pointer) (code :uint32) (message :string))
+    (print message)
     (error 'wayland-error :window window :code code :message message))
   
   (delete-id))
@@ -356,7 +341,11 @@
           ((string= interface "wl_shm")
            (setf (shm window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shm-interface) 1)))
           ((string= interface "wl_shell")
-           (setf (shell window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shell-interface) 1)))
+           (setf (shell window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shell-interface) 1))
+           (let ((shell-surface (wl:shell-get-shell-surface (shell window) (surface window))))
+             (unless (cffi:null-pointer-p shell-surface)
+               (setf (shell-surface window) shell-surface)
+               (wl:proxy-add-listener shell-surface (shell-surface-listener (listener window)) (display window)))))
           ((string= interface "wl_seat")
            (unless (seat window)
              (setf (seat window) (wl:registry-bind registry id (cffi:get-var-pointer 'wl:seat-interface) 1))
@@ -545,6 +534,21 @@
       (wl:xdg-activation-v1-activate (activation-manager window) token (surface window))
       (wl:xdg-activation-token-v1-destroy activation-token)
       (setf (activation-token window) NIL))))
+
+(defmacro define-whole-listener (&rest listeners)
+  `(progn 
+     (cffi:defcstruct listener
+       ,@(loop for listener in listeners
+               collect `(,listener (:struct ,listener))))
+
+     ,@(loop for listener in listeners
+             collect `(defun ,listener (struct)
+                        (cffi:foreign-slot-pointer struct '(:struct listener) ',listener)))
+
+     (defun make-listener (&optional (struct (cffi:foreign-alloc '(:struct listener))))
+       ,@(loop for listener in listeners
+               collect `(,(intern (format NIL "~a-~a" (symbol-name 'make) (symbol-name listener))) (,listener struct)))
+       struct)))
 
 (define-whole-listener
   display-listener

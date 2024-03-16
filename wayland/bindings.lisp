@@ -542,7 +542,12 @@
     `(defun ,name (,object ,@(loop for arg in args when (and arg (symbolp arg)) collect arg))
        (proxy-marshal-flags ,object
                             ,name
-                            ,(if interface `(cffi:get-var-pointer ',interface) '(cffi:null-pointer))
+                            ,(cond ((null interface)
+                                    '(cffi:null-pointer))
+                                   ((fboundp interface)
+                                    `(,interface))
+                                   ((symbolp interface)
+                                    `(cffi:get-var-pointer ',interface)))
                             (proxy-get-version ,object)
                             0
                             ,@(loop for arg in args collect (or arg '(cffi:null-pointer)))))))

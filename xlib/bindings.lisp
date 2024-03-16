@@ -116,8 +116,18 @@
   (bits-per-pixel :int)
   (scanline-pad :int))
 
+(cffi:defbitfield size-hint-flags
+  (:position 4)
+  :size
+  :min-size
+  :max-size
+  :resize-inc
+  :aspect
+  :base-size
+  :win-gravity)
+
 (cffi:defcstruct (size-hint :conc-name size-hint-)
-  (flags :long)
+  (flags size-hint-flags)
   (x :int)
   (y :int)
   (width :int)

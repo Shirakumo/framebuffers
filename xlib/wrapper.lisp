@@ -378,33 +378,82 @@
          (setf (fb:visible-p window) T)
          (setf (iconified-p window) NIL))))
 
-(defmethod (setf minimum-size) (value (window window))
-  ;; TODO: implement minimum-size
-  )
+(defun update-size-hints (window)
+  (cffi:with-foreign-objects ((hint '(:struct xlib:size-hint)))
+    (cffi:foreign-funcall "memset" :pointer hint :int 0 :size (cffi:foreign-type-size '(:struct xlib:size-hint)))
+    (setf (xlib:size-hint-flags hint) '(:min-size :max-size))
+    (cond ((resizable-p window)
+           (setf (xlib:size-hint-min-width hint) (max (car (minimum-size window)) 1))
+           (setf (xlib:size-hint-max-width hint) (min (car (maximum-size window)) (1- (ash 1 16))))
+           (setf (xlib:size-hint-min-height hint) (max (cdr (minimum-size window)) 1))
+           (setf (xlib:size-hint-max-height hint) (min (cdr (maximum-size window)) (1- (ash 1 16)))))
+          (T
+           (setf (xlib:size-hint-min-width hint) (fb:width window))
+           (setf (xlib:size-hint-max-width hint) (fb:width window))
+           (setf (xlib:size-hint-width hint) (fb:width window))
+           (setf (xlib:size-hint-min-height hint) (fb:height window))
+           (setf (xlib:size-hint-max-height hint) (fb:height window))
+           (setf (xlib:size-hint-height hint) (fb:height window))))
+    (xlib:set-wm-normal-hints (display window) (xid window) hint)
+    (xlib:flush (display window))))
 
-(defmethod (setf maximum-size) (value (window window))
-  ;; TODO: implement maximum-size
-  )
+(defmethod (setf fb:minimum-size) (value (window window))
+  (setf (car (minimum-size window)) (or (car value) 1))
+  (setf (cdr (minimum-size window)) (or (cdr value) 1))
+  (update-size-hints window)
+  value)
 
-(defmethod (setf focused-p) (value (window window))
-  ;; TODO: implement focused-p
-  )
+(defmethod (setf fb:maximum-size) (value (window window))
+  (setf (car (maximum-size window)) (car value))
+  (setf (cdr (maximum-size window)) (cdr value))
+  (update-size-hints window)
+  value)
 
-(defmethod (setf borderless-p) (value (window window))
-  ;; TODO: implement borderless-p
-  )
+(defmethod (setf fb:focused-p) (value (window window))
+  (when value
+    (send-client-event window "NET_ACTIVE_WINDOW" 1 0 0 0 0))
+  value)
 
-(defmethod (setf always-on-top-p) (value (window window))
-  ;; TODO: implement always-on-top-p
-  )
+(defmethod (setf fb:borderless-p) (value (window window))
+  (cffi:with-foreign-objects ((hints :long 5))
+    (setf (cffi:mem-ref hints :ulong 0) 2) ;; Decorations
+    (setf (cffi:mem-ref hints :ulong 1) 0)
+    (setf (cffi:mem-ref hints :ulong 2) (if value 1 0))
+    (setf (cffi:mem-ref hints :ulong 3) 0)
+    (setf (cffi:mem-ref hints :ulong 4) 0)
+    (xlib:change-property (display window) (xid window)
+                          (atom window "MOTIF_WM_HINTS") (atom window "MOTIF_WM_HINTS")
+                          32 2 hints 5)
+    (setf (borderless-p window) value)))
 
-(defmethod (setf resizable-p) (value (window window))
-  ;; TODO: implement resizable-p
-  )
+(defmethod (setf fb:always-on-top-p) (value (window window))
+  ;; Not available.
+  value)
 
-(defmethod (setf floating-p) (value (window window))
-  ;; TODO: implement floating-p
-  )
+(defmethod (setf fb:resizable-p) (value (window window))
+  (setf (resizable-p window) value)
+  (update-size-hints window)
+  value)
+
+(defmethod (setf fb:floating-p) (value (window window))
+  (cond ((visible-p window)
+         (send-client-event window "NET_WM_STATE" (if value 1 0) (atom window "NET_WM_STATE_ABOVE") 0 1 0))
+        (T
+         (cffi:with-foreign-objects ((states :pointer))
+           (let ((count (get-property window "WM_STATE" "XA_ATOM" states)))
+             (if (loop for i from 0 below count
+                       for state = (cffi:mem-aref states 'xlib:atom i)
+                       do (when (= state (atom window "NET_WM_STATE_ABOVE"))
+                            (setf (cffi:mem-aref states 'xlib:atom i) (cffi:mem-aref states 'xlib:atom (1- count)))
+                            (return T)))
+                 (unless value
+                   (xlib:change-property (display window) (xid window) (atom window "NET_WM_STATE")
+                                         4 32 0 states (1- count)))
+                 (when value
+                   (setf (cffi:mem-ref states 'xlib:atom 0) (atom window "NET_WM_STATE_ABOVE"))
+                   (xlib:change-property (display window) (xid window) (atom window "NET_WM_STATE")
+                                         4 32 2 states 1)))))))
+  (setf (floating-p window) value))
 
 (defmethod fb:clipboard-string ((window window))
   ;; TODO: implement clipboard fetching

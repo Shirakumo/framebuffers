@@ -102,6 +102,7 @@
    #:set-window-text
    #:show-window
    #:stretch-di-bits
+   #:to-unicode
    #:translate-message
    #:validate-rect))
 

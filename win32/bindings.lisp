@@ -989,6 +989,14 @@
   (usage :uint)
   (rop :uint32))
 
+(cffi:defcfun (to-unicode "ToUnicode") :int
+  (vk :uint)
+  (scan-code :uint)
+  (state :pointer)
+  (chars :pointer)
+  (buff-count :int)
+  (flags :uint))
+
 (cffi:defcfun (track-mouse-event "TrackMouseEvent") :bool
   (event :pointer))
 

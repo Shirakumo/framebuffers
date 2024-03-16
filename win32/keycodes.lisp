@@ -1,6 +1,8 @@
 (in-package #:org.shirakumo.framebuffers.win32)
 
 (defvar *keycodes* (make-array 356))
+(defvar *codetable* (make-hash-table :test 'eq))
+(defvar *stringtable* (make-array 356))
 
 (defun init-keycodes ()
   (loop for (i k) on '(#x001 :escape
@@ -122,12 +124,36 @@
                        #x15c :right-super
                        #x15d :menu)
         by #'cddr
-        do (setf (aref *keycodes* i) k)))
+        do (setf (aref *keycodes* i) k))
+  (loop for i from 0 below (length *keycodes*)
+        for key = (aref *keycodes* i)
+        do (when key (setf (gethash key *codetable*) i))))
 
 (init-keycodes)
+
+(defun init-stringtable ()
+  (fill *stringtable* NIL)
+  (cffi:with-foreign-objects '((state :char 256)
+                               (chars :char 32))
+    (cffi:foreign-funcall "memset" :pointer state :int 0 :size 256)
+    (loop for scancode from 0 below (length *keycodes*)
+          for key = (aref *keycodes*)
+          do (when key
+               (let* ((vk (win32:map-virtual-key scancode 1))
+                      (len (win32:to-unicode vk scancode state chars 16 0)))
+                 (when (= -1 len) ;; Retry for dead keys
+                   (win32:to-unicode vk scancode state chars 16 0))
+                 (when (< 0 len)
+                   (setf (aref *stringtable* i) (com:wstring->string chars))))))))
 
 (defun translate-keycode (keycode)
   (when (<= 0 keycode (1- 356))
     (aref *keycodes* keycode)))
+
+(defun key-code (key)
+  (gethash key *codetable*))
+
+(defun key-string (key)
+  (gethash key *stringtable*))
 
 ;; TODO: implement key name lookup

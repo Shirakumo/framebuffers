@@ -325,13 +325,19 @@
     (wl:proxy-add-listener (activation-token window) (xdg-activation-listener (listener window)) (display window))
     (wl:xdg-activation-token-v1-commit (activation-token window))))
 
-(defmethod key-scan-code (key (window window))
-  ;; TODO: inverse scan code lookup
-  )
+(defmethod fb:key-scan-code (key (window window))
+  (key-code key))
 
-(defmethod local-key-string (key (window window))
-  ;; TODO: local key string translation
-  )
+(defmethod fb:local-key-string (key (window window))
+  (when (<= 0 key 255)
+    (let* ((keycode (+ 8 key))
+           (layout (wl:xkb-state-key-get-layout (xkb-state window) keycode)))
+      (unless (= layout #xffffffff)
+        (cffi:with-foreign-objects ((keysyms :pointer))
+          (wl:xkb-keymap-key-get-syms-by-level (xkb-keymap window) keycode layout 0 keysyms)
+          (setf keysyms (cffi:mem-ref keysyms :pointer))
+          (unless (cffi:null-pointer-p keysyms)
+            (org.shirakumo.framebuffers.xlib::keysym-string (cffi:mem-ref keysyms :uint32))))))))
 
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)

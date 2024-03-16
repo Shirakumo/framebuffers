@@ -308,7 +308,8 @@
                                                               (cffi:mem-aref keysyms :int (1+ base))))))))
         (xlib:free keysyms)))
     (loop for i from 0 below (length array)
-          do (setf (gethash (aref array i) table) i))
+          for key = (aref array i)
+          do (when key (setf (gethash key table) i)))
     (setf *keytable* array)
     (setf *codetable* table)))
 

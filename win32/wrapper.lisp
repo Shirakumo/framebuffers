@@ -31,6 +31,7 @@
     (cffi:load-foreign-library 'win32:user32)
     (cffi:load-foreign-library 'win32:gdi32)
     (ignore-errors (cffi:load-foreign-library 'win32:shcore))
+    (init-stringtable)
     (or (ignore-errors (win32:set-process-dpi-awareness-context :per-monitor-aware-2))
         (ignore-errors (win32:set-process-dpi-awareness-context :per-monitor-aware))
         (ignore-errors (com:check-hresult (win32:set-process-dpi-awareness :per-monitor-dpi-aware)))
@@ -240,13 +241,11 @@
 (defmethod fb:request-attention ((window window))
   (win32:flash-window (ptr window) T))
 
-(defmethod key-scan-code (key (window window))
-  ;; TODO: inverse scan code lookup
-  )
+(defmethod fb:key-scan-code (key (window window))
+  (key-code key))
 
-(defmethod local-key-string (key (window window))
-  ;; TODO: local key string translation
-  )
+(defmethod fb:local-key-string ((key integer) (window window))
+  (key-string key))
 
 (defun update-buffer (window w h)
   (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (size window)) (cdr (size window))))
@@ -327,8 +326,7 @@
            ;; TODO: prevent power save in fullscreen
            )
           (:inputlangchange
-           ;; TODO: update key names
-           )
+           (init-stringtable))
           ((:keydown :syskeydown :keyup :syskeyup)
            ;; TODO: handle key repeats
            (let ((scancode (logand (ldb (byte 16 16) lparam) #x1FF))

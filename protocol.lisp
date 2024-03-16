@@ -184,6 +184,10 @@
     (when (<= 0 scancode 355)
       (< 0 (sbit (key-states window) scancode)))))
 
+(defmethod local-key-string ((key symbol) (window window))
+  (let ((code (key-scan-code key window)))
+    (when code (keysym-string code))))
+
 ;;; Impls
 (defmethod window-moved ((window window) xpos ypos)
   (window-moved (event-handler window) xpos ypos))

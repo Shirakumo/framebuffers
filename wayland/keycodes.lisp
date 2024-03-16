@@ -10,6 +10,7 @@
                          (:hyper -1 "Mod5")))
 
 (defvar *keycodes* (make-array 256))
+(defvar *codetable* (make-hash-table :test 'eq))
 
 (defun init-keycodes ()
   (loop for (i k) on '(1 :escape
@@ -131,10 +132,16 @@
                        194 :f24
                        210 :print-screen)
         by #'cddr
-        do (setf (aref *keycodes* i) k)))
+        do (setf (aref *keycodes* i) k))
+  (loop for i from 0 below (length *keycodes*)
+        for key = (aref *keycodes* i)
+        do (when key (setf (gethash key *codetable*) i))))
 
 (init-keycodes)
 
 (defun translate-key (key)
   (when (<= 0 key 255)
     (aref *keycodes* key)))
+
+(defun key-code (key)
+  (gethash key *codetable*))

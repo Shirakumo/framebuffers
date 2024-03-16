@@ -83,7 +83,8 @@
    (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)
    (icon :initform NIL :initarg :icon :reader fb:icon :accessor icon)
-   (cursor-icon :initform :arrow :initarg :cursor-icon :reader fb:cursor-icon :accessor cursor-icon)))
+   (cursor-icon :initform :arrow :initarg :cursor-icon :reader fb:cursor-icon :accessor cursor-icon)
+   (cursor-state :initform :normal :initarg :cursor-state :reader fb:cursor-state :accessor cursor-state)))
 
 (defmethod initialize-instance :after ((window window) &key event-handler)
   (setf (event-handler window) event-handler))

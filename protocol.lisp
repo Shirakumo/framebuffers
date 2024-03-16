@@ -60,6 +60,8 @@
 (defgeneric (setf icon) (value window))
 (defgeneric cursor-icon (window))
 (defgeneric (setf cursor-icon) (value window))
+(defgeneric cursor-state (window))
+(defgeneric (setf cursor-state) (value window))
 
 ;;; Event callbacks
 (defgeneric window-moved (event-handler xpos ypos))
@@ -79,16 +81,10 @@
 (defgeneric content-scale-changed (window xscale yscale))
 
 ;;; TODO:
-;;;; Cursor capturing
-;; (defgeneric cursor-state (window))
-;; (defgeneric (setf cursor-state) (value window))
-;;
 ;;;; Monitor API to allow fullscreening
-;; (defgeneric fullscreen-p (window))
-;; (defgeneric (setf fullscreen-p) (value window))
+;; (defgeneric fullscreen-on (window))
+;; (defgeneric (setf fullscreen-on) (value window))
 ;; (defgeneric list-monitors ())
 ;; (defgeneric list-modes (monitor))
-;; (defgeneric monitor (window))
-;; (defgeneric (setf monitor) (value window))
 ;;
 ;;;; Input Method support

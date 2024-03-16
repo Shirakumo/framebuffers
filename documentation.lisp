@@ -84,7 +84,8 @@ See MOUSE-LOCATION
 See MOUSE-BUTTON-STATE
 See KEY-STATE
 See ICON
-See CURSOR-ICON")
+See CURSOR-ICON
+See CURSOR-STATE")
   
   (type event-handler
     "Accesses the event handler of the window.
@@ -429,16 +430,18 @@ See WINDOW (type)")
 May return an ICON instance if one was set explicitly by the user, or
 one of the following keywords defining default cursor types:
 
-  :ARROW
-  :IBEAM
-  :CROSSHAIR
-  :POINTING-HAND
-  :RESIZE-EW
-  :RESIZE-NS
-  :RESIZE-NWSE
-  :RESIZE-NESW
-  :RESIZE-ALL
-  :NOT-ALLOWED
+  :ARROW         --- The default pointer/arrow cursor shape
+  :IBEAM         --- A crossbeam usually for text input
+  :CROSSHAIR     --- A crosshair usually for precise selection
+  :POINTING-HAND --- A pointing hand to designate interactivity or
+                     dragging
+  :RESIZE-EW     --- Shapes to indicate the directions in which 
+  :RESIZE-NS         something may be resized
+  :RESIZE-NWSE   
+  :RESIZE-NESW   
+  :RESIZE-ALL    
+  :NOT-ALLOWED   --- To indicate a deactivated or forbidden
+                     interaction
 
 You may also set the cursor-icon in the same way.
 
@@ -446,6 +449,17 @@ The call may fail if the ICON intsance has unsuitable dimensions for
 the backend.
 
 See ICON (type)
+See WINDOW (type)")
+
+  (function cursor-state
+    "Accesses the state of the cursor behaviour.
+
+The state may be one of the following:
+
+  :NORMAL   --- The cursor behaves as normal
+  :HIDDEN   --- The cursor is not displayed over the window
+  :CAPTURED --- The cursor cannot leave the window
+
 See WINDOW (type)")
   
   (function window-moved

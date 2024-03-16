@@ -47,6 +47,7 @@
    #:local-key-string
    #:icon
    #:cursor-icon
+   #:cursor-state
    #:window-moved
    #:window-resized
    #:window-refreshed
@@ -86,7 +87,8 @@
    #:mouse-entered-p
    #:content-scale
    #:icon
-   #:cursor-icon)
+   #:cursor-icon
+   #:cursor-state)
   (:export
    #:*available-backends*
    #:static-file
@@ -116,5 +118,6 @@
    #:content-scale
    #:icon
    #:cursor-icon
+   #:cursor-state
    #:with-cleanup
    #:clean))

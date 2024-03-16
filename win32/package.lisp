@@ -7,6 +7,17 @@
    #:gdi32
    #:shcore
    #:key
+   #:minmax-info
+   #:minmax-info-reserved-x
+   #:minmax-info-reserved-y
+   #:minmax-info-max-size-x
+   #:minmax-info-max-size-y
+   #:minmax-info-max-position-x
+   #:minmax-info-max-position-y
+   #:minmax-info-min-track-size-x
+   #:minmax-info-min-track-size-y
+   #:minmax-info-max-track-size-x
+   #:minmax-info-max-track-size-y
    #:window-class
    #:window-class-style
    #:window-class-proc

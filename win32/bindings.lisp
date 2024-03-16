@@ -721,6 +721,33 @@
   (:ime #x00010000)
   (:dropshadow #x00020000))
 
+(cffi:defbitfield set-window-pos
+  (:nosize #x0001)
+  (:nomove #x0002)
+  (:nozorder #x0004)
+  (:noredraw #x0008)
+  (:noactivate #x0010)
+  (:framechanged #x0020)
+  (:showwindow #x0040)
+  (:hidewindow #x0080)
+  (:nocopybits #x0100)
+  (:noownerzorder #x0200)
+  (:nosendchanging #x0400)
+  (:defererase #x2000)
+  (:asyncwindowpos #x4000))
+
+(cffi:defcstruct (minmax-info :conc-name minmax-info-)
+  (reserved-x :long)
+  (reserved-y :long)
+  (max-size-x :long)
+  (max-size-y :long)
+  (max-position-x :long)
+  (max-position-y :long)
+  (min-track-size-x :long)
+  (min-track-size-y :long)
+  (max-track-size-x :long)
+  (max-track-size-y :long))
+
 (cffi:defcstruct (window-class :conc-name window-class-)
   (style window-class-style)
   (proc :pointer)
@@ -937,7 +964,7 @@
   (y :int)
   (cx :int)
   (cy :int)
-  (flags :uint))
+  (flags set-window-pos))
 
 (cffi:defcfun (set-window-text "SetWindowText") :boolean
   (window :pointer)

@@ -10,6 +10,12 @@
      (setf (win32:rect-bottom ,rect) (+ (win32:rect-top ,rect) ,h))
      ,@body))
 
+(defun rect-width (rect)
+  (- (win32:rect-right rect) (win32:rect-left rect)))
+
+(defun rect-height (rect)
+  (- (win32:rect-bottom rect) (win32:rect-top rect)))
+
 (define-condition win32-error (fb:framebuffer-error com:win32-error)
   ())
 
@@ -179,32 +185,49 @@
   (setf (iconified-p window) state))
 
 (defmethod (setf fb:minimum-size) (value (window window))
-  ;; TODO: implement minimum-size
-  )
+  (setf (car (minimum-size window)) (or (car value) 1))
+  (setf (cdr (minimum-size window)) (or (cdr value) 1))
+  (cffi:with-foreign-objecst ((rect '(:struct win32:rect)))
+    (win32:get-window-rect (ptr window) rect)
+    (win32:move-window (ptr window) (win32:rect-left rect) (win32:rect-top rect)
+                       (- (win32:rect-right rect) (win32:rect-left rect))
+                       (- (win32:rect-bottom rect) (win32:rect-top rect)) T))
+  value)
 
 (defmethod (setf fb:maximum-size) (value (window window))
-  ;; TODO: implement maximum-size
-  )
+  (setf (car (maximum-size window)) (car value))
+  (setf (cdr (maximum-size window)) (cdr value))
+  (cffi:with-foreign-objecst ((rect '(:struct win32:rect)))
+    (win32:get-window-rect (ptr window) rect)
+    (win32:move-window (ptr window) (win32:rect-left rect) (win32:rect-top rect)
+                       (- (win32:rect-right rect) (win32:rect-left rect))
+                       (- (win32:rect-bottom rect) (win32:rect-top rect)) T))
+  value)
 
 (defmethod (setf fb:focused-p) (value (window window))
-  ;; TODO: implement focused-p
-  )
+  (when value
+    (win32:bring-window-to-top (ptr window))
+    (win32:set-foreground-window (ptr window))
+    (win32:set-focus (ptr window))
+    (setf (focused-p window) value)))
 
 (defmethod (setf fb:borderless-p) (value (window window))
-  ;; TODO: implement borderless-p
-  )
+  (setf (borderless-p window) value)
+  (update-window-styles window)
+  value)
 
 (defmethod (setf fb:always-on-top-p) (value (window window))
-  ;; TODO: implement always-on-top-p
-  )
+  ;; Not implemented
+  value)
 
 (defmethod (setf fb:resizable-p) (value (window window))
-  ;; TODO: implement resizable-p
-  )
+  (setf (resizable-p window) value)
+  (update-window-styles window)
+  value)
 
 (defmethod (setf fb:floating-p) (value (window window))
-  ;; TODO: implement floating-p
-  )
+  (win32:set-window-pos (ptr window) (if value -1 -2) 0 0 0 0 '(:noactivate :nomove :nosize))
+  (setf (floating-p window) value))
 
 (defmethod fb:clipboard-string ((window window))
   ;; TODO: get clipboard string
@@ -405,6 +428,22 @@
                (setf (maximized-p window) maximized)
                (fb:window-maximized window maximized)))
            (return 0))
+          (:getminmaxinfo
+           (with-rect (rect 0 0 0 0)
+             (win32:adjust-window-rect rect (get-window-style window) NIL)
+             (let ((s (cffi:make-pointer lparam)))
+               (setf (win32:minmax-info-min-track-size-x s) (+ (car (minimum-size window)) (rect-width rect)))
+               (setf (win32:minmax-info-min-track-size-y s) (+ (cdr (minimum-size window)) (rect-height rect)))
+               (when (car (maximum-size window))
+                 (setf (win32:minmax-info-max-track-size-x s) (+ (car (maximum-size window)) (rect-width rect))))
+               (when (cdr (maximum-size window))
+                 (setf (win32:minmax-info-max-track-size-y s) (+ (cdr (maximum-size window)) (rect-height rect))))
+               ;; TODO: This
+               (when (borderless-p window)
+                 ))))
+          ((:ncactivate :ncpaint)
+           (when (borderless-p window)
+             (return 1)))
           (:setfocus
            (setf (focused-p window) T)
            (fb:window-focused window T)

@@ -54,6 +54,13 @@
     (shutdown-backend (shiftf *backend* NIL))
     (clrhash *windows-table*)))
 
+(defmethod width ((icon icon)) (icon-width icon))
+(defmethod (setf width) (value (icon icon)) (setf (icon-width icon) width))
+(defmethod height ((icon icon)) (icon-height icon))
+(defmethod (setf height) (value (icon icon)) (setf (icon-height icon) width))
+(defmethod buffer ((icon icon)) (icon-buffer icon))
+(defmethod (setf buffer) (value (icon icon)) (setf (icon-buffer icon) width))
+
 (defclass window ()
   ((event-handler :initform (make-instance 'event-handler) :accessor event-handler)
    (mouse-location :initform (cons 0 0) :accessor mouse-location)
@@ -74,7 +81,9 @@
    (resizable-p :initform NIL :initarg :resizable-p :reader fb:resizable-p :accessor resizable-p)
    (floating-p :initform NIL :initarg :floating-p :reader fb:floating-p :accessor floating-p)
    (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)
-   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
+   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)
+   (icon :initform NIL :initarg :icon :reader fb:icon :accessor icon)
+   (cursor-icon :initform :arrow :initarg :cursor-icon :reader fb:cursor-icon :accessor cursor-icon)))
 
 (defmethod initialize-instance :after ((window window) &key event-handler)
   (setf (event-handler window) event-handler))

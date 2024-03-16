@@ -12,6 +12,26 @@ See WINDOW")
 See WINDOW (type)
 See FRAMEBUFFER-ERROR (type)
 See EVENT-HANDLER (type)")
+
+  (type icon
+    "Representation of the pixel data of some icon.
+
+See MAKE-ICON
+See WIDTH
+See HEIGHT
+See BUFFER
+See ICON
+See CURSOR-ICON")
+
+  (function make-icon
+    "Constructs an icon from the raw image data.
+
+WIDTH and HEIGHT should be the dimensions of the image data in
+pixels. BUFFER should be a (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (*)) that
+represents the image data in BGRA order.
+
+See BUFFER
+See ICON (type)")
   
   (function init
     "Initialises the backend.
@@ -62,7 +82,9 @@ See PROCESS-EVENTS
 See REQUEST-ATTENTION
 See MOUSE-LOCATION
 See MOUSE-BUTTON-STATE
-See KEY-STATE")
+See KEY-STATE
+See ICON
+See CURSOR-ICON")
   
   (type event-handler
     "Accesses the event handler of the window.
@@ -121,7 +143,7 @@ customised:
   FLOATING-P      --- NIL
   ICON            --- NIL
   CURSOR-STATE    --- :NORMAL
-  CURSOR-ICON     --- :POINTER
+  CURSOR-ICON     --- :ARROW
 
 See INIT
 See WINDOW (type)
@@ -194,14 +216,16 @@ See VALID-P
 See WINDOW (type)")
   
   (function width
-    "Returns the width of the window in pixels.
+    "Returns the width of the window or icon in pixels.
 
-See WINDOW (type)")
+See WINDOW (type)
+See ICON (type)")
   
   (function height
-    "Returns the height of the window in pixels.
+    "Returns the height of the window or icon in pixels.
 
-See WINDOW (type)")
+See WINDOW (type)
+See ICON (type)")
   
   (function size
     "Accesses the size of the window as a (W . H) cons in pixels.
@@ -302,7 +326,7 @@ optimal DPI-aware display.
 See WINDOW (type)")
   
   (function buffer
-    "Returns the framebuffer contents as an (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (*))
+    "Returns the framebuffer or icon contents as a (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (*))
 
 The framebuffer is guaranteed to have a length of (* 4 WIDTH HEIGHT),
 with the pixels stored in row(width)-major order and the first pixel
@@ -311,7 +335,8 @@ being in the top-left corner.
 Each pixel is stored as a quadruplet of (UNSIGNED-BYTE 8) values, in
 the order of Blue Green Red Alpha.
 
-See WINDOW (type)")
+See WINDOW (type)
+See ICON (type)")
   
   (function swap-buffers
     "Swaps the framebuffer to display its contents to the user.
@@ -386,7 +411,42 @@ while on a standard US QWERTY layout it will return \"I\".
 If no translation is known for the given key, NIL is returned.
 
 See WINDOW (type)
-See KEY-CHANGEd")
+See KEY-CHANGED")
+
+  (function icon
+    "Accesses the icon of the window.
+
+Returns NIL if no icon was set previously.
+The call may fail if the ICON instance has unsuitable dimensions for
+the backend.
+
+See ICON (type)
+See WINDOW (type)")
+
+  (function cursor-icon
+    "Accesess the icon of the cursor in the window.
+
+May return an ICON instance if one was set explicitly by the user, or
+one of the following keywords defining default cursor types:
+
+  :ARROW
+  :IBEAM
+  :CROSSHAIR
+  :POINTING-HAND
+  :RESIZE-EW
+  :RESIZE-NS
+  :RESIZE-NWSE
+  :RESIZE-NESW
+  :RESIZE-ALL
+  :NOT-ALLOWED
+
+You may also set the cursor-icon in the same way.
+
+The call may fail if the ICON intsance has unsuitable dimensions for
+the backend.
+
+See ICON (type)
+See WINDOW (type)")
   
   (function window-moved
     "Callback for when the window has moved on screen.

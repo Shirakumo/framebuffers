@@ -3,6 +3,14 @@
 (define-condition framebuffer-error (error)
   ((window :initarg :window :initform NIL :reader window)))
 
+(defstruct (icon
+            (:constructor make-icon (width height data))
+            (:copier NIL)
+            (:predicate NIL))
+  (width 0 :type (unsigned-byte 16))
+  (height 0 :type (unsigned-byte 16))
+  (buffer NIL :type (simple-array (unsigned-byte 8) (*))))
+
 ;;; Window info
 (defgeneric valid-p (window))
 (defgeneric close (window))
@@ -48,6 +56,10 @@
 (defgeneric key-pressed-p (key window))
 (defgeneric key-scan-code (key window))
 (defgeneric local-key-string (key window))
+(defgeneric icon (window))
+(defgeneric (setf icon) (value window))
+(defgeneric cursor-icon (window))
+(defgeneric (setf cursor-icon) (value window))
 
 ;;; Event callbacks
 (defgeneric window-moved (event-handler xpos ypos))
@@ -70,12 +82,6 @@
 ;;;; Cursor capturing
 ;; (defgeneric cursor-state (window))
 ;; (defgeneric (setf cursor-state) (value window))
-;;
-;;;; Icons API for cursors and windows
-;; (defgeneric icon (window))
-;; (defgeneric (setf icon) (value window))
-;; (defgeneric cursor-icon (window))
-;; (defgeneric (setf cursor-icon) (value window))
 ;;
 ;;;; Monitor API to allow fullscreening
 ;; (defgeneric fullscreen-p (window))

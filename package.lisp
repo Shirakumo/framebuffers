@@ -3,6 +3,10 @@
   (:shadow #:open #:close)
   (:export
    #:framebuffer-error
+   #:icon
+   #:icon-width
+   #:icon-height
+   #:icon-buffer
    #:init
    #:shutdown
    #:window
@@ -41,6 +45,8 @@
    #:key-pressed-p
    #:key-scan-code
    #:local-key-string
+   #:icon
+   #:cursor-icon
    #:window-moved
    #:window-resized
    #:window-refreshed
@@ -78,7 +84,9 @@
    #:resizable-p
    #:floating-p
    #:mouse-entered-p
-   #:content-scale)
+   #:content-scale
+   #:icon
+   #:cursor-icon)
   (:export
    #:*available-backends*
    #:static-file
@@ -106,5 +114,7 @@
    #:floating-p
    #:mouse-entered-p
    #:content-scale
+   #:icon
+   #:cursor-icon
    #:with-cleanup
    #:clean))

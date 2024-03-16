@@ -40,6 +40,11 @@
 (defgeneric swap-buffers (window &key x y w h sync))
 (defgeneric process-events (window &key timeout))
 (defgeneric request-attention (window))
+(defgeneric mouse-location (window))
+(defgeneric mouse-button-pressed-p (button window))
+(defgeneric key-pressed-p (key window))
+(defgeneric key-scan-code (key window))
+(defgeneric local-key-string (key window))
 
 ;;; Event callbacks
 (defgeneric window-moved (event-handler xpos ypos))
@@ -59,23 +64,25 @@
 (defgeneric content-scale-changed (window xscale yscale))
 
 ;;; TODO:
-;; (defgeneric mouse-location (window))
-;; (defgeneric mouse-button-state (button window))
-;; (defgeneric key-state (key window))
-;; (defgeneric fullscreen-p (window))
-;; (defgeneric (setf fullscreen-p) (value window))
-;; (defgeneric icon (window))
-;; (defgeneric (setf icon) (value window))
+;;;; Cursor capturing
 ;; (defgeneric cursor-state (window))
 ;; (defgeneric (setf cursor-state) (value window))
+;;
+;;;; Icons API for cursors and windows
+;; (defgeneric icon (window))
+;; (defgeneric (setf icon) (value window))
 ;; (defgeneric cursor-icon (window))
 ;; (defgeneric (setf cursor-icon) (value window))
+;;
+;;;; Monitor API to allow fullscreening
+;; (defgeneric fullscreen-p (window))
+;; (defgeneric (setf fullscreen-p) (value window))
 ;; (defgeneric list-monitors ())
 ;; (defgeneric list-modes (monitor))
 ;; (defgeneric monitor (window))
 ;; (defgeneric (setf monitor) (value window))
-;; (defgeneric local-key-string (key window))
-;; IM support
+;;
+;;;; Input Method support
 
 ;;; Backend Internals
 (defvar *here* #.(make-pathname :name NIL :type NIL :defaults (or *compile-file-pathname* *load-pathname* (error "Need compile-file or load."))))
@@ -137,7 +144,10 @@
 
 ;;; Base class
 (defclass window ()
-  ((event-handler :initform (make-instance 'event-handler) :accessor event-handler)))
+  ((event-handler :initform (make-instance 'event-handler) :accessor event-handler)
+   (mouse-location :initform (cons 0 0) :accessor mouse-location)
+   (key-states :initform (make-array 356 :element-type 'bit) :accessor key-states)
+   (mouse-states :initform (make-array 10 :element-type 'bit) :accessor mouse-states)))
 
 (defmethod initialize-instance :after ((window window) &key event-handler)
   (setf (event-handler window) event-handler))
@@ -158,33 +168,79 @@
         (format stream "~dx~d" (width window) (height window))
         (format stream "CLOSED"))))
 
+(defmethod mouse-button-pressed-p (button (window window))
+  (< 0 (sbit (mouse-states window) (case button
+                                     (:left 0)
+                                     (:right 1)
+                                     (:middle 2)
+                                     (T (+ 3 button))))))
+
+(defmethod key-pressed-p ((scancode integer) (window window))
+  (when (<= 0 scancode 355)
+    (< 0 (sbit (key-states window) scancode))))
+
+(defmethod key-pressed-p ((key symbol) (window window))
+  (let ((scancode (key-scan-code key window)))
+    (when (<= 0 scancode 355)
+      (< 0 (sbit (key-states window) scancode)))))
+
 ;;; Impls
 (defmethod window-moved ((window window) xpos ypos)
   (window-moved (event-handler window) xpos ypos))
+
 (defmethod window-resized ((window window) width height)
   (window-resized (event-handler window) width height))
+
 (defmethod window-refreshed ((window window))
   (window-refreshed (event-handler window)))
+
 (defmethod window-focused ((window window) focused-p)
+  (unless focused-p
+    (fill (mouse-states window) 0)
+    (fill (key-states window) 0))
   (window-focused (event-handler window) focused-p))
+
 (defmethod window-iconified ((window window) iconified-p)
   (window-iconified (event-handler window) iconified-p))
+
 (defmethod window-maximized ((window window) maximized-p)
   (window-maximized (event-handler window) maximized-p))
+
 (defmethod window-closed ((window window))
   (window-closed (event-handler window)))
+
 (defmethod mouse-button-changed ((window window) button action modifiers)
+  (let ((scan-code (case button
+                     (:left 0)
+                     (:right 1)
+                     (:middle 2)
+                     (T (+ 3 button)))))
+    (case action
+      (:press (setf (sbit (mouse-states window) scan-code) 1))
+      (:release (setf (sbit (mouse-states window) scan-code) 0))))
   (mouse-button-changed (event-handler window) button action modifiers))
+
 (defmethod mouse-moved ((window window) xpos ypos)
+  (setf (car (mouse-location window)) xpos)
+  (setf (car (mouse-location window)) ypos)
   (mouse-moved (event-handler window) xpos ypos))
+
 (defmethod mouse-entered ((window window) entered-p)
   (mouse-entered (event-handler window) entered-p))
+
 (defmethod mouse-scrolled ((window window) xoffset yoffset)
   (mouse-scrolled (event-handler window) xoffset yoffset))
+
 (defmethod key-changed ((window window) key scan-code action modifiers)
+  (when (<= 0 scan-code 355)
+    (case action
+      (:press (setf (sbit (key-states window) scan-code) 1))
+      (:release (setf (sbit (key-states window) scan-code) 0))))
   (key-changed (event-handler window) key scan-code action modifiers))
+
 (defmethod string-entered ((window window) string)
   (string-entered (event-handler window) string))
+
 (defmethod file-dropped ((window window) paths)
   (file-dropped (event-handler window) paths))
 

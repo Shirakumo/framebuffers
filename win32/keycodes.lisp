@@ -129,3 +129,5 @@
 (defun translate-keycode (keycode)
   (when (<= 0 keycode (1- 356))
     (aref *keycodes* keycode)))
+
+;; TODO: implement key name lookup

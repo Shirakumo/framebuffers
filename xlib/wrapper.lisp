@@ -122,7 +122,7 @@
   (with-creation (display (xlib:open-display (or display (cffi:null-pointer)))) (xlib:close-display display)
     (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer))
     (unless *keytable*
-      (setf *keytable* (make-keytable display (probe-xkb display))))
+      (init-keytable display (probe-xkb display)))
     (let* ((screen (xlib:default-screen display))
            (visual (xlib:default-visual display screen))
            (depth (xlib:default-depth display screen)))
@@ -467,6 +467,16 @@
   (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0)
   (xlib:flush (display window))
   window)
+
+(defmethod key-scan-code ((key integer) (window window))
+  (key-code key))
+
+(defmethod local-key-string ((key integer) (window window))
+  (keysym-string key))
+
+(defmethod local-key-string ((key symbol) (window window))
+  (let ((code (key-code key)))
+    (when code (keysym-string code))))
 
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)

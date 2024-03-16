@@ -59,7 +59,10 @@ See CONTENT-SCALE
 See BUFFER
 See SWAP-BUFFERS
 See PROCESS-EVENTS
-See REQUEST-ATTENTION")
+See REQUEST-ATTENTION
+See MOUSE-LOCATION
+See MOUSE-BUTTON-STATE
+See KEY-STATE")
   
   (type event-handler
     "Accesses the event handler of the window.
@@ -336,6 +339,46 @@ This usually makes the window or its icon representation flash in some
 way.
 
 See WINDOW (type)")
+
+  (function mouse-location
+    "Returns the last known mouse location inside the window as a (X . Y) cons in pixels.
+
+See WINDOW (type)")
+
+  (function mouse-button-pressed-p
+    "Returns the last known mouse button state.
+
+See WINDOW (type)
+See MOUSE-BUTTON-CHANGED")
+
+  (function key-pressed-p
+    "Returns the last known key state.
+
+See WINDOW (type)
+See KEY-CHANGED")
+
+  (function key-scan-code
+    "Returns the scan code for a particular key symbol.
+
+If no translation is known for the given key, NIL is returned.
+
+See WINDOW (type)
+See KEY-CHANGED")
+
+  (function local-key-string
+    "Returns a string representing the icon on the physical key represented by the particular key symbol.
+
+This will perform an inverse translation based on the user's keyboard
+layout and try to present a matching human-readable representation of
+that key's label.
+
+For instance, on a DVORAK layout, passing in :I will return \"C\"
+while on a standard US QWERTY layout it will return \"I\".
+
+If no translation is known for the given key, NIL is returned.
+
+See WINDOW (type)
+See KEY-CHANGEd")
   
   (function window-moved
     "Callback for when the window has moved on screen.

@@ -240,6 +240,14 @@
 (defmethod fb:request-attention ((window window))
   (win32:flash-window (ptr window) T))
 
+(defmethod key-scan-code (key (window window))
+  ;; TODO: inverse scan code lookup
+  )
+
+(defmethod local-key-string (key (window window))
+  ;; TODO: local key string translation
+  )
+
 (defun update-buffer (window w h)
   (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (size window)) (cdr (size window))))
   (setf (win32:bitmap-info-width (bitmap-info window)) w)

@@ -35,6 +35,11 @@
    #:swap-buffers
    #:process-events
    #:request-attention
+   #:mouse-location
+   #:mouse-button-pressed-p
+   #:key-pressed-p
+   #:key-scan-code
+   #:local-key-string
    #:window-moved
    #:window-resized
    #:window-refreshed

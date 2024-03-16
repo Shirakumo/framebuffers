@@ -325,6 +325,14 @@
     (wl:proxy-add-listener (activation-token window) (xdg-activation-listener (listener window)) (display window))
     (wl:xdg-activation-token-v1-commit (activation-token window))))
 
+(defmethod key-scan-code (key (window window))
+  ;; TODO: inverse scan code lookup
+  )
+
+(defmethod local-key-string (key (window window))
+  ;; TODO: local key string translation
+  )
+
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)
   (events :short)

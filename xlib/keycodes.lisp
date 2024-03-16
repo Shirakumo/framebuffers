@@ -1,6 +1,7 @@
 (in-package #:org.shirakumo.framebuffers.xlib)
 
 (defvar *keytable* NIL)
+(defvar *codetable* (make-hash-table :test 'eq))
 (defvar *stringtable* (make-hash-table :test 'eql))
 
 ;; Fallback translation based on X11 keysyms
@@ -278,8 +279,9 @@
               (let ((transl (xkb-translate-name (cffi:foreign-string-to-lisp alias :offset 4 :max-chars 4))))
                 (when transl (return transl)))))))))
 
-(defun make-keytable (display xkb)
+(defun init-keytable (display xkb)
   (let ((array (make-array 256))
+        (table (make-hash-table :test 'eq))
         (min 0) (max 0))
     (cond (xkb
            (let ((desc (xlib:xkb-get-map display 0 #x100)))
@@ -305,7 +307,10 @@
                                                             (when (< 1 width)
                                                               (cffi:mem-aref keysyms :int (1+ base))))))))
         (xlib:free keysyms)))
-    array))
+    (loop for i from 0 below (length array)
+          do (setf (gethash (aref array i) table) i))
+    (setf *keytable* array)
+    (setf *codetable* table)))
 
 (defun make-stringtable (&optional (table (make-hash-table :test 'eql)))
   (with-open-file (file (fb-int:static-file "xlib/keysyms.txt"))
@@ -326,3 +331,6 @@
          (string (code-char (logand code #xffffff))))
         (T
          (gethash code *stringtable*))))
+
+(defun key-code (key)
+  (gethash key *codetable*))

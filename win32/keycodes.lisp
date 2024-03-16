@@ -133,8 +133,8 @@
 
 (defun init-stringtable ()
   (fill *stringtable* NIL)
-  (cffi:with-foreign-objects '((state :char 256)
-                               (chars :char 32))
+  (cffi:with-foreign-objects ((state :char 256)
+                              (chars :char 32))
     (cffi:foreign-funcall "memset" :pointer state :int 0 :size 256)
     (loop for scancode from 0 below (length *keycodes*)
           for key = (aref *keycodes*)

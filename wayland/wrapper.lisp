@@ -86,27 +86,10 @@
    (fractional-scale :initform NIL :accessor fractional-scale)
    (mmap-fd :initform NIL :accessor mmap-fd)
    (mmap-addr :initform NIL :accessor mmap-addr)
-
-   (maximum-size :initform (cons NIL NIL) :initarg :maximum-size :reader fb:maximum-size :accessor maximum-size)
-   (minimum-size :initform (cons 1 1) :initarg :minimum-size :reader fb:minimum-size :accessor minimum-size)
    (moddefs :initform (copy-tree *moddef-table*) :accessor moddefs)
    (modifiers :initform () :accessor modifiers)
    (buffer :initform NIL :reader fb:buffer :accessor buffer)
-   (content-scale :initform (cons 1 1) :reader fb:content-scale :accessor content-scale)
-   (close-requested-p :initform NIL :accessor fb:close-requested-p :accessor close-requested-p)
-   (size :initform (cons 1 1) :reader fb:size :accessor size)
-   (pending-size :initform (cons 0 0) :accessor pending-size)
-   (location :initform (cons 0 0) :reader fb:location :accessor location)
-   (title :initform NIL :reader fb:title :accessor title)
-   (visible-p :initform T :reader fb:visible-p :accessor visible-p)
-   (maximized-p :initform NIL :reader fb:maximized-p :accessor maximized-p)
-   (iconified-p :initform NIL :reader fb:iconified-p :accessor iconified-p)
-   (focused-p :initform NIL :initarg :focused-p :reader fb:focused-p :accessor focused-p)
-   (borderless-p :initform NIL :initarg :borderless-p :reader fb:borderless-p :accessor borderless-p)
-   (always-on-top-p :initform NIL :initarg :always-on-top-p :reader fb:always-on-top-p :accessor always-on-top-p)
-   (resizable-p :initform NIL :initarg :resizable-p :reader fb:resizable-p :accessor resizable-p)
-   (floating-p :initform NIL :initarg :floating-p :reader fb:floating-p :accessor floating-p)
-   (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)))
+   (pending-size :initform (cons 0 0) :accessor pending-size)))
 
 (defmethod initialize-instance :after ((window window) &key (title (fb-int:default-title)) (size '(800 . 600)) (visible-p T))
   (let ((display (display window)))
@@ -136,12 +119,12 @@
           (wl:shell-surface-set-title (shell-surface window) title)
           (wl:shell-surface-set-toplevel (shell-surface window)))
         (when (xdg-toplevel window)
-          (wl:xdg-toplevel-set-title (xdg-toplevel window) (title window)))
+          (wl:xdg-toplevel-set-title (xdg-toplevel window) title))
         (wl:surface-attach (surface window) (draw-buffer window) 0 0)
         (wl:surface-damage (surface window) 0 0 w h)
         (wl:surface-commit (surface window))
-        (setf (car (size window)) w)
-        (setf (cdr (size window)) h)
+        (setf (car (fb:size window)) w)
+        (setf (cdr (fb:size window)) h)
         (setf (fb:visible-p window) visible-p)))))
 
 (defmethod fb:valid-p ((window window))
@@ -179,7 +162,7 @@
       (setf (display window) NIL))))
 
 (defun update-buffer (window w h)
-  (let ((old-size (* (car (size window)) (cdr (size window)) 4))
+  (let ((old-size (* (car (fb:size window)) (cdr (fb:size window)) 4))
         (size (* w h 4))
         (addr (mmap-addr window))
         (fd (mmap-fd window)))
@@ -187,14 +170,8 @@
     (wl:shm-pool-resize (shm-pool window) size)
     (wl:buffer-destroy (draw-buffer window))
     (setf (draw-buffer window) (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1))
-    (setf (car (size window)) w)
-    (setf (cdr (size window)) h)))
-
-(defmethod fb:width ((window window))
-  (car (fb:size window)))
-
-(defmethod fb:height ((window window))
-  (cdr (fb:size window)))
+    (setf (car (fb:size window)) w)
+    (setf (cdr (fb:size window)) h)))
 
 (defmethod (setf fb:size) (size (window window))
   (update-buffer window (car size) (cdr size))
@@ -206,10 +183,10 @@
 
 (defmethod (setf fb:title) (title (window window))
   (when (xdg-toplevel window)
-    (wl:xdg-toplevel-set-title (xdg-toplevel window) (title window)))
+    (wl:xdg-toplevel-set-title (xdg-toplevel window) title))
   (when (shell-surface window)
     (wl:shell-surface-set-title (shell-surface window) title))
-  (setf (title window) title))
+  (setf (fb-int:title window) title))
 
 (defun create-shell-objects (window)
   (when (xdg-wm-base window)
@@ -217,9 +194,11 @@
     (wl:proxy-add-listener (xdg-surface window) (xdg-surface-listener (listener window)) (display window))
     (setf (xdg-toplevel window) (wl:xdg-surface-get-toplevel (xdg-surface window)))
     (wl:proxy-add-listener (xdg-toplevel window) (xdg-toplevel-listener (listener window)) (display window))
-    (wl:xdg-toplevel-set-title (xdg-toplevel window) (title window))
-    (when (maximized-p window)
+    (wl:xdg-toplevel-set-title (xdg-toplevel window) (fb:title window))
+    (when (fb:maximized-p window)
       (wl:xdg-toplevel-set-maximized (xdg-toplevel window))))
+  (when (shell-surface window)
+    (wl:shell-surface-set-title (shell-surface window) (fb:title window)))
   (wl:surface-commit (surface window))
   (wl:display-roundtrip (display window)))
 
@@ -237,25 +216,25 @@
 (defmethod (setf fb:visible-p) (state (window window))
   (cond (state
          (create-shell-objects window)
-         (setf (iconified-p window) NIL))
+         (setf (fb-int:iconified-p window) NIL))
         (T
          (destroy-shell-objects window)
          (wl:surface-attach (surface window) (cffi:null-pointer) 0 0)
          (wl:surface-commit (surface window))))
-  (setf (visible-p window) state))
+  (setf (fb-int:visible-p window) state))
 
 (defmethod (setf fb:maximized-p) (state (window window))
   (when (xdg-toplevel window)
     (if state
         (wl:xdg-toplevel-set-maximized (xdg-toplevel window))
         (wl:xdg-toplevel-unset-maximized (xdg-toplevel window))))
-  (setf (maximized-p window) state))
+  (setf (fb-int:maximized-p window) state))
 
 (defmethod (setf fb:iconified-p) (state (window window))
   (when (xdg-toplevel window)
     (if state
         (wl:xdg-toplevel-set-minimized (xdg-toplevel window))))
-  (setf (iconified-p window) state))
+  (setf (fb-int:iconified-p window) state))
 
 (defmethod (setf fb:minimum-size) (value (window window))
   ;; TODO: implement minimum-size
@@ -293,8 +272,8 @@
   ;; TODO: implement clipboard setting
   )
 
-(defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (car (size window))) (h (car (size window))) sync)
-  (let ((full-width (car (size window))))
+(defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
+  (let ((full-width (car (fb:size window))))
     ;; FIXME: Could probably improve how much we have to copy, here.
     (cffi:foreign-funcall "memcpy"
                           :pointer (mmap-addr window)
@@ -323,7 +302,8 @@
       (wl:xdg-activation-token-v1-destroy (activation-token window)))
     (setf (activation-token window) (wl:xdg-activation-v1-get-activation-token (activation-manager window)))
     (wl:proxy-add-listener (activation-token window) (xdg-activation-listener (listener window)) (display window))
-    (wl:xdg-activation-token-v1-commit (activation-token window))))
+    (wl:xdg-activation-token-v1-commit (activation-token window)))
+  window)
 
 (defmethod fb:key-scan-code (key (window window))
   (key-code key))
@@ -368,7 +348,7 @@
                   (wl:display-flush display)
                   (poll (truncate (* 1000 timeout))))))
           ((eql T)
-           (loop while (and (display window) (not (close-requested-p window)))
+           (loop while (and (display window) (not (fb:close-requested-p window)))
                  do (loop while (/= 0 (wl:display-prepare-read display))
                           do (wl:display-dispatch-pending display))
                     (poll 1000))))))))
@@ -442,11 +422,9 @@
 
 (define-listener pointer-listener
   (enter ((pointer :pointer) (serial :uint32) (surface :pointer) (sx :uint32) (sy :uint32))
-    (setf (mouse-entered-p window) T)
     (fb:mouse-entered window T))
   
   (leave ((pointer :pointer) (serial :uint32) (surface :pointer))
-    (setf (mouse-entered-p window) NIL)
     (fb:mouse-entered window NIL))
   
   (motion ((pointer :pointer) (time :uint32) (sx :uint32) (sy :uint32))
@@ -515,11 +493,9 @@
     (cffi:foreign-funcall "close" :int fd))
   
   (enter ((keyboard :pointer) (serial :uint32) (surface :pointer) (keys :pointer))
-    (setf (focused-p window) T)
     (fb:window-focused window T))
   
   (leave ((keyboard :pointer) (serial :uint32) (surface :pointer))
-    (setf (focused-p window) NIL)
     (fb:window-focused window NIL))
   
   (key ((keyboard :pointer) (serial :uint32) (time :uint32) (scancode :uint32) (state :uint32))
@@ -565,7 +541,7 @@
       (update-buffer window (car (pending-size window)) (cdr (pending-size window)))
       (fb:window-resized window (car (pending-size window)) (cdr (pending-size window)))
       (setf (car (pending-size window)) 0 (cdr (pending-size window)) 0)
-      (when (visible-p window)
+      (when (fb:visible-p window)
         (fb:window-refreshed window)))))
 
 (define-listener xdg-toplevel-listener
@@ -575,11 +551,10 @@
       (setf (cdr (pending-size window)) height))
     (dotimes (i (wl:array-size states))
       (case (cffi:mem-aref (wl:array-data states) 'wl:xdg-toplevel-state i)
-        (:maximized (setf (maximized-p window) T))
+        (:maximized (setf (fb-int:maximized-p window) T))
         (:fullscreen))))
 
   (close ((xdg-toplevel :pointer))
-    (setf (close-requested-p window) T)
     (fb:window-closed window))
 
   (configure-bounds ((xdg-toplevel :pointer) (width :int32) (height :int32)))
@@ -589,8 +564,7 @@
 (define-listener wp-fractional-scale-listener
   (preferred-scale ((fractional-scale :pointer) (numerator :uint32))
     (let ((scale (/ numerator 120)))
-      (setf (car (content-scale window)) scale
-            (cdr (content-scale window)) scale))))
+      (fb:content-scale-changed window scale scale))))
 
 (define-listener xdg-activation-listener
   (done ((activation-token :pointer) (token :string))

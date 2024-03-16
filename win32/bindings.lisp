@@ -814,6 +814,9 @@
   (y1 :int)
   (rop :uint32))
 
+(cffi:defcfun (bring-window-to-top "BringWindowToTop") :bool
+  (window :pointer))
+
 (cffi:defcfun (change-display-settings "ChangeDisplaySettingsW") :long
   (dev-mode :pointer)
   (flags :uint32))
@@ -888,9 +891,13 @@
 (cffi:defcfun (get-system-metrics "GetSystemMetrics") :int
   (index system-metric))
 
-(cffi:defcfun (get-window "GetWindowLongPtrW") :ssize
+(cffi:defcfun (get-window "GetWindowLongW") :ssize
   (window :pointer)
   (index :int))
+
+(cffi:defcfun (get-window-rect "GetWindowRect") :bool
+  (window :pointer)
+  (rect :pointer))
 
 (cffi:defcfun (invalidate-rect "InvalidateRect") :boolean
   (window :pointer)
@@ -912,6 +919,14 @@
 (cffi:defcfun (monitor-from-window "MonitorFromWindow") :pointer
   (window :pointer)
   (flags :uint32))
+
+(cffi:defcfun (move-window "MoveWindow") :bool
+  (window :pointer)
+  (x :int)
+  (y :int)
+  (w :int)
+  (h :int)
+  (repaint :boolean))
 
 (cffi:defcfun (msg-wait-for-multiple-objects "MsgWaitForMultipleObjects") :uint32
   (count :uint32)
@@ -944,6 +959,12 @@
   (wparameter :size)
   (lparameter :size))
 
+(cffi:defcfun (set-focus "SetFocus") :boolean
+  (window :pointer))
+
+(cffi:defcfun (set-foreground-window "SetForegroundWindow") :boolean
+  (window :pointer))
+
 (cffi:defcfun (set-process-dpi-aware "SetProcessDPIAware") :boolean)
 
 (cffi:defcfun (set-process-dpi-awareness-context "SetProcessDpiAwarenessContext") :boolean
@@ -952,14 +973,14 @@
 (cffi:defcfun (set-process-dpi-awareness "SetProcessDpiAwareness") com:hresult
   (awareness dpi-awareness))
 
-(cffi:defcfun (set-window "SetWindowLongPtrW") :ssize
+(cffi:defcfun (set-window "SetWindowLongW") :ssize
   (window :pointer)
   (index :int)
   (new-long :ssize))
 
 (cffi:defcfun (set-window-pos "SetWindowPos") :boolean
   (window :pointer)
-  (insert-after :pointer)
+  (insert-after :ssize)
   (x :int)
   (y :int)
   (cx :int)

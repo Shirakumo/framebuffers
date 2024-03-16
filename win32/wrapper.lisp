@@ -77,23 +77,7 @@
    (buffer :reader fb:buffer :initform NIL :accessor buffer)
    (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-info)) :accessor bitmap-info)
    (modifiers :initform () :accessor modifiers)
-   (surrogate :initform 0 :accessor surrogate)
-   (close-requested-p :initform NIL :initarg :close-requested-p :accessor fb:close-requested-p :accessor close-requested-p)
-   (maximum-size :initform (cons NIL NIL) :initarg :maximum-size :reader fb:maximum-size :accessor maximum-size)
-   (minimum-size :initform (cons 1 1) :initarg :minimum-size :reader fb:minimum-size :accessor minimum-size)
-   (size :initform (cons 1 1) :initarg :size :reader fb:size :accessor size)
-   (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
-   (title :initform NIL :initarg :title :reader fb:title :accessor title)
-   (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
-   (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
-   (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
-   (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)
-   (focused-p :initform NIL :initarg :focused-p :reader fb:focused-p :accessor focused-p)
-   (borderless-p :initform NIL :initarg :borderless-p :reader fb:borderless-p :accessor borderless-p)
-   (always-on-top-p :initform NIL :initarg :always-on-top-p :reader fb:always-on-top-p :accessor always-on-top-p)
-   (resizable-p :initform NIL :initarg :resizable-p :reader fb:resizable-p :accessor resizable-p)
-   (floating-p :initform NIL :initarg :floating-p :reader fb:floating-p :accessor floating-p)
-   (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
+   (surrogate :initform 0 :accessor surrogate)))
 
 (defmethod initialize-instance :after ((window window) &key)
   (let ((ptr (ptr window))
@@ -109,16 +93,16 @@
     (setf (win32:bitmap-info-green-mask bi) #x0000FF00)
     (setf (win32:bitmap-info-blue-mask bi)  #x000000FF)
     (update-buffer window (fb:width window) (fb:height window))
-    (when (visible-p window)
+    (when (fb:visible-p window)
       (win32:show-window ptr :normal))
     (or (ignore-errors
          (cffi:with-foreign-objects ((x :uint) (y :uint))
            (win32:get-dpi-for-monitor (win32:monitor-from-window ptr 2) 0 x y)
-           (setf (car (content-scale window)) (/ (cffi:mem-ref x :uint) 96))
-           (setf (car (content-scale window)) (/ (cffi:mem-ref y :uint) 96))))
+           (setf (car (fb:content-scale window)) (/ (cffi:mem-ref x :uint) 96))
+           (setf (car (fb:content-scale window)) (/ (cffi:mem-ref y :uint) 96))))
         (progn
-          (setf (car (content-scale window)) (/ (win32:get-device-caps (dc window) :logpixelsx) 96))
-          (setf (car (content-scale window)) (/ (win32:get-device-caps (dc window) :logpixelsy) 96))))))
+          (setf (car (fb:content-scale window)) (/ (win32:get-device-caps (dc window) :logpixelsx) 96))
+          (setf (car (fb:content-scale window)) (/ (win32:get-device-caps (dc window) :logpixelsy) 96))))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (ptr window))))
@@ -134,29 +118,26 @@
     (win32:destroy-window (ptr window))
     (setf (ptr window) NIL)))
 
-(defmethod fb:width ((window window))
-  (car (size window)))
-
-(defmethod fb:height ((window window))
-  (cdr (size window)))
-
 (defun get-window-style (window)
-  '(:clipsiblings
-    :clipchildren
-    :sysmenu
-    :minimizebox
-    :caption
-    :maximizebox
-    :thickframe))
+  (let ((style '(:clipsiblings
+                 :clipchildren
+                 :sysmenu
+                 :minimizebox)))
+    (cond ((fb:borderless-p window)
+           (push :popup style))
+          (T
+           (push :caption style)
+           (when (fb:resizable-p window)
+             (push :maximizebox style)
+             (push :thickframe style))))
+    style))
 
 (defmethod (setf fb:size) (size (window window))
   (with-rect (rect 0 0 (car size) (cdr size))
     (win32:adjust-window-rect rect (get-window-style window) NIL)
     (let ((w (- (win32:rect-right rect) (win32:rect-left rect)))
           (h (- (win32:rect-bottom rect) (win32:rect-top rect))))
-      (win32:set-window-pos (ptr window) (cffi:null-pointer) 0 0 w h '(:noactivate :nozorder :nomove :noownerzorder))
-      (setf (car (size window)) w)
-      (setf (cdr (size window)) h)
+      (win32:set-window-pos (ptr window) 0 0 0 w h '(:noactivate :nozorder :nomove :noownerzorder))
       size)))
 
 (defmethod (setf fb:location) (location (window window))
@@ -164,9 +145,7 @@
     (win32:adjust-window-rect rect (get-window-style window) NIL)
     (let ((x (win32:rect-left rect))
           (y (win32:rect-top rect)))
-      (win32:set-window-pos (ptr window) (cffi:null-pointer) x y 0 0 '(:noactivate :nozorder :nosize))
-      (setf (car (location window)) x)
-      (setf (cdr (location window)) y))
+      (win32:set-window-pos (ptr window) 0 x y 0 0 '(:noactivate :nozorder :nosize)))
     location))
 
 (defmethod (setf fb:title) (title (window window))
@@ -175,20 +154,20 @@
 
 (defmethod (setf fb:visible-p) (state (window window))
   (win32:show-window (ptr window) (if state :showna :hide))
-  (setf (visible-p window) state))
+  state)
 
 (defmethod (setf fb:maximized-p) (state (window window))
   (win32:show-window (ptr window) (if state :maximize :restore))
-  (setf (maximized-p window) state))
+  state)
 
 (defmethod (setf fb:iconified-p) (state (window window))
   (win32:show-window (ptr window) (if state :minimize :restore))
-  (setf (iconified-p window) state))
+  state)
 
 (defmethod (setf fb:minimum-size) (value (window window))
-  (setf (car (minimum-size window)) (or (car value) 1))
-  (setf (cdr (minimum-size window)) (or (cdr value) 1))
-  (cffi:with-foreign-objecst ((rect '(:struct win32:rect)))
+  (setf (car (fb-int:minimum-size window)) (or (car value) 1))
+  (setf (cdr (fb-int:minimum-size window)) (or (cdr value) 1))
+  (cffi:with-foreign-objects ((rect '(:struct win32:rect)))
     (win32:get-window-rect (ptr window) rect)
     (win32:move-window (ptr window) (win32:rect-left rect) (win32:rect-top rect)
                        (- (win32:rect-right rect) (win32:rect-left rect))
@@ -196,9 +175,9 @@
   value)
 
 (defmethod (setf fb:maximum-size) (value (window window))
-  (setf (car (maximum-size window)) (car value))
-  (setf (cdr (maximum-size window)) (cdr value))
-  (cffi:with-foreign-objecst ((rect '(:struct win32:rect)))
+  (setf (car (fb-int:maximum-size window)) (car value))
+  (setf (cdr (fb-int:maximum-size window)) (cdr value))
+  (cffi:with-foreign-objects ((rect '(:struct win32:rect)))
     (win32:get-window-rect (ptr window) rect)
     (win32:move-window (ptr window) (win32:rect-left rect) (win32:rect-top rect)
                        (- (win32:rect-right rect) (win32:rect-left rect))
@@ -209,11 +188,21 @@
   (when value
     (win32:bring-window-to-top (ptr window))
     (win32:set-foreground-window (ptr window))
-    (win32:set-focus (ptr window))
-    (setf (focused-p window) value)))
+    (win32:set-focus (ptr window)))
+  value)
+
+(defun update-window-styles (window)
+  (let ((style (cffi:foreign-bitfield-symbols 'win32::window-style (win32:get-window (ptr window) :STYLE))))
+    (setf style (remove :overlappedwindow (remove :popup style)))
+    (union style (get-window-style window))
+    (with-rect (rect 0 0 0 0)
+      (win32:adjust-window-rect rect style NIL)
+      (win32:set-window (ptr window) :STYLE style)
+      (win32:set-window-pos (ptr window) 0 (win32:rect-left rect) (win32:rect-top rect) (rect-width rect) (rect-height rect)
+                            '(:framechanged :noactivate :nozorder)))))
 
 (defmethod (setf fb:borderless-p) (value (window window))
-  (setf (borderless-p window) value)
+  (setf (fb-int:borderless-p window) value)
   (update-window-styles window)
   value)
 
@@ -222,13 +211,13 @@
   value)
 
 (defmethod (setf fb:resizable-p) (value (window window))
-  (setf (resizable-p window) value)
+  (setf (fb-int:resizable-p window) value)
   (update-window-styles window)
   value)
 
 (defmethod (setf fb:floating-p) (value (window window))
   (win32:set-window-pos (ptr window) (if value -1 -2) 0 0 0 0 '(:noactivate :nomove :nosize))
-  (setf (floating-p window) value))
+  (setf (fb-int:floating-p window) value))
 
 (defmethod fb:clipboard-string ((window window))
   ;; TODO: get clipboard string
@@ -248,11 +237,11 @@
   (key-string key))
 
 (defun update-buffer (window w h)
-  (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (size window)) (cdr (size window))))
+  (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (fb:size window)) (cdr (fb:size window))))
   (setf (win32:bitmap-info-width (bitmap-info window)) w)
   (setf (win32:bitmap-info-height (bitmap-info window)) h)
-  (setf (car (size window)) w)
-  (setf (cdr (size window)) h))
+  (setf (car (fb:size window)) w)
+  (setf (cdr (fb:size window)) h))
 
 (defun update-modifiers (window)
   (setf (modifiers window) ())
@@ -302,7 +291,7 @@
         (null
          (poll-events))
         ((eql T)
-         (loop while (and (ptr window) (not (close-requested-p window)))
+         (loop while (and (ptr window) (not (fb-int:close-requested-p window)))
                do (win32:msg-wait-for-multiple-objects 0 (cffi:null-pointer) NIL (truncate 1000) #xFFFF)
                   (poll-events)))
         (real
@@ -319,7 +308,6 @@
           (:paint
            (fb:window-refreshed window))
           (:close
-           (setf (fb:close-requested-p window) T)
            (fb:window-closed window)
            (return 0))
           (:syscommand
@@ -398,8 +386,7 @@
            (fb:mouse-scrolled window (/ (ldb (byte 16 16) wparam) -120) 0)
            (return 0))
           (:mousemove
-           (unless (mouse-entered-p window)
-             (setf (mouse-entered-p window) T)
+           (unless (fb:mouse-entered-p window)
              (cffi:with-foreign-objects ((track '(:struct win32:track-mouse-event)))
                (setf (win32:track-mouse-event-size track) (cffi:foreign-type-size '(:struct win32:track-mouse-event)))
                (setf (win32:track-mouse-event-flags track) 2)
@@ -410,58 +397,49 @@
              (fb:mouse-moved window x y))
            (return 0))
           (:mouseleave
-           (setf (mouse-entered-p window) NIL)
            (fb:mouse-entered window NIL)
            (return 0))
           (:move
            (multiple-value-bind (x y) (dec32 lparam)
-             (setf (car (location window)) x)
-             (setf (cdr (location window)) y)
              (fb:window-moved window x y))
            (return 0))
           (:size
-           (unless (iconified-p window)
+           (unless (fb:iconified-p window)
              (multiple-value-bind (w h) (dec32 lparam)
                (update-buffer window w h)
                (fb:window-resized window w h)
                (fb:window-refreshed window)))
            (let ((iconified (= wparam 1)))
-             (unless (eq iconified (iconified-p window))
-               (setf (iconified-p window) iconified)
+             (unless (eq iconified (fb-int:iconified-p window))
                (fb:window-iconified window iconified)))
            (let ((maximized (= wparam 2)))
-             (unless (eq maximized (maximized-p window))
-               (setf (maximized-p window) maximized)
+             (unless (eq maximized (fb-int:maximized-p window))
                (fb:window-maximized window maximized)))
            (return 0))
           (:getminmaxinfo
            (with-rect (rect 0 0 0 0)
              (win32:adjust-window-rect rect (get-window-style window) NIL)
              (let ((s (cffi:make-pointer lparam)))
-               (setf (win32:minmax-info-min-track-size-x s) (+ (car (minimum-size window)) (rect-width rect)))
-               (setf (win32:minmax-info-min-track-size-y s) (+ (cdr (minimum-size window)) (rect-height rect)))
-               (when (car (maximum-size window))
-                 (setf (win32:minmax-info-max-track-size-x s) (+ (car (maximum-size window)) (rect-width rect))))
-               (when (cdr (maximum-size window))
-                 (setf (win32:minmax-info-max-track-size-y s) (+ (cdr (maximum-size window)) (rect-height rect))))
+               (setf (win32:minmax-info-min-track-size-x s) (+ (car (fb-int:minimum-size window)) (rect-width rect)))
+               (setf (win32:minmax-info-min-track-size-y s) (+ (cdr (fb-int:minimum-size window)) (rect-height rect)))
+               (when (car (fb-int:maximum-size window))
+                 (setf (win32:minmax-info-max-track-size-x s) (+ (car (fb-int:maximum-size window)) (rect-width rect))))
+               (when (cdr (fb-int:maximum-size window))
+                 (setf (win32:minmax-info-max-track-size-y s) (+ (cdr (fb-int:maximum-size window)) (rect-height rect))))
                ;; TODO: This
-               (when (borderless-p window)
+               (when (fb:borderless-p window)
                  ))))
           ((:ncactivate :ncpaint)
-           (when (borderless-p window)
+           (when (fb:borderless-p window)
              (return 1)))
           (:setfocus
-           (setf (focused-p window) T)
            (fb:window-focused window T)
            (return 0))
           (:killfocus
-           (setf (focused-p window) NIL)
            (fb:window-focused window NIL)
            (return 0))
           (:dpichanged
            (multiple-value-bind (x y) (dec32 wparam)
-             (setf (car (content-scale window)) (/ x 96))
-             (setf (cdr (content-scale window)) (/ y 96))
              (fb:content-scale-changed window (/ x 96) (/ y 96))))
           (:dropfiles
            ;; TODO: implement dnd

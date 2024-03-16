@@ -58,7 +58,26 @@
 
 (defpackage #:org.shirakumo.framebuffers.int
   (:use #:cl #:org.shirakumo.framebuffers)
+  (:local-nicknames
+   (#:fb #:org.shirakumo.framebuffers))
   (:shadowing-import-from #:org.shirakumo.framebuffers #:open #:close)
+  (:shadow
+   #:close-requested-p
+   #:minimum-size
+   #:maximum-size
+   #:size
+   #:location
+   #:title
+   #:visible-p
+   #:maximized-p
+   #:iconified-p
+   #:focused-p
+   #:borderless-p
+   #:always-on-top-p
+   #:resizable-p
+   #:floating-p
+   #:mouse-entered-p
+   #:content-scale)
   (:export
    #:*available-backends*
    #:static-file
@@ -70,4 +89,21 @@
    #:ptr-window
    #:list-windows
    #:resize-buffer
-   #:with-cleanup))
+   #:close-requested-p
+   #:minimum-size
+   #:maximum-size
+   #:size
+   #:location
+   #:title
+   #:visible-p
+   #:maximized-p
+   #:iconified-p
+   #:focused-p
+   #:borderless-p
+   #:always-on-top-p
+   #:resizable-p
+   #:floating-p
+   #:mouse-entered-p
+   #:content-scale
+   #:with-cleanup
+   #:clean))

@@ -357,6 +357,8 @@
 (cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
 (cffi:defcvar (touch-interface "wl_touch_interface") (:struct interface))
 
+(defvar *interfaces* (make-hash-table :test 'eql))
+
 (defun make-message-types (types)
   (if types
       (let ((ptrs (cffi:foreign-alloc :pointer :count (length types))))
@@ -395,8 +397,6 @@
     (setf (interface-method-count iface) (length methods))
     (setf (interface-methods iface) (make-messages methods))
     iface))
-
-(defvar *interfaces* (make-hash-table :test 'eql))
 
 (defmacro define-interface (sname &body body)
   (destructuring-bind (&key name (version 1) methods events) body

@@ -65,6 +65,7 @@
    #:track-mouse-event-hover-time
    #:adjust-window-rect
    #:bit-blt
+   #:bring-window-to-top
    #:change-display-settings
    #:create-window
    #:def-window-proc
@@ -83,17 +84,21 @@
    #:get-key-state
    #:get-system-metrics
    #:get-window
+   #:get-window-rect
    #:invalidate-rect
    #:load-cursor
    #:load-cursor*
    #:map-virtual-key
    #:monitor-from-window
+   #:move-window
    #:msg-wait-for-multiple-objects
    #:peek-message
    #:register-class
    #:unregister-class
    #:release-dc
    #:send-message
+   #:set-focus
+   #:set-foreground-window
    #:set-process-dpi-aware
    #:set-process-dpi-awareness-context
    #:set-process-dpi-awareness

@@ -10,7 +10,7 @@
   :serial T
   :components ((:file "package")
                (:file "protocol")
-               (:file "common")
+               (:file "internal")
                (:file "documentation")
                (:module "xlib"
                 :if-feature :unix

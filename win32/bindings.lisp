@@ -800,7 +800,7 @@
 
 (cffi:defcfun (adjust-window-rect "AdjustWindowRect") :boolean
   (rect :pointer)
-  (style :uint32)
+  (style window-style)
   (menu :boolean))
 
 (cffi:defcfun (bit-blt "BitBlt") :bool

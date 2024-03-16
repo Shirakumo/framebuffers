@@ -137,14 +137,14 @@
                               (chars :char 32))
     (cffi:foreign-funcall "memset" :pointer state :int 0 :size 256)
     (loop for scancode from 0 below (length *keycodes*)
-          for key = (aref *keycodes*)
+          for key = (aref *keycodes* scancode)
           do (when key
                (let* ((vk (win32:map-virtual-key scancode 1))
                       (len (win32:to-unicode vk scancode state chars 16 0)))
                  (when (= -1 len) ;; Retry for dead keys
                    (win32:to-unicode vk scancode state chars 16 0))
                  (when (< 0 len)
-                   (setf (aref *stringtable* i) (com:wstring->string chars))))))))
+                   (setf (aref *stringtable* scancode) (com:wstring->string chars))))))))
 
 (defun translate-keycode (keycode)
   (when (<= 0 keycode (1- 356))

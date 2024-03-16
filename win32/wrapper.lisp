@@ -72,13 +72,20 @@
    (modifiers :initform () :accessor modifiers)
    (surrogate :initform 0 :accessor surrogate)
    (close-requested-p :initform NIL :initarg :close-requested-p :accessor fb:close-requested-p :accessor close-requested-p)
+   (maximum-size :initform (cons NIL NIL) :initarg :maximum-size :reader fb:maximum-size :accessor maximum-size)
+   (minimum-size :initform (cons 1 1) :initarg :minimum-size :reader fb:minimum-size :accessor minimum-size)
    (size :initform (cons 1 1) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
    (title :initform NIL :initarg :title :reader fb:title :accessor title)
    (visible-p :initform NIL :initarg :visible-p :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :initarg :maximized-p :reader fb:maximized-p :accessor maximized-p)
    (iconified-p :initform NIL :initarg :iconified-p :reader fb:iconified-p :accessor iconified-p)
-   (mouse-entered-p :initform NIL :initarg :mouse-entered-p :accessor mouse-entered-p)
+   (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)
+   (focused-p :initform NIL :initarg :focused-p :reader fb:focused-p :accessor focused-p)
+   (borderless-p :initform NIL :initarg :borderless-p :reader fb:borderless-p :accessor borderless-p)
+   (always-on-top-p :initform NIL :initarg :always-on-top-p :reader fb:always-on-top-p :accessor always-on-top-p)
+   (resizable-p :initform NIL :initarg :resizable-p :reader fb:resizable-p :accessor resizable-p)
+   (floating-p :initform NIL :initarg :floating-p :reader fb:floating-p :accessor floating-p)
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)))
 
 (defmethod initialize-instance :after ((window window) &key)
@@ -170,6 +177,34 @@
 (defmethod (setf fb:iconified-p) (state (window window))
   (win32:show-window (ptr window) (if state :minimize :restore))
   (setf (iconified-p window) state))
+
+(defmethod (setf fb:minimum-size) (value (window window))
+  ;; TODO: implement minimum-size
+  )
+
+(defmethod (setf fb:maximum-size) (value (window window))
+  ;; TODO: implement maximum-size
+  )
+
+(defmethod (setf fb:focused-p) (value (window window))
+  ;; TODO: implement focused-p
+  )
+
+(defmethod (setf fb:borderless-p) (value (window window))
+  ;; TODO: implement borderless-p
+  )
+
+(defmethod (setf fb:always-on-top-p) (value (window window))
+  ;; TODO: implement always-on-top-p
+  )
+
+(defmethod (setf fb:resizable-p) (value (window window))
+  ;; TODO: implement resizable-p
+  )
+
+(defmethod (setf fb:floating-p) (value (window window))
+  ;; TODO: implement floating-p
+  )
 
 (defmethod fb:clipboard-string ((window window))
   ;; TODO: get clipboard string
@@ -371,9 +406,11 @@
                (fb:window-maximized window maximized)))
            (return 0))
           (:setfocus
+           (setf (focused-p window) T)
            (fb:window-focused window T)
            (return 0))
           (:killfocus
+           (setf (focused-p window) NIL)
            (fb:window-focused window NIL)
            (return 0))
           (:dpichanged

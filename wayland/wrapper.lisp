@@ -87,6 +87,8 @@
    (mmap-fd :initform NIL :accessor mmap-fd)
    (mmap-addr :initform NIL :accessor mmap-addr)
 
+   (maximum-size :initform (cons NIL NIL) :initarg :maximum-size :reader fb:maximum-size :accessor maximum-size)
+   (minimum-size :initform (cons 1 1) :initarg :minimum-size :reader fb:minimum-size :accessor minimum-size)
    (moddefs :initform (copy-tree *moddef-table*) :accessor moddefs)
    (modifiers :initform () :accessor modifiers)
    (buffer :initform NIL :reader fb:buffer :accessor buffer)
@@ -98,7 +100,13 @@
    (title :initform NIL :reader fb:title :accessor title)
    (visible-p :initform T :reader fb:visible-p :accessor visible-p)
    (maximized-p :initform NIL :reader fb:maximized-p :accessor maximized-p)
-   (iconified-p :initform NIL :reader fb:iconified-p :accessor iconified-p)))
+   (iconified-p :initform NIL :reader fb:iconified-p :accessor iconified-p)
+   (focused-p :initform NIL :initarg :focused-p :reader fb:focused-p :accessor focused-p)
+   (borderless-p :initform NIL :initarg :borderless-p :reader fb:borderless-p :accessor borderless-p)
+   (always-on-top-p :initform NIL :initarg :always-on-top-p :reader fb:always-on-top-p :accessor always-on-top-p)
+   (resizable-p :initform NIL :initarg :resizable-p :reader fb:resizable-p :accessor resizable-p)
+   (floating-p :initform NIL :initarg :floating-p :reader fb:floating-p :accessor floating-p)
+   (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)))
 
 (defmethod initialize-instance :after ((window window) &key (title (fb-int:default-title)) (size '(800 . 600)) (visible-p T))
   (let ((display (display window)))
@@ -249,6 +257,34 @@
         (wl:xdg-toplevel-set-minimized (xdg-toplevel window))))
   (setf (iconified-p window) state))
 
+(defmethod (setf fb:minimum-size) (value (window window))
+  ;; TODO: implement minimum-size
+  )
+
+(defmethod (setf fb:maximum-size) (value (window window))
+  ;; TODO: implement maximum-size
+  )
+
+(defmethod (setf fb:focused-p) (value (window window))
+  ;; TODO: implement focused-p
+  )
+
+(defmethod (setf fb:borderless-p) (value (window window))
+  ;; TODO: implement borderless-p
+  )
+
+(defmethod (setf fb:always-on-top-p) (value (window window))
+  ;; TODO: implement always-on-top-p
+  )
+
+(defmethod (setf fb:resizable-p) (value (window window))
+  ;; TODO: implement resizable-p
+  )
+
+(defmethod (setf fb:floating-p) (value (window window))
+  ;; TODO: implement floating-p
+  )
+
 (defmethod fb:clipboard-string ((window window))
   ;; TODO: implement clipboard fetching
   )
@@ -392,9 +428,11 @@
 
 (define-listener pointer-listener
   (enter ((pointer :pointer) (serial :uint32) (surface :pointer) (sx :uint32) (sy :uint32))
+    (setf (mouse-entered-p window) T)
     (fb:mouse-entered window T))
   
   (leave ((pointer :pointer) (serial :uint32) (surface :pointer))
+    (setf (mouse-entered-p window) NIL)
     (fb:mouse-entered window NIL))
   
   (motion ((pointer :pointer) (time :uint32) (sx :uint32) (sy :uint32))
@@ -463,9 +501,11 @@
     (cffi:foreign-funcall "close" :int fd))
   
   (enter ((keyboard :pointer) (serial :uint32) (surface :pointer) (keys :pointer))
+    (setf (focused-p window) T)
     (fb:window-focused window T))
   
   (leave ((keyboard :pointer) (serial :uint32) (surface :pointer))
+    (setf (focused-p window) NIL)
     (fb:window-focused window NIL))
   
   (key ((keyboard :pointer) (serial :uint32) (time :uint32) (scancode :uint32) (state :uint32))

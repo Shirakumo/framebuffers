@@ -15,12 +15,20 @@
    #:close
    #:width
    #:height
+   #:minimum-size
+   #:maximum-size
    #:size
    #:location
    #:title
    #:visible-p
    #:maximized-p
    #:iconified-p
+   #:focused-p
+   #:borderless-p
+   #:always-on-top-p
+   #:resizable-p
+   #:floating-p
+   #:mouse-entered-p
    #:clipboard-string
    #:content-scale
    #:buffer

@@ -41,11 +41,19 @@ See CLOSE
 See WIDTH
 See HEIGHT
 See SIZE
+See MINIMUM-SIZE
+See MAXIMUM-SIZE
 See LOCATION
 See TITLE
 See VISIBLE-P
 See MAXIMIZED-P
 See ICONIFIED-P
+See FOCUSED-P
+See BORDERLESS-P
+See ALWAYS-ON-TOP-P
+See RESIZABLE-P
+See FLOATING-P
+See MOUSE-ENTERED-P
 See CLIPBOARD-STRING
 See CONTENT-SCALE
 See BUFFER
@@ -188,6 +196,20 @@ See WINDOW (type)")
     "Accesses the size of the window as a (W . H) cons in pixels.
 
 See WINDOW (type)")
+
+  (function minimum-size
+    "Accesses the minimum size of the window as a (W . H) cons in pixels.
+
+W and H must be integers above 0.
+
+See WINDOW (type)")
+
+  (function maximum-size
+    "Accesses the maximum size of the window as a (W . H) cons in pixels.
+
+W and H must be integers above 0 or NIL to denote no limit.
+
+See WINDOW (type)")
   
   (function location
     "Accesses the location of the window as a (X . Y) cons in pixels.
@@ -217,6 +239,41 @@ See WINDOW (type)")
 
 [Wayland] The window cannot be un-minimized programmatically. Trying
           to do so will simply be a no-op.
+
+See WINDOW (type)")
+
+  (function focused-p
+    "Accesses whether the window has focus or not.
+
+When setting this property, it can usually only forcibly be set to true.
+
+See WINDOW (type)")
+  
+  (function borderless-p
+    "Accesses whether the window should have a border or decorations, or not.
+
+See WINDOW (type)")
+  
+  (function always-on-top-p
+    "Accesses whether the window should always stick on top or not.
+
+See WINDOW (type)")
+  
+  (function resizable-p
+    "Accesses whether the window is meant to be resizable or not.
+
+Note that even when set not to be, your window may be forced to a
+particular size by the windowing system.
+
+See WINDOW (type)")
+  
+  (function floating-p
+    "Accesses whether the window is set to be floating or not.
+
+See WINDOW (type)")
+  
+  (function mouse-entered-p
+    "Returns whether the mouse is currently in the window or not.
 
 See WINDOW (type)")
   

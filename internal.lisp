@@ -18,6 +18,7 @@
 (declaim (inline ptr-int))
 (defun ptr-int (ptr)
   (etypecase ptr
+    #+cffi
     (cffi:foreign-pointer (cffi:pointer-address ptr))
     ((integer 1) ptr)))
 
@@ -280,3 +281,14 @@
            (dotimes (,x ,wg)
              (progn ,@body)
              (incf ,i 4)))))))
+
+(defun clear (buffer &optional (color :black))
+  (let ((color (ecase color
+                 (:black 0)
+                 (:white 255))))
+    #+cffi
+    (cffi:with-pointer-to-vector-data (ptr buffer)
+      (cffi:foreign-funcall "memset" :pointer ptr :int color :size (length buffer)))
+    #-cffi
+    (fill buffer color)
+    buffer))

@@ -10,6 +10,7 @@
    #:open
    #:with-window
    #:do-pixels
+   #:clear
    #:valid-p
    #:close-requested-p
    #:close

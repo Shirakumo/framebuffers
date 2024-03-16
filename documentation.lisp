@@ -161,6 +161,14 @@ the order of Blue Green Red Alpha, with the first pixel being in the
 top left corner of the framebuffer, growing in X then Y.
 
 See WINDOW (type)")
+
+  (function clear
+    "Clears the pixel buffer to :white or :black.
+
+This is equivalent to (fill buffer 0) for black or (fill buffer 255)
+for white, but may be more efficient.
+
+See BUFFER")
   
   (function valid-p
     "Returns whether the window is usable or not.

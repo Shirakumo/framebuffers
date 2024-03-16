@@ -227,6 +227,18 @@
   ;; TODO: set clipboard string
   )
 
+(defmethod (setf fb:icon) (value (window window))
+  ;; TODO: implement icon
+  )
+
+(defmethod (setf fb:cursor-icon) (value (window window))
+  ;; TODO: implement cursor-icon
+  )
+
+(defmethod (setf fb:cursor-state) (value (window window))
+  ;; TODO: implement cursor-state
+  )
+
 (defmethod fb:request-attention ((window window))
   (win32:flash-window (ptr window) T))
 

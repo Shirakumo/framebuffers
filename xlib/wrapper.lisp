@@ -438,6 +438,18 @@
   ;; TODO: implement clipboard setting
   )
 
+(defmethod (setf fb:icon) (value (window window))
+  ;; TODO: implement icon
+  )
+
+(defmethod (setf fb:cursor-icon) (value (window window))
+  ;; TODO: implement cursor-icon
+  )
+
+(defmethod (setf fb:cursor-state) (value (window window))
+  ;; TODO: implement cursor-state
+  )
+
 (defmethod fb:request-attention ((window window))
   (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_DEMANDS_ATTENTION") 0 1 0)
   (xlib:flush (display window))

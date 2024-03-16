@@ -364,10 +364,12 @@
               for type in types
               do (setf (cffi:mem-aref ptrs :pointer i)
                        (etypecase type
-                         (nil (cffi:null-pointer))
+                         (null (cffi:null-pointer))
                          (cffi:foreign-pointer type)
-                         (symbol (or (cffi:get-var-pointer type)
-                                     (error "No such variable ~s" type)))
+                         (symbol (if (fboundp type)
+                                     (funcall type)
+                                     (or (cffi:get-var-pointer type)
+                                         (error "No such variable ~s" type))))
                          (string (or (cffi:foreign-symbol-pointer type)
                                      (error "No such variable ~s" type))))))
         ptrs)
@@ -383,8 +385,9 @@
              (setf (message-types ptr) (make-message-types types)))
     ptrs))
 
-(defun make-interface (name version methods events)
+(defun make-interface (sname name version methods events)
   (let ((iface (cffi:foreign-alloc '(:struct interface))))
+    (setf (gethash sname *interfaces*) iface)
     (setf (interface-name iface) name)
     (setf (interface-version iface) version)
     (setf (interface-event-count iface) (length events))
@@ -401,21 +404,21 @@
          (defun ,sname ()
            (or (gethash ',sname *interfaces*)
                (setf (gethash ',sname *interfaces*)
-                     (make-interface ,name ,version ',methods ',events))))
+                     (make-interface ',sname ,name ,version ',methods ',events))))
 
          (define-symbol-macro ,sname (,sname)))))
 
-(define-interface xdg-activation-interface
+(define-interface xdg-activation-v1-interface
   :name "xdg_activation_v1"
   :methods (("destroy" "")
             ("get_activation_token" "n" xdg-activation-token-v1-interface)
-            ("activate" "so" NIL wl-surface-interface)))
+            ("activate" "so" NIL surface-interface)))
 
 (define-interface xdg-activation-token-v1-interface
   :name "xdg_activation_token_v1"
-  :methods (("set_serial" "uo" NIL wl-seat-interface)
+  :methods (("set_serial" "uo" NIL seat-interface)
             ("set_app_id" "s" NIL)
-            ("set_surface" "o" wl-seat-interface)
+            ("set_surface" "o" seat-interface)
             ("commit" "")
             ("destroy" ""))
   :events (("done" "s" NIL)))
@@ -423,7 +426,7 @@
 (define-interface wp-fractional-scale-manager-v1-interface
   :name "wp_fractional_scale_manager_v1"
   :methods (("destroy" "")
-            ("get_fractional_scale" "no" wp-fractional-scale-v1-interface wl-surface-interface)))
+            ("get_fractional_scale" "no" wp-fractional-scale-v1-interface surface-interface)))
 
 (define-interface wp-fractional-scale-v1-interface
   :name "wp_fractional_scale_v1"
@@ -433,7 +436,7 @@
 (define-interface zwp-idle-inhibit-manager-v1-interface
   :name "zwp_idle_inhibit_manager_v1"
   :methods (("destroy" "")
-            ("create_inhibitor" "no" zwp-idle-inhibitor-v1-interface wl-surface-interface)))
+            ("create_inhibitor" "no" zwp-idle-inhibitor-v1-interface surface-interface)))
 
 (define-interface zwp-idle-inhibitor-v1-interface
   :name "zwp_idle_inhibitor_v1"
@@ -455,7 +458,7 @@
   :version 6
   :methods (("destroy" "")
             ("create_positioner" "n" xdg-positioner-interface)
-            ("get_xdg_surface" "no" xdg-surface-interface wl-surface-interface)
+            ("get_xdg_surface" "no" xdg-surface-interface surface-interface)
             ("pong" "u" NIL))
   :events (("ping" "u" NIL)))
 
@@ -490,14 +493,14 @@
             ("set_parent" "?o" xdg-toplevel-interface)
             ("set_title" "s" NIL)
             ("set_app_id" "s" NIL)
-            ("show_window_menu" "ouii" wl-seat-interface NIL NIL NIL)
-            ("move" "ou" wl-seat-interface NIL)
-            ("resize" "ouu" wl-seat-interface NIL NIL)
+            ("show_window_menu" "ouii" seat-interface NIL NIL NIL)
+            ("move" "ou" seat-interface NIL)
+            ("resize" "ouu" seat-interface NIL NIL)
             ("set_max_size" "ii" NIL NIL)
             ("set_min_size" "ii" NIL NIL)
             ("set_maximized" "")
             ("unset_maximized" "")
-            ("set_fullscreen" "?o" wl-output-interface)
+            ("set_fullscreen" "?o" output-interface)
             ("unset_fullscreen" "")
             ("set_minimized" ""))
   :events (("configure" "iia" NIL NIL NIL)

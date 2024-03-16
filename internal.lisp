@@ -87,9 +87,22 @@
 (defclass dynamic-event-handler (event-handler)
   ((handler :initarg :handler :accessor handler)))
 
-(defun open (&rest args &key size location title visible-p &allow-other-keys)
+(defun open (&rest args &key size location title visible-p maximum-size minimum-size maximized-p iconified-p borderless-p always-on-top-p floating-p &allow-other-keys)
   (declare (ignore size location title visible-p))
-  (apply #'open-backend (or *backend* (init)) args))
+  (let ((window (apply #'open-backend (or *backend* (init))
+                       ;; We filter this way to allow backend-specific extension args
+                       (loop for (k v) on args by #'cddr
+                             for culled-prop-p = (find k '(:maximum-size :minimum-size :maximized-p :iconified-p :borderless-p :always-on-top-p :floating-p))
+                             unless culled-prop-p collect k
+                             unless culled-prop-p collect v))))
+    (when maximum-size (setf (maximum-size window) maximum-size))
+    (when minimum-size (setf (minimum-size window) minimum-size))
+    (when maximized-p (setf (maximized-p window) maximized-p))
+    (when iconified-p (setf (iconified-p window) iconified-p))
+    (when borderless-p (setf (borderless-p window) borderless-p))
+    (when always-on-top-p (setf (always-on-top-p window) always-on-top-p))
+    (when floating-p (setf (floating-p window) floating-p))
+    window))
 
 (defmethod print-object ((window window) stream)
   (print-unreadable-object (window stream :type T :identity T)

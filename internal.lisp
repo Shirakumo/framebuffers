@@ -37,16 +37,20 @@
   (loop for window being the hash-values of *windows-table*
         collect window))
 
-(defun init ()
-  (dolist (backend *available-backends*)
-    (handler-case
-        (progn (init-backend backend)
-               (setf *backend* backend)
-               (return-from init backend))
-      (error ())))
-  (if *available-backends*
-      (error "Tried to configure ~{~a~^, ~a~}, but none would start properly." *available-backends*)
-      (error "There are no available backends for your system.")))
+(defun init (&optional backend)
+  (cond (backend
+         (init-backend backend)
+         backend)
+        (T
+         (dolist (backend *available-backends*)
+           (handler-case
+               (progn (init-backend backend)
+                      (setf *backend* backend)
+                      (return-from init backend))
+             (error ())))
+         (if *available-backends*
+             (error "Tried to configure ~{~a~^, ~a~}, but none would start properly." *available-backends*)
+             (error "There are no available backends for your system.")))))
 
 (defun shutdown ()
   (when *backend*

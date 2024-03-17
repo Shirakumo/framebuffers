@@ -137,9 +137,13 @@ See VIDEO-MODE")
   (function init
     "Initialises the backend.
 
-This will try all available backends until one is found that works. If
-a working one is found, its name is returned. If none is found, an
-error is signalled.
+If no backend is passed, this will try all available backends until
+one is found that works. If a working one is found, its name is
+returned. If none is found, an error is signalled.
+
+If you pass a backend name explicitly (as a keyword), it will only try
+that specific backend and will error if it fails to initialise for
+whatever reason.
 
 See SHUTDOWN")
   

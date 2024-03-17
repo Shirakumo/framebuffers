@@ -8,6 +8,7 @@
 (defgeneric init-backend (backend))
 (defgeneric shutdown-backend (backend))
 (defgeneric open-backend (backend &key))
+(defgeneric list-displays-backend (backend))
 
 (defun static-file (path)
   (merge-pathnames path *here*))
@@ -54,6 +55,30 @@
     (shutdown-backend (shiftf *backend* NIL))
     (clrhash *windows-table*)))
 
+(defun list-displays ()
+  (list-displays-backend (or *backend* (init))))
+
+(defun open (&rest args &key size location title visible-p maximum-size minimum-size maximized-p iconified-p borderless-p always-on-top-p floating-p &allow-other-keys)
+  (declare (ignore size location title visible-p))
+  (let ((window (apply #'open-backend (or *backend* (init))
+                       ;; We filter this way to allow backend-specific extension args
+                       (loop for (k v) on args by #'cddr
+                             for culled-prop-p = (find k '(:maximum-size :minimum-size :maximized-p :iconified-p :borderless-p :always-on-top-p :floating-p))
+                             unless culled-prop-p collect k
+                             unless culled-prop-p collect v))))
+    (when maximum-size (setf (maximum-size window) maximum-size))
+    (when minimum-size (setf (minimum-size window) minimum-size))
+    (when maximized-p (setf (maximized-p window) maximized-p))
+    (when iconified-p (setf (iconified-p window) iconified-p))
+    (when borderless-p (setf (borderless-p window) borderless-p))
+    (when always-on-top-p (setf (always-on-top-p window) always-on-top-p))
+    (when floating-p (setf (floating-p window) floating-p))
+    window))
+
+(defmethod print-object ((icon icon) stream)
+  (print-unreadable-object (icon stream :type T :identity T)
+    (format stream "~a x ~a" (width icon) (height icon))))
+
 (defmethod width ((icon icon))
   (icon-width icon))
 
@@ -71,6 +96,10 @@
 
 (defmethod (setf buffer) (value (icon icon))
   (setf (icon-buffer icon) width))
+
+(defmethod print-object ((touchpoint touchpoint) stream)
+  (print-unreadable-object (touchpoint stream :type T :identity T)
+    (format stream "~a" (location touchpoint))))
 
 (defmethod fb:location ((touchpoint touchpoint))
   (touchpoint-location touchpoint))
@@ -108,6 +137,55 @@
 (defmethod (setf pressure) (pressure (touchpoint touchpoint))
   (setf (touchpoint-pressure touchpoint) location))
 
+(defmethod print-object ((video-mode video-mode) stream)
+  (print-unreadable-object (video-mode stream :type T)
+    (format "~a" (fb:title video-mode))))
+
+(defmethod fb:display ((video-mode video-mode))
+  (video-mode-display video-mode))
+
+(defmethod display ((video-mode video-mode))
+  (video-mode-display video-mode))
+
+(defmethod (setf display) (display (video-mode video-mode))
+  (setf (video-mode-display video-mode) display))
+
+(defmethod width ((video-mode video-mode))
+  (video-mode-width video-mode))
+
+(defmethod height ((video-mode video-mode))
+  (video-mode-height video-mode))
+
+(defmethod refresh-rate ((video-mode video-mode))
+  (video-mode-refresh-rate video-mode))
+
+(defmethod fb:id ((video-mode video-mode))
+  (format NIL "~dx~d@~d-~a"
+          (width video-mode) (height video-mode)
+          (refresh-rate video-mode) (id (display video-mode))))
+
+(defmethod fb:title ((video-mode video-mode))
+  (format NIL "~dx~d @ ~dHz ~a"
+          (width video-mode) (height video-mode)
+          (refresh-rate video-mode) (or (title (display video-mode)) (id (display video-mode)))))
+
+(defclass display ()
+  ((id :initarg :id :reader fb:id :accessor id)
+   (title :initarg :title :initform NIL :reader fb:title :accessor title)
+   (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
+   (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
+   (primary-p :initform NIL :initarg :primary-p :reader fb:primary-p :accessor primary-p)))
+
+(defmethod print-object ((display display) stream)
+  (print-unreadable-object (display stream :type T)
+    (format stream "~a~@[ PRIMARY~]" (or (title display) (id display)) (primary-p display))))
+
+(defmethod width ((display display))
+  (car (size display)))
+
+(defmethod height ((display display))
+  (cdr (size display)))
+
 (defclass window ()
   ((event-handler :initform (make-instance 'event-handler) :accessor event-handler)
    (mouse-location :initform (cons 0 0) :accessor mouse-location)
@@ -128,45 +206,23 @@
    (resizable-p :initform NIL :initarg :resizable-p :reader fb:resizable-p :accessor resizable-p)
    (floating-p :initform NIL :initarg :floating-p :reader fb:floating-p :accessor floating-p)
    (mouse-entered-p :initform NIL :initarg :mouse-entered-p :reader fb:mouse-entered-p :accessor mouse-entered-p)
+   (fullscren-p :initform NIL :initarg :fullscreen-p :reader fb:fullscreen-p :accessor fullscreen-p)
    (content-scale :initform (cons 1 1) :initarg :content-scale :reader fb:content-scale :accessor content-scale)
    (icon :initform NIL :initarg :icon :reader fb:icon :accessor icon)
    (cursor-icon :initform :arrow :initarg :cursor-icon :reader fb:cursor-icon :accessor cursor-icon)
    (cursor-state :initform :normal :initarg :cursor-state :reader fb:cursor-state :accessor cursor-state)))
-
-(defmethod initialize-instance :after ((window window) &key event-handler)
-  (setf (event-handler window) event-handler))
-
-(defclass event-handler ()
-  ((window :initform NIL :initarg :window :accessor window)))
-
-(defmethod (setf event-handler) :before ((handler event-handler) (window window))
-  (setf (window handler) window))
-
-(defclass dynamic-event-handler (event-handler)
-  ((handler :initarg :handler :accessor handler)))
-
-(defun open (&rest args &key size location title visible-p maximum-size minimum-size maximized-p iconified-p borderless-p always-on-top-p floating-p &allow-other-keys)
-  (declare (ignore size location title visible-p))
-  (let ((window (apply #'open-backend (or *backend* (init))
-                       ;; We filter this way to allow backend-specific extension args
-                       (loop for (k v) on args by #'cddr
-                             for culled-prop-p = (find k '(:maximum-size :minimum-size :maximized-p :iconified-p :borderless-p :always-on-top-p :floating-p))
-                             unless culled-prop-p collect k
-                             unless culled-prop-p collect v))))
-    (when maximum-size (setf (maximum-size window) maximum-size))
-    (when minimum-size (setf (minimum-size window) minimum-size))
-    (when maximized-p (setf (maximized-p window) maximized-p))
-    (when iconified-p (setf (iconified-p window) iconified-p))
-    (when borderless-p (setf (borderless-p window) borderless-p))
-    (when always-on-top-p (setf (always-on-top-p window) always-on-top-p))
-    (when floating-p (setf (floating-p window) floating-p))
-    window))
 
 (defmethod print-object ((window window) stream)
   (print-unreadable-object (window stream :type T :identity T)
     (if (valid-p window)
         (format stream "~dx~d" (width window) (height window))
         (format stream "CLOSED"))))
+
+(defmethod initialize-instance :after ((window window) &key event-handler)
+  (setf (event-handler window) event-handler))
+
+(defmethod (setf event-handler) :before ((handler event-handler) (window window))
+  (setf (window handler) window))
 
 (defmethod mouse-button-pressed-p (button (window window))
   (< 0 (sbit (mouse-states window) (case button
@@ -193,6 +249,22 @@
 
 (defmethod height ((window window))
   (cdr (size window)))
+
+(defun find-mode-by-id (id)
+  (loop for display in (list-displays)
+        do (when (string= string (fb:id display))
+             (return-from find-mode-by-id display))
+           (loop for mode in (video-modes display)
+                 do (when (string= string (fb:id mode))
+                      (return-from find-mode-by-id mode)))))
+
+(defmethod (setf fb:fullscreen-p) ((string string) (window window))
+  (setf (fb:fullscreen-p window) (or (find-mode-by-id string) T)))
+
+(defmethod (setf fb:fullscreen-p) ((default (eql T)) (window window))
+  (setf (fb:fullscreen-p window) (or (fb:display window)
+                                     (find-if #'fb:primary-p (list-displays))
+                                     (first (list-displays)))))
 
 (defmacro define-event-callback (name args)
   `(progn

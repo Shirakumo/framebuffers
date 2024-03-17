@@ -461,6 +461,40 @@
 (defmethod fb:local-key-string ((key integer) (window window))
   (keysym-string key))
 
+
+(defclass display (fb:display)
+  ())
+
+(defstruct (video-mode (:include fb:video-mode)))
+
+(defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
+  ;; TODO: implement list-displays-backend
+  )
+
+(defmethod fb:display ((window window))
+  ;; TODO: implement display
+  )
+
+(defmethod fb:video-modes ((display display))
+  ;; TODO: implement video-modes
+  )
+
+(defmethod fb:video-mode ((display display))
+  ;; TODO: implement video-mode
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value null) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value display) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
 (cffi:defcstruct (pollfd :conc-name pollfd-)
   (fd :int)
   (events :short)

@@ -55,6 +55,84 @@ See TOUCHPOINT (type)")
     "Returns the pressure of the touchpoint in a normalized [0 . 1] range.
 
 See TOUCHPOINT (type)")
+
+  (type display
+    "Representation of an output display or monitor attached to the system.
+
+See WINDOW (type)
+See LIST-DISPLAYS
+See ID
+See TITLE
+See VIDEO-MODES
+See VIDEO-MODE
+See PRIMARY-P
+See SIZE
+See LOCATION
+See WIDTH
+See HEIGHT")
+
+  (function id
+    "Returns the unique ID of the display or video-mode.
+
+Represents the display or video-mode uniquely as a string. This ID
+will remain the same across restarts of the application.
+
+See DISPLAY (type)
+See VIDEO-MODE (type)")
+
+  (function title
+    "Returns a human-readable title for the display or video-mode.
+
+This is not necessarily globally unique or the same across restarts of
+the application, but it should be identifiable enough for humans.
+
+See DISPLAY (type)
+See VIDEO-MODE (type)")
+
+  (function video-modes
+    "Lists all valid video modes for the given display.
+
+See VIDEO-MODE (type)
+See DISPLAY (type)")
+
+  (function video-mode
+    "Returns the current video mode of the given display.
+
+See VIDEO-MODE (type)
+See DISPLAY (type)")
+
+  (function primary-p
+    "Returns whether the display is configured as the primary display.
+
+See DISPLAY (type)")
+
+  (type video-mode
+    "Representation of a particular mode the display can take on.
+
+See DISPLAY (type)
+See LIST-VIDEO-MODES
+See ID
+See TITLE
+See DISPLAY
+See WIDTH
+See HEIGHT
+See REFRESH-RATE")
+
+  (function display
+    "Returns the display of the object.
+
+For a VIDEO-MODE that is the display for which it was listed. For a
+WINDOW, it is the display the window is currently located on, if any,
+regardless of whether the window is fullscreened or not.
+
+See DISPLAY (type)
+See WINDOW (type)
+See VIDEO-MODE (type)")
+
+  (function refresh-rate
+    "Returns the refresh-rate of the video mode in hertz.
+
+See VIDEO-MODE")
   
   (function init
     "Initialises the backend.
@@ -97,6 +175,7 @@ See ALWAYS-ON-TOP-P
 See RESIZABLE-P
 See FLOATING-P
 See MOUSE-ENTERED-P
+See FULLSCREEN-P
 See CLIPBOARD-STRING
 See CONTENT-SCALE
 See BUFFER
@@ -108,7 +187,8 @@ See MOUSE-BUTTON-STATE
 See KEY-STATE
 See ICON
 See CURSOR-ICON
-See CURSOR-STATE")
+See CURSOR-STATE
+See DISPLAY")
   
   (type event-handler
     "Accesses the event handler of the window.
@@ -245,21 +325,24 @@ See VALID-P
 See WINDOW (type)")
   
   (function width
-    "Returns the width of the window or icon in pixels.
+    "Returns the width of the object in pixels.
 
 See WINDOW (type)
-See ICON (type)")
+See ICON (type)
+See DISPLAY (type)")
   
   (function height
-    "Returns the height of the window or icon in pixels.
+    "Returns the height of the object in pixels.
 
 See WINDOW (type)
-See ICON (type)")
+See ICON (type)
+See DISPLAY (type)")
   
   (function size
-    "Accesses the size of the window as a (W . H) cons in pixels.
+    "Accesses the size of the object as a (W . H) cons in pixels.
 
-See WINDOW (type)")
+See WINDOW (type)
+See DISPLAY (type)")
 
   (function minimum-size
     "Accesses the minimum size of the window as a (W . H) cons in pixels.
@@ -282,7 +365,8 @@ See WINDOW (type)")
           return (0 . 0) always.
 
 See WINDOW (type)
-See TOCHPOINT (type)")
+See TOCHPOINT (type)
+See DISPLAY (type)")
   
   (function title
     "Accesses the title of the window.
@@ -340,6 +424,28 @@ See WINDOW (type)")
   (function mouse-entered-p
     "Returns whether the mouse is currently in the window or not.
 
+See WINDOW (type)")
+
+  (function fullscreen-p
+    "Returns whether the window is currently in fullscreen mode or not.
+
+When setting this place, you may pass one of the following:
+
+  NIL         --- Returns the window to its original state prior to
+                  fullscreening.
+  T           --- Fullscreens on the current DISPLAY without changing
+                  its current VIDEO-MODE. If the window has no current
+                  display, the display that is PRIMARY-P is used.
+  DISPLAY     --- Fullscreens on the given DISPLAY without changing
+                  its current VIDEO-MODE.
+  VIDEO-MODE  --- Fullscreens on the display of the VIDEO-MODE and if
+                  necessary switches it to that mode.
+  STRING      --- Fullscreens on the VIDEO-MODE or DISPLAY that has an
+                  ID that's STRING= to the passed string. If none is
+                  found, this is the same as T.
+
+See DISPLAY (type)
+See VIDEO-MODE (type)
 See WINDOW (type)")
   
   (function clipboard-string

@@ -3,22 +3,19 @@
   (:shadow #:open #:close)
   (:export
    #:framebuffer-error
+   #:window
+   #:display
+   #:event-handler
+   #:dynamic-event-handler
    #:icon
-   #:icon-width
-   #:icon-height
-   #:icon-buffer
    #:touchpoint
-   #:touchpoint-location
-   #:touchpoint-radius
-   #:touchpoint-angle
-   #:touchpoint-pressure
    #:radius
    #:angle
    #:pressure
+   #:video-mode
+   #:refresh-rate
    #:init
    #:shutdown
-   #:window
-   #:event-handler
    #:open
    #:with-window
    #:do-pixels
@@ -56,6 +53,13 @@
    #:icon
    #:cursor-icon
    #:cursor-state
+   #:fullscreen-p
+   #:display
+   #:primary-p
+   #:video-modes
+   #:video-mode
+   #:id
+   #:list-displays
    #:window-moved
    #:window-resized
    #:window-refreshed
@@ -81,7 +85,9 @@
   (:use #:cl #:org.shirakumo.framebuffers)
   (:local-nicknames
    (#:fb #:org.shirakumo.framebuffers))
-  (:shadowing-import-from #:org.shirakumo.framebuffers #:open #:close #:make-touchpoint)
+  (:shadowing-import-from
+   #:org.shirakumo.framebuffers
+   #:open #:close #:make-touchpoint #:make-video-mode)
   (:shadow
    #:close-requested-p
    #:minimum-size
@@ -98,20 +104,26 @@
    #:resizable-p
    #:floating-p
    #:mouse-entered-p
+   #:fullscreen-p
+   #:primary-p
    #:content-scale
    #:icon
    #:cursor-icon
    #:cursor-state
    #:radius
    #:angle
-   #:pressure)
+   #:pressure
+   #:display
+   #:id)
   (:export
    #:*available-backends*
    #:make-touchpoint
+   #:make-video-mode
    #:static-file
    #:init-backend
    #:shutdown-backend
    #:open-backend
+   #:list-displays-backend
    #:default-title
    #:ptr-int
    #:ptr-window
@@ -132,6 +144,8 @@
    #:resizable-p
    #:floating-p
    #:mouse-entered-p
+   #:fullscreen-p
+   #:primary-p
    #:content-scale
    #:icon
    #:cursor-icon
@@ -139,5 +153,7 @@
    #:radius
    #:angle
    #:pressure
+   #:display
+   #:id
    #:with-cleanup
    #:clean))

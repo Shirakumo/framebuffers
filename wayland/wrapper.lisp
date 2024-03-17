@@ -284,6 +284,39 @@
   ;; TODO: implement cursor-state
   )
 
+(defclass display (fb:display)
+  ())
+
+(defstruct (video-mode (:include fb:video-mode)))
+
+(defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
+  ;; TODO: implement list-displays-backend
+  )
+
+(defmethod fb:display ((window window))
+  ;; TODO: implement display
+  )
+
+(defmethod fb:video-modes ((display display))
+  ;; TODO: implement video-modes
+  )
+
+(defmethod fb:video-mode ((display display))
+  ;; TODO: implement video-mode
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value null) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value display) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   (let ((full-width (car (fb:size window))))
     ;; FIXME: Could probably improve how much we have to copy, here.

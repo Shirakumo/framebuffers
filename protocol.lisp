@@ -3,6 +3,26 @@
 (define-condition framebuffer-error (error)
   ((window :initarg :window :initform NIL :reader window)))
 
+;;; Display info
+(defclass display () ())
+
+(defstruct (video-mode
+            (:constructor make-video-mode (display width height refresh-rate))
+            (:copier NIL)
+            (:predicate NIL))
+  (display NIL)
+  (width 0 :type (unsigned-byte 16))
+  (height 0 :type (unsigned-byte 16))
+  (refresh-rate 0 :type (unsigned-byte 16)))
+
+(defgeneric primary-p (display))
+(defgeneric video-modes (display))
+(defgeneric video-mode (display))
+(defgeneric id (display))
+
+;;; Window info
+(defclass window () ())
+
 (defstruct (icon
             (:constructor make-icon (width height data))
             (:copier NIL)
@@ -11,16 +31,6 @@
   (height 0 :type (unsigned-byte 16))
   (buffer NIL :type (simple-array (unsigned-byte 8) (*))))
 
-(defstruct (touchpoint
-            (:constructor make-touchpoint (&optional location radius angle pressure))
-            (:copier NIL)
-            (:predicate NIL))
-  (location (cons 0 0) :type cons)
-  (radius (cons 0 0) :type cons)
-  (angle 0 :type real)
-  (pressure 0 :type real))
-
-;;; Window info
 (defgeneric valid-p (window))
 (defgeneric close (window))
 (defgeneric close-requested-p (window))
@@ -71,8 +81,26 @@
 (defgeneric (setf cursor-icon) (value window))
 (defgeneric cursor-state (window))
 (defgeneric (setf cursor-state) (value window))
+(defgeneric fullscreen-p (window))
+(defgeneric (setf fullscreen-p) (value window))
+(defgeneric display (window))
 
 ;;; Event callbacks
+(defclass event-handler ()
+  ((window :initform NIL :initarg :window :accessor window)))
+
+(defclass dynamic-event-handler (event-handler)
+  ((handler :initarg :handler :accessor handler)))
+
+(defstruct (touchpoint
+            (:constructor make-touchpoint (&optional location radius angle pressure))
+            (:copier NIL)
+            (:predicate NIL))
+  (location (cons 0 0) :type cons)
+  (radius (cons 0 0) :type cons)
+  (angle 0 :type real)
+  (pressure 0 :type real))
+
 (defgeneric window-moved (event-handler xpos ypos))
 (defgeneric window-resized (event-handler width height))
 (defgeneric window-refreshed (event-handler))
@@ -95,15 +123,9 @@
 (defgeneric pen-moved (event-handler xpos ypos mode pressure xtilt ytilt))
 
 ;;; TODO:
-;;;; Monitor API to allow fullscreening
-;; (defgeneric fullscreen-on (window))
-;; (defgeneric (setf fullscreen-on) (value window))
-;; (defun list-monitors ())
-;; (defgeneric modes (monitor))
-;;
 ;;;; Input Method support
 ;;
 ;;;; Timers
-;; (defgeneric set-timer (window delay &optional repeat))
+;; (defgeneric set-timer (window delay &key repeat))
 ;; (defgeneric cancel-timer (window timer)
 ;; (defgeneric timer-ended (event-handler timer))

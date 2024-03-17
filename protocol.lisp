@@ -84,6 +84,8 @@
 (defgeneric fullscreen-p (window))
 (defgeneric (setf fullscreen-p) (value window))
 (defgeneric display (window))
+(defgeneric set-timer (window delay &key repeat))
+(defgeneric cancel-timer (window timer))
 
 ;;; Event callbacks
 (defclass event-handler ()
@@ -121,11 +123,7 @@
 (defgeneric touch-ended (event-handler points))
 (defgeneric touch-cancelled (event-handler points))
 (defgeneric pen-moved (event-handler xpos ypos mode pressure xtilt ytilt))
+(defgeneric timer-triggered (event-handler timer))
 
 ;;; TODO:
 ;;;; Input Method support
-;;
-;;;; Timers
-;; (defgeneric set-timer (window delay &key repeat))
-;; (defgeneric cancel-timer (window timer)
-;; (defgeneric timer-ended (event-handler timer))

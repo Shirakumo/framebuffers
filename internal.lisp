@@ -291,6 +291,12 @@
 (define-event-callback string-entered (string))
 (define-event-callback file-dropped (paths))
 (define-event-callback content-scale-changed (xscale yscale))
+(define-event-callback touch-started (points))
+(define-event-callback touch-moved (points))
+(define-event-callback touch-ended (points))
+(define-event-callback touch-cancelled (points))
+(define-event-callback pen-moved (xpos ypos mode pressure xtilt ytilt))
+(define-event-callback timer-triggered (timer))
 
 (defmethod window-moved :before ((window window) x y)
   (setf (car (location window)) x)

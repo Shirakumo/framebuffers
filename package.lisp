@@ -54,6 +54,8 @@
    #:cursor-icon
    #:cursor-state
    #:fullscreen-p
+   #:set-timer
+   #:cancel-timer
    #:display
    #:primary-p
    #:video-modes
@@ -79,7 +81,8 @@
    #:touch-moved
    #:touch-ended
    #:touch-cancelled
-   #:pen-moved))
+   #:pen-moved
+   #:timer-triggered))
 
 (defpackage #:org.shirakumo.framebuffers.int
   (:use #:cl #:org.shirakumo.framebuffers)

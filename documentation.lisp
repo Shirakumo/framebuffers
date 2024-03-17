@@ -188,7 +188,9 @@ See KEY-STATE
 See ICON
 See CURSOR-ICON
 See CURSOR-STATE
-See DISPLAY")
+See DISPLAY
+See SET-TIMER
+See CANCEL-TIMER")
   
   (type event-handler
     "Accesses the event handler of the window.
@@ -217,7 +219,8 @@ See TOUCH-STARTED
 See TOUCH-MOVED
 See TOUCH-ENDED
 See TOUCH-CANCELLED
-See PEN-MOVED")
+See PEN-MOVED
+See TIMER-TRIGGERED")
 
   (function event-handler
     "Accesses the event handler for the window.
@@ -596,6 +599,32 @@ The state may be one of the following:
   :CAPTURED --- The cursor cannot leave the window
 
 See WINDOW (type)")
+
+  (function set-timer
+    "Creates a new timer object and returns it.
+
+DELAY is the number of seconds after which TIMER-TRIGGERED is
+invoked for the returned timer object. If REPEAT is true, then the
+callback is repeatedly invoked in every DELAY interval until
+CANCEL-TIMER is called for the timer, or the WINDOW is closed.
+
+Note that how accurate the callback is is dependent on how often
+PROCESS-EVENTS is called.
+
+See WINDOW (type)
+See CANCEL-TIMER
+See TIMER-TRIGGERED
+See PROCESS-EVENTS")
+
+  (function cancel-timer
+    "Cancels the timer object.
+
+After this call, no further TIMER-TRIGGERED callbacks will be invoked
+for the given timer object.
+
+See WINDOW (type)
+See SET-TIMER
+See TIMER-TRIGGERED")
   
   (function window-moved
     "Callback for when the window has moved on screen.
@@ -896,4 +925,18 @@ information:
                an angle in the range [0 . PI]
 
 See EVENT-HANDLER (type)
-See WINDOW (type)"))
+See WINDOW (type)")
+
+  (function timer-triggered
+    "Callback for when a timer has reached its timeout.
+
+This will be called repeatedly for the same timer if the timer is set
+to repeat. For non-repeating timers it is only called once.
+
+Note that how accurate the callback is to the timer's timeout is
+dependent on how often PROCESS-EVENTS is called.
+
+See EVENT-HANDLER (type)
+See SET-TIMER
+See CANCEL-TIMER
+See PROCESS-EVENTS"))

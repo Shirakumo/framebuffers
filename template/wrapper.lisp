@@ -129,6 +129,14 @@
   ;; TODO: implement request-attention
   )
 
+(defmethod fb:set-timer ((window window) delay &key repeat)
+  ;; TODO: implement set-timer
+  )
+
+(defmethod fb:cancel-timer ((window window) timer)
+  ;; TODO: implement cancel-timer
+  )
+
 (defmethod fb:display ((window window))
   ;; TODO: implement display
   )

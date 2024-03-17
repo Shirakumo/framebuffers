@@ -239,6 +239,14 @@
   ;; TODO: implement cursor-state
   )
 
+(defmethod fb:set-timer ((window window) delay &key repeat)
+  ;; TODO: implement set-timer
+  )
+
+(defmethod fb:cancel-timer ((window window) timer)
+  ;; TODO: implement cancel-timer
+  )
+
 (defmethod fb:request-attention ((window window))
   (win32:flash-window (ptr window) T))
 

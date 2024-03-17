@@ -24,7 +24,7 @@
 (defclass window () ())
 
 (defstruct (icon
-            (:constructor make-icon (width height data))
+            (:constructor make-icon (width height buffer))
             (:copier NIL)
             (:predicate NIL))
   (width 0 :type (unsigned-byte 16))
@@ -90,9 +90,6 @@
 ;;; Event callbacks
 (defclass event-handler ()
   ((window :initform NIL :initarg :window :accessor window)))
-
-(defclass dynamic-event-handler (event-handler)
-  ((handler :initarg :handler :accessor handler)))
 
 (defstruct (touchpoint
             (:constructor make-touchpoint (&optional location radius angle pressure))

@@ -1,6 +1,20 @@
 (defpackage #:org.shirakumo.framebuffers
   (:use #:cl)
   (:shadow #:open #:close)
+  (:intern
+   #:make-video-mode
+   #:video-mode-display
+   #:video-mode-width
+   #:video-mode-height
+   #:video-mode-refresh-rate
+   #:icon-width
+   #:icon-height
+   #:icon-buffer
+   #:make-touchpoint
+   #:touchpoint-location
+   #:touchpoint-radius
+   #:touchpoint-angle
+   #:touchpoint-pressure)
   (:export
    #:framebuffer-error
    #:window
@@ -90,7 +104,20 @@
    (#:fb #:org.shirakumo.framebuffers))
   (:shadowing-import-from
    #:org.shirakumo.framebuffers
-   #:open #:close #:make-touchpoint #:make-video-mode)
+   #:open #:close
+   #:make-video-mode
+   #:video-mode-display
+   #:video-mode-width
+   #:video-mode-height
+   #:video-mode-refresh-rate
+   #:icon-width
+   #:icon-height
+   #:icon-buffer
+   #:make-touchpoint
+   #:touchpoint-location
+   #:touchpoint-radius
+   #:touchpoint-angle
+   #:touchpoint-pressure)
   (:shadow
    #:close-requested-p
    #:minimum-size

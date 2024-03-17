@@ -79,27 +79,27 @@
     (when floating-p (setf (floating-p window) floating-p))
     window))
 
-(defmethod print-object ((icon icon) stream)
+(defmethod print-object ((icon fb:icon) stream)
   (print-unreadable-object (icon stream :type T :identity T)
     (format stream "~a x ~a" (width icon) (height icon))))
 
-(defmethod width ((icon icon))
+(defmethod width ((icon fb:icon))
   (icon-width icon))
 
-(defmethod (setf width) (value (icon icon))
-  (setf (icon-width icon) width))
+(defmethod (setf width) (value (icon fb:icon))
+  (setf (icon-width icon) value))
 
-(defmethod height ((icon icon))
+(defmethod height ((icon fb:icon))
   (icon-height icon))
 
-(defmethod (setf height) (value (icon icon))
-  (setf (icon-height icon) width))
+(defmethod (setf height) (value (icon fb:icon))
+  (setf (icon-height icon) value))
 
-(defmethod buffer ((icon icon))
+(defmethod buffer ((icon fb:icon))
   (icon-buffer icon))
 
-(defmethod (setf buffer) (value (icon icon))
-  (setf (icon-buffer icon) width))
+(defmethod (setf buffer) (value (icon fb:icon))
+  (setf (icon-buffer icon) value))
 
 (defmethod print-object ((touchpoint touchpoint) stream)
   (print-unreadable-object (touchpoint stream :type T :identity T)
@@ -121,7 +121,7 @@
   (touchpoint-radius touchpoint))
 
 (defmethod (setf radius) (radius (touchpoint touchpoint))
-  (setf (touchpoint-radius touchpoint) location))
+  (setf (touchpoint-radius touchpoint) radius))
 
 (defmethod fb:angle ((touchpoint touchpoint))
   (touchpoint-angle touchpoint))
@@ -130,7 +130,7 @@
   (touchpoint-angle touchpoint))
 
 (defmethod (setf angle) (angle (touchpoint touchpoint))
-  (setf (touchpoint-angle touchpoint) location))
+  (setf (touchpoint-angle touchpoint) angle))
 
 (defmethod fb:pressure ((touchpoint touchpoint))
   (touchpoint-pressure touchpoint))
@@ -139,11 +139,11 @@
   (touchpoint-pressure touchpoint))
 
 (defmethod (setf pressure) (pressure (touchpoint touchpoint))
-  (setf (touchpoint-pressure touchpoint) location))
+  (setf (touchpoint-pressure touchpoint) pressure))
 
 (defmethod print-object ((video-mode video-mode) stream)
   (print-unreadable-object (video-mode stream :type T)
-    (format "~a" (fb:title video-mode))))
+    (format stream "~a" (fb:title video-mode))))
 
 (defmethod fb:display ((video-mode video-mode))
   (video-mode-display video-mode))
@@ -256,10 +256,10 @@
 
 (defun find-mode-by-id (id)
   (loop for display in (list-displays)
-        do (when (string= string (fb:id display))
+        do (when (string= id (fb:id display))
              (return-from find-mode-by-id display))
            (loop for mode in (video-modes display)
-                 do (when (string= string (fb:id mode))
+                 do (when (string= id (fb:id mode))
                       (return-from find-mode-by-id mode)))))
 
 (defmethod (setf fb:fullscreen-p) ((string string) (window window))
@@ -279,6 +279,9 @@
 
      (defmethod ,name ((handler dynamic-event-handler) ,@args)
        (funcall (handler handler) ',name (window handler) ,@args))))
+
+(defclass dynamic-event-handler (event-handler)
+  ((handler :initarg :handler :accessor handler)))
 
 (define-event-callback window-moved (xpos ypos))
 (define-event-callback window-resized (width height))

@@ -1,4 +1,4 @@
-(in-package #:org.shirakumo.framebuffers.int)
+(in-package #:org.shirakumo.framebuffers)
 
 (docs:define-docs
   (type framebuffer-error
@@ -187,8 +187,8 @@ See SWAP-BUFFERS
 See PROCESS-EVENTS
 See REQUEST-ATTENTION
 See MOUSE-LOCATION
-See MOUSE-BUTTON-STATE
-See KEY-STATE
+See MOUSE-BUTTON-PRESSED-P
+See KEY-PRESSED-P
 See ICON
 See CURSOR-ICON
 See CURSOR-STATE

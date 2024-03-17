@@ -613,3 +613,6 @@
         ((atomp window (xlib:client-message-event-message-type event) "XdndDrop")
          ;; TODO: implement drops
          )))
+
+;; TODO: touch events
+;; TODO: pen events

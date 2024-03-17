@@ -11,6 +11,15 @@
   (height 0 :type (unsigned-byte 16))
   (buffer NIL :type (simple-array (unsigned-byte 8) (*))))
 
+(defstruct (touchpoint
+            (:constructor make-touchpoint (&optional location radius angle pressure))
+            (:copier NIL)
+            (:predicate NIL))
+  (location (cons 0 0) :type cons)
+  (radius (cons 0 0) :type cons)
+  (angle 0 :type real)
+  (pressure 0 :type real))
+
 ;;; Window info
 (defgeneric valid-p (window))
 (defgeneric close (window))
@@ -79,6 +88,11 @@
 (defgeneric string-entered (event-handler string))
 (defgeneric file-dropped (event-handler paths))
 (defgeneric content-scale-changed (window xscale yscale))
+(defgeneric touch-started (event-handler points))
+(defgeneric touch-moved (event-handler points))
+(defgeneric touch-ended (event-handler points))
+(defgeneric touch-cancelled (event-handler points))
+(defgeneric pen-moved (event-handler xpos ypos mode pressure xtilt ytilt))
 
 ;;; TODO:
 ;;;; Monitor API to allow fullscreening
@@ -88,16 +102,6 @@
 ;; (defgeneric modes (monitor))
 ;;
 ;;;; Input Method support
-;;
-;;;; Pen pressure events
-;; (defgeneric pen-moved (event-handler mode xpos ypos pressure xtilt ytilt))
-;;
-;;;; Touch events
-;; (defstruct touchpoint x y x-radius y-radius angle pressure)
-;; (defgeneric touch-started (event-handler points))
-;; (defgeneric touch-moved (event-handler points))
-;; (defgeneric touch-ended (event-handler points))
-;; (defgeneric touch-cancelled (event-handler points))
 ;;
 ;;;; Timers
 ;; (defgeneric set-timer (window delay &optional repeat))

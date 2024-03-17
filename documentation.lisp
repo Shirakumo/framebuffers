@@ -32,6 +32,29 @@ represents the image data in BGRA order.
 
 See BUFFER
 See ICON (type)")
+
+  (type touchpoint
+    "Representation of a point that is being touched on the screen.
+
+See LOCATION
+See RADIUS
+See ANGLE
+See PRESSURE")
+
+  (function radius
+    "Returns the radius of the touch ellipsis as a (X . Y) cons in pixels.
+
+See TOUCHPOINT (type)")
+
+  (function angle
+    "Returns the angle of the touch ellipsis in a normalized [0 . PI] range.
+
+See TOUCHPOINT (type)")
+
+  (function pressure
+    "Returns the pressure of the touchpoint in a normalized [0 . 1] range.
+
+See TOUCHPOINT (type)")
   
   (function init
     "Initialises the backend.
@@ -109,7 +132,12 @@ See MOUSE-SCROLLED
 See KEY-CHANGED
 See STRING-ENTERED
 See FILE-DROPPED
-See CONTENT-SCALE-CHANGED")
+See CONTENT-SCALE-CHANGED
+See TOUCH-STARTED
+See TOUCH-MOVED
+See TOUCH-ENDED
+See TOUCH-CANCELLED
+See PEN-MOVED")
 
   (function event-handler
     "Accesses the event handler for the window.
@@ -248,12 +276,13 @@ W and H must be integers above 0 or NIL to denote no limit.
 See WINDOW (type)")
   
   (function location
-    "Accesses the location of the window as a (X . Y) cons in pixels.
+    "Accesses the location of the object as a (X . Y) cons in pixels.
 
 [Wayland] The window location cannot be accessed and will simply
           return (0 . 0) always.
 
-See WINDOW (type)")
+See WINDOW (type)
+See TOCHPOINT (type)")
   
   (function title
     "Accesses the title of the window.
@@ -701,5 +730,64 @@ This can occur due to a monitor reconfiguration or the window being
 moved to another monitor with different requirements.
 
 See CONTENT-SCALE
+See EVENT-HANDLER (type)
+See WINDOW (type)")
+
+  (function touch-started
+    "Callback for when a touch event has started.
+
+The POINTS is a list of TOUCHPOINT instances describing the contact
+points and their shape on the screen.
+
+See EVENT-HANDLER (type)
+See WINDOW (type)
+See TOUCH-POINT (type)")
+
+  (function touch-moved
+    "Callback for when a touch event has changed.
+
+The POINTS is a list of TOUCHPOINT instances describing the contact
+points and their shape on the screen. The points in the set will be EQ
+to the ones from the previous TOUCH-MOVED or TOUCH-STARTED if they are
+tracked to be the same points. The set may change as touchpoints are
+removed or added druing the same motion.
+
+See EVENT-HANDLER (type)
+See WINDOW (type)
+See TOUCH-POINT (type)")
+
+  (function touch-ended
+    "Callback for when a touch event has successfully completed.
+
+This is called when all touchpoints have left the screen. The set of
+POINTS is the last before this happened.
+
+See EVENT-HANDLER (type)
+See WINDOW (type)
+See TOUCH-POINT (type)")
+
+  (function touch-cancelled
+    "Callback fro when a touch event has bene interrupted by some other system action.
+
+This should be used to cancel an operation that was started by the
+touch event.The set of POINTS is the last before this happened.
+
+See EVENT-HANDLER (type)
+See WINDOW (type)
+See TOUCH-POINT (type)")
+
+  (function pen-moved
+    "Callback for when a stylus or pen has been moved across the screen.
+
+This is in addition to a mouse event, and carries the following extra
+information:
+
+  MODE     --- Either :NORMAL or :ERASER
+  PRESSURE --- A normalised pressure value in the range [0 . 1]
+  XTILT    --- The tilt of the pen in X direction along the screen as
+               an angle in the range [0 . PI]
+  YTILT    --- The tilt of the pen in Y direction along the screen as
+               an angle in the range [0 . PI]
+
 See EVENT-HANDLER (type)
 See WINDOW (type)"))

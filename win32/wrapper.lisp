@@ -457,3 +457,6 @@
            ;; TODO: implement dnd
            )))
       (return (win32:def-window-proc ptr message wparam lparam)))))
+
+;; TODO: touch events
+;; TODO: pen events

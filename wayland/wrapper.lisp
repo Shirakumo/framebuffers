@@ -613,3 +613,6 @@
   xdg-toplevel-listener
   wp-fractional-scale-listener
   xdg-activation-listener)
+
+;; TODO: touch events
+;; TODO: pen events

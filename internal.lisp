@@ -54,12 +54,59 @@
     (shutdown-backend (shiftf *backend* NIL))
     (clrhash *windows-table*)))
 
-(defmethod width ((icon icon)) (icon-width icon))
-(defmethod (setf width) (value (icon icon)) (setf (icon-width icon) width))
-(defmethod height ((icon icon)) (icon-height icon))
-(defmethod (setf height) (value (icon icon)) (setf (icon-height icon) width))
-(defmethod buffer ((icon icon)) (icon-buffer icon))
-(defmethod (setf buffer) (value (icon icon)) (setf (icon-buffer icon) width))
+(defmethod width ((icon icon))
+  (icon-width icon))
+
+(defmethod (setf width) (value (icon icon))
+  (setf (icon-width icon) width))
+
+(defmethod height ((icon icon))
+  (icon-height icon))
+
+(defmethod (setf height) (value (icon icon))
+  (setf (icon-height icon) width))
+
+(defmethod buffer ((icon icon))
+  (icon-buffer icon))
+
+(defmethod (setf buffer) (value (icon icon))
+  (setf (icon-buffer icon) width))
+
+(defmethod fb:location ((touchpoint touchpoint))
+  (touchpoint-location touchpoint))
+
+(defmethod location ((touchpoint touchpoint))
+  (touchpoint-location touchpoint))
+
+(defmethod (setf location) (location (touchpoint touchpoint))
+  (setf (touchpoint-location touchpoint) location))
+
+(defmethod fb:radius ((touchpoint touchpoint))
+  (touchpoint-radius touchpoint))
+
+(defmethod radius ((touchpoint touchpoint))
+  (touchpoint-radius touchpoint))
+
+(defmethod (setf radius) (radius (touchpoint touchpoint))
+  (setf (touchpoint-radius touchpoint) location))
+
+(defmethod fb:angle ((touchpoint touchpoint))
+  (touchpoint-angle touchpoint))
+
+(defmethod angle ((touchpoint touchpoint))
+  (touchpoint-angle touchpoint))
+
+(defmethod (setf angle) (angle (touchpoint touchpoint))
+  (setf (touchpoint-angle touchpoint) location))
+
+(defmethod fb:pressure ((touchpoint touchpoint))
+  (touchpoint-pressure touchpoint))
+
+(defmethod pressure ((touchpoint touchpoint))
+  (touchpoint-pressure touchpoint))
+
+(defmethod (setf pressure) (pressure (touchpoint touchpoint))
+  (setf (touchpoint-pressure touchpoint) location))
 
 (defclass window ()
   ((event-handler :initform (make-instance 'event-handler) :accessor event-handler)

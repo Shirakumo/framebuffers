@@ -7,6 +7,14 @@
    #:icon-width
    #:icon-height
    #:icon-buffer
+   #:touchpoint
+   #:touchpoint-location
+   #:touchpoint-radius
+   #:touchpoint-angle
+   #:touchpoint-pressure
+   #:radius
+   #:angle
+   #:pressure
    #:init
    #:shutdown
    #:window
@@ -62,13 +70,18 @@
    #:key-changed
    #:string-entered
    #:file-dropped
-   #:content-scale-changed))
+   #:content-scale-changed
+   #:touch-started
+   #:touch-moved
+   #:touch-ended
+   #:touch-cancelled
+   #:pen-moved))
 
 (defpackage #:org.shirakumo.framebuffers.int
   (:use #:cl #:org.shirakumo.framebuffers)
   (:local-nicknames
    (#:fb #:org.shirakumo.framebuffers))
-  (:shadowing-import-from #:org.shirakumo.framebuffers #:open #:close)
+  (:shadowing-import-from #:org.shirakumo.framebuffers #:open #:close #:make-touchpoint)
   (:shadow
    #:close-requested-p
    #:minimum-size
@@ -88,9 +101,13 @@
    #:content-scale
    #:icon
    #:cursor-icon
-   #:cursor-state)
+   #:cursor-state
+   #:radius
+   #:angle
+   #:pressure)
   (:export
    #:*available-backends*
+   #:make-touchpoint
    #:static-file
    #:init-backend
    #:shutdown-backend
@@ -119,5 +136,8 @@
    #:icon
    #:cursor-icon
    #:cursor-state
+   #:radius
+   #:angle
+   #:pressure
    #:with-cleanup
    #:clean))

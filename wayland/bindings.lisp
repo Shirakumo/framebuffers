@@ -356,6 +356,7 @@
 (cffi:defcvar (shm-pool-interface "wl_shm_pool_interface") (:struct interface))
 (cffi:defcvar (surface-interface "wl_surface_interface") (:struct interface))
 (cffi:defcvar (touch-interface "wl_touch_interface") (:struct interface))
+(cffi:defcvar (output-interface "wl_output_interface") (:struct interface))
 
 (defvar *interfaces* (make-hash-table :test 'eql))
 

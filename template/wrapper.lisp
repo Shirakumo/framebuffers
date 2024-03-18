@@ -89,11 +89,11 @@
   ;; TODO: implement fullscreen-p
   )
 
-(defmethod fb:clipboard-string ((window window))
+(defmethod fb:clipboard ((window window))
   ;; TODO: implement clipboard fetching
   )
 
-(defmethod (setf fb:clipboard-string) (string (window window))
+(defmethod (setf fb:clipboard) (string (window window))
   ;; TODO: implement clipboard setting
   )
 
@@ -107,14 +107,6 @@
 
 (defmethod (setf fb:cursor-state) (value (window window))
   ;; TODO: implement cursor-state
-  )
-
-(defmethod fb:clipboard-string ((window window))
-  ;; TODO: implement clipboard fetching
-  )
-
-(defmethod (setf fb:clipboard-string) (string (window window))
-  ;; TODO: implement clipboard setting
   )
 
 (defmethod fb:swap-buffers ((window window))

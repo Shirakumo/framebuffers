@@ -219,11 +219,11 @@
   (win32:set-window-pos (ptr window) (if value -1 -2) 0 0 0 0 '(:noactivate :nomove :nosize))
   (setf (fb-int:floating-p window) value))
 
-(defmethod fb:clipboard-string ((window window))
+(defmethod fb:clipboard ((window window))
   ;; TODO: get clipboard string
   )
 
-(defmethod (setf fb:clipboard-string) (string (window window))
+(defmethod (setf fb:clipboard) (string (window window))
   ;; TODO: set clipboard string
   )
 

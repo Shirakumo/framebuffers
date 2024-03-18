@@ -180,7 +180,7 @@ See RESIZABLE-P
 See FLOATING-P
 See MOUSE-ENTERED-P
 See FULLSCREEN-P
-See CLIPBOARD-STRING
+See CLIPBOARD
 See CONTENT-SCALE
 See BUFFER
 See SWAP-BUFFERS
@@ -455,8 +455,17 @@ See DISPLAY (type)
 See VIDEO-MODE (type)
 See WINDOW (type)")
   
-  (function clipboard-string
+  (function clipboard
     "Accesses the clipboard contents.
+
+Which types of clipboard contents are supported varies by
+backend. Ideally it should support getting and setting the following
+value types:
+
+  STRING    --- Basic text
+  PATHNAME  --- A file
+  ICON      --- An image
+  NULL      --- Empty clipboard
 
 See WINDOW (type)")
   

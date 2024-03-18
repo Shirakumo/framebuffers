@@ -53,7 +53,7 @@
    #:resizable-p
    #:floating-p
    #:mouse-entered-p
-   #:clipboard-string
+   #:clipboard
    #:content-scale
    #:buffer
    #:swap-buffers

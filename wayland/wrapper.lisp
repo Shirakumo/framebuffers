@@ -264,11 +264,11 @@
   ;; TODO: implement floating-p
   )
 
-(defmethod fb:clipboard-string ((window window))
+(defmethod fb:clipboard ((window window))
   ;; TODO: implement clipboard fetching
   )
 
-(defmethod (setf fb:clipboard-string) (string (window window))
+(defmethod (setf fb:clipboard) (string (window window))
   ;; TODO: implement clipboard setting
   )
 

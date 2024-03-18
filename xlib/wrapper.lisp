@@ -430,11 +430,11 @@
                                          4 32 2 states 1)))))))
   (setf (fb-int:floating-p window) value))
 
-(defmethod fb:clipboard-string ((window window))
+(defmethod fb:clipboard ((window window))
   ;; TODO: implement clipboard fetching
   )
 
-(defmethod (setf fb:clipboard-string) (string (window window))
+(defmethod (setf fb:clipboard) ((string string) (window window))
   ;; TODO: implement clipboard setting
   )
 

@@ -119,6 +119,7 @@
    #:enum-display-settings
    #:enum-display-devices
    #:flash-window
+   #:get-class
    #:get-class-info
    #:get-dc
    #:get-device-caps
@@ -169,8 +170,11 @@
    #:open-clipboard
    #:enum-clipboard-formats
    #:get-clipboard-data
+   #:set-clipboard-data
+   #:empty-clipboard
    #:close-clipboard
    #:global-alloc
+   #:delete-object
    #:global-lock
    #:global-unlock
    #:drag-finish

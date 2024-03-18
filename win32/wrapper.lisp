@@ -271,14 +271,14 @@
     (win32:set-clipboard-data :unicodetext obj)
     (win32:close-clipboard)))
 
-(defmethod (setf fb:clipboard) ((icon icon) (window window))
+(defmethod (setf fb:clipboard) ((icon fb:icon) (window window))
   (let* ((len (* 4 (fb:width icon) (fb:height icon)))
          (hdr (cffi:foreign-type-size '(:struct win32:bitmap-info)))
          (obj (win32:global-alloc '(:moveable) (+ hdr len)))
          (bi (win32:global-lock obj)))
     (unwind-protect
          (progn
-           (fb-di:memset bi 0 hdr)
+           (fb-int:memset bi 0 hdr)
            (setf (win32:bitmap-info-size bi) (- hdr 16))
            (setf (win32:bitmap-info-width bi) (fb:width icon))
            (setf (win32:bitmap-info-height bi) (fb:height icon))
@@ -290,7 +290,7 @@
            (setf (win32:bitmap-info-green-mask bi) #x0000FF00)
            (setf (win32:bitmap-info-blue-mask bi)  #x000000FF)
            (cffi:with-pointer-to-vector-data (ptr (fb:buffer icon))
-             (fb-di:memcpy (cffi:inc-pointer bi hdr) ptr len)))
+             (fb-int:memcpy (cffi:inc-pointer bi hdr) ptr len)))
       (win32:global-unlock obj))
     (loop until (win32:open-clipboard (ptr window))
           do (sleep 0.001))
@@ -298,9 +298,9 @@
     (win32:set-clipboard-data :dib obj)
     (win32:close-clipboard)))
 
-(defun make-icon (window icon &key (x 0) (y 0) (icon T))
-  (cffi:with-foreign-objects ((bi '(:struct bitmap-info))
-                              (ii '(:struct icon-info))
+(defun make-icon (window icon &key (x 0) (y 0) (icon-p T))
+  (cffi:with-foreign-objects ((bi '(:struct win32:bitmap-info))
+                              (ii '(:struct win32:icon-info))
                               (target :pointer))
     (fb-int::memset bitmapinfo '(:struct bitmap-info))
     (setf (win32:bitmap-info-size bi) (- (cffi:foreign-type-size '(:struct win32:bitmap-info)) 16))
@@ -318,18 +318,18 @@
           (target (cffi:mem-ref target :pointer)))
       (cffi:with-pointer-to-vector-data (source (fb:buffer icon))
         (fb-int::memcpy target source (length (fb:buffer icon))))
-      (setf (win32:icon-info-icon ii) icon)
+      (setf (win32:icon-info-icon ii) icon-p)
       (setf (win32:icon-info-xhotspot ii) x)
       (setf (win32:icon-info-yhotspot ii) y)
       (setf (win32:icon-info-mask ii) mask)
       (setf (win32:icon-info-color ii) color)
-      (prog1 (win32:create-icon-indirect ii)
+      (prog1 (win32:create-icon ii)
         (win32:delete-object color)
         (win32:delete-object mask)))))
 
 (defmethod (setf fb:icon) ((value null) (window window))
-  (win32:send-message (ptr window) :seticon 0 (win32:get-class (ptr -34)))
-  (win32:send-message (ptr window) :seticon 1 (win32:get-class (ptr -14)))
+  (win32:send-message (ptr window) :seticon 0 (win32:get-class (ptr window) -34))
+  (win32:send-message (ptr window) :seticon 1 (win32:get-class (ptr window) -14))
   (when (icon-handle window) (win32:destroy-icon (icon-handle window)))
   (setf (icon-handle window) value)
   (setf (icon window) value))
@@ -350,7 +350,7 @@
       (T
        (win32:set-cursor (cffi:null-pointer))))))
 
-(defmethod (setf fb:cursor-icon) ((value keyword) (window window))
+(defmethod (setf fb:cursor-icon) ((value symbol) (window window))
   (let ((id (ecase value
               (:arrow :normal)
               (:busy :wait)
@@ -368,7 +368,7 @@
 
 (defmethod (setf fb:cursor-icon) ((value fb:icon) (window window))
   (let ((handle (or (gethash value (icon-table window))
-                    (setf (gethash value (icon-table window)) (make-icon value :icon NIL)))))
+                    (setf (gethash value (icon-table window)) (make-icon value :icon-p NIL)))))
     (setf (cursor-handle window) handle)
     value))
 
@@ -441,12 +441,12 @@
                       (display (find id *displays* :key #'fb:id :test #'string=)))
                  (unless display
                    (setf display (make-instance 'display :id id :title (win32:adapter-device-string adapter)))
-                   (when window (fb:display-changed window display NIL)))
+                   (when window (fb:display-connected window display NIL)))
                  (push (refresh-display display) display)))
       ;; Disable old displays
       (loop for display in *displays*
             do (unless (find (fb:id display) ids :test #'string=)
-                 (when window (fb:display-changed window display T))))
+                 (when window (fb:display-connected window display T))))
       (setf *displays* displays))))
 
 (defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
@@ -470,7 +470,7 @@
 (defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
   (unless (eq value (fb:fullscreen-p window))
     ;; We remember the display if we don't change mode and the video-mode if we need to restore.
-    (cond ((eq value (fb:display-mode (fb:display value))) 
+    (cond ((eq value (fb:video-mode (fb:display value))) 
            (setf (fullscreen-p window) (fb:display value)))
           (T
            (cffi:with-foreign-objects ((mode '(:struct win32:device-mode)))

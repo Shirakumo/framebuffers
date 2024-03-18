@@ -159,7 +159,7 @@
 
 (defmethod height ((video-mode fb:video-mode))
   (video-mode-height video-mode))
-fb:
+
 (defmethod refresh-rate ((video-mode fb:video-mode))
   (video-mode-refresh-rate video-mode))
 

@@ -997,6 +997,10 @@
   (window :pointer)
   (invert :boolean))
 
+(cffi:defcfun (get-class "GetClassLongPtrW") :size
+  (window :pointer)
+  (index :int))
+
 (cffi:defcfun (get-class-info "GetClassInfoW") :bool
   (hinstance :pointer)
   (class-name com:wstring)
@@ -1231,9 +1235,18 @@
 
 (cffi:defcfun (close-clipboard "CloseClipboard") :boolean)
 
+(cffi:defcfun (empty-clipboard "EmptyClipboard") :boolean)
+
+(cffi:defcfun (set-clipboard-data "SetClipboardData") :boolean
+  (format clipboard-format)
+  (data :pointer))
+
 (cffi:defcfun (global-alloc "GlobalAlloc") :pointer
   (flags global-alloc-flags)
   (size :size))
+
+(cffi:defcfun (delete-object "DeleteObject") :boolean
+  (handle :pointer))
 
 (cffi:defcfun (global-lock "GlobalLock") :pointer
   (handle :pointer))

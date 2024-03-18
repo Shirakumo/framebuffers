@@ -97,7 +97,8 @@
    #:touch-ended
    #:touch-cancelled
    #:pen-moved
-   #:timer-triggered))
+   #:timer-triggered
+   #:display-connected))
 
 (defpackage #:org.shirakumo.framebuffers.int
   (:use #:cl #:org.shirakumo.framebuffers)

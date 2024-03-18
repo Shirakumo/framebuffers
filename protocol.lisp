@@ -121,6 +121,7 @@
 (defgeneric touch-cancelled (event-handler points))
 (defgeneric pen-moved (event-handler xpos ypos mode pressure xtilt ytilt))
 (defgeneric timer-triggered (event-handler timer))
+(defgeneric display-connected (event-handler display connected-p))
 
 ;;; TODO:
 ;;;; Input Method support

@@ -270,6 +270,9 @@
                                      (find-if #'fb:primary-p (list-displays))
                                      (first (list-displays)))))
 
+(defmethod (setf fb:fullscreen-p) ((display display) (window window))
+  (setf (fb:fullscreen-p window) (video-mode display)))
+
 (defmethod (setf fb:cursor-icon) ((value null) (window window))
   (setf (fb:cursor-icon window) :arrow))
 

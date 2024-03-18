@@ -506,10 +506,6 @@
   ;; TODO: implement fullscreen-p
   )
 
-(defmethod (setf fb:fullscreen-p) ((value display) (window window))
-  ;; TODO: implement fullscreen-p
-  )
-
 (defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
   ;; TODO: implement fullscreen-p
   )

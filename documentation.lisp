@@ -462,10 +462,11 @@ Which types of clipboard contents are supported varies by
 backend. Ideally it should support getting and setting the following
 value types:
 
-  STRING    --- Basic text
-  PATHNAME  --- A file
-  ICON      --- An image
-  NULL      --- Empty clipboard
+  STRING          --- Basic text
+  PATHNAME        --- A file
+  (LIST PATHNAME) --- A list of files
+  ICON            --- An image
+  NULL            --- Empty clipboard
 
 See WINDOW (type)")
   

@@ -85,7 +85,11 @@
   ;; TODO: implement floating-p
   )
 
-(defmethod (setf fb:fullscreen-p) (value (window window))
+(defmethod (setf fb:fullscreen-p) ((value null) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value fb:video-mode) (window window))
   ;; TODO: implement fullscreen-p
   )
 

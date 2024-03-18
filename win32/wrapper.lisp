@@ -505,8 +505,10 @@
            (fb:window-closed window)
            (return 0))
           (:syscommand
-           ;; TODO: prevent power save in fullscreen
-           )
+           (when (and (fullscreen-p window)
+                      (or (= #xF140 (logand wparam #xFFF0))
+                          (= #xF170 (logand wparam #xFFF0))))
+             (return 0)))
           (:inputlangchange
            (init-stringtable))
           ((:keydown :syskeydown :keyup :syskeyup)

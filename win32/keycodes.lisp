@@ -155,5 +155,3 @@
 
 (defun key-string (key)
   (gethash key *stringtable*))
-
-;; TODO: implement key name lookup

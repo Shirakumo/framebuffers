@@ -492,6 +492,7 @@ being in the top-left corner.
 Each pixel is stored as a quadruplet of (UNSIGNED-BYTE 8) values, in
 the order of Blue Green Red Alpha.
 
+See SIZE
 See WINDOW (type)
 See ICON (type)")
   
@@ -655,6 +656,11 @@ See WINDOW (type)")
   
   (function window-resized
     "Callback for when the window and framebuffer have been resized.
+
+The contents of the BUFFER will have been modified to fit the new
+size. The resizing logic keeps old data attached to the top-left
+corner, cutting it off as necessary and extending it with zeros as
+necessary.
 
 See SIZE
 See EVENT-HANDLER (type)

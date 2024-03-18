@@ -77,7 +77,8 @@
    (buffer :reader fb:buffer :initform NIL :accessor buffer)
    (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-info)) :accessor bitmap-info)
    (modifiers :initform () :accessor modifiers)
-   (surrogate :initform 0 :accessor surrogate)))
+   (surrogate :initform 0 :accessor surrogate)
+   (timers :initform () :accessor timers)))
 
 (defmethod initialize-instance :after ((window window) &key)
   (let ((ptr (ptr window))
@@ -223,7 +224,7 @@
   ;; TODO: get clipboard string
   )
 
-(defmethod (setf fb:clipboard) (string (window window))
+(defmethod (setf fb:clipboard) ((string string) (window window))
   ;; TODO: set clipboard string
   )
 
@@ -240,12 +241,17 @@
   )
 
 (defmethod fb:set-timer ((window window) delay &key repeat)
-  ;; TODO: implement set-timer
-  )
+  (let ((handle (win32:create-waitable-timer (cffi:null-pointer) NIL (cffi:null-pointer)))
+        (period (truncate (* 1000 delay))))
+    (win32:set-waitable-timer handle time (if repeat period 0) (cffi:null-pointer) (cffi:null-pointer) NIL)
+    (push handle (timers window))
+    handle))
 
 (defmethod fb:cancel-timer ((window window) timer)
-  ;; TODO: implement cancel-timer
-  )
+  (win32:cancel-waitable-timer timer)
+  (win32:close-handle timer)
+  (setf (timers window) (remove timer (timers window)))
+  NIL)
 
 (defmethod fb:request-attention ((window window))
   (win32:flash-window (ptr window) T))
@@ -340,16 +346,22 @@
                         (T
                          (win32:translate-message msg)
                          (win32:dispatch-message msg))))))
-      (etypecase timeout
-        (null
-         (poll-events))
-        ((eql T)
-         (loop while (and (ptr window) (not (fb-int:close-requested-p window)))
-               do (win32:msg-wait-for-multiple-objects 0 (cffi:null-pointer) NIL (truncate 1000) #xFFFF)
-                  (poll-events)))
-        (real
-         (win32:msg-wait-for-multiple-objects 0 (cffi:null-pointer) NIL (truncate 1000) #xFFFF)
-         (poll-events))))))
+      (let ((millis (etypecase timeout
+                      (null 0)
+                      ((eql T) 1000)
+                      (real (truncate (* 1000 timeout))))))
+        (loop while (and (ptr window) (not (fb-int:close-requested-p window)))
+              do (let ((count (length (timers window))))
+                   (cffi:with-foreign-objects ((handles :pointer count))
+                     (loop for timer in (timers window)
+                           for i from 0
+                           do (setf (cffi:mem-aref handles :pointer i) timer))
+                     (let ((idx (win32:msg-wait-for-multiple-objects count handles NIL millis #xFFFF)))
+                       (if (< idx count)
+                           (fb:timer-triggered window (cffi:mem-aref handles :pointer idx))
+                           (poll-events)))))
+                 (unless (eql T timeout)
+                   (return)))))))
 
 (cffi:defcallback handle-event :ssize ((ptr :pointer) (message win32::message-type) (wparam :size) (lparam :size))
   (let ((window (fb-int:ptr-window ptr)))

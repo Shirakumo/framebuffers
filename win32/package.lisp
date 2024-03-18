@@ -109,7 +109,11 @@
    #:stretch-di-bits
    #:to-unicode
    #:translate-message
-   #:validate-rect))
+   #:validate-rect
+   #:create-waitable-timer
+   #:set-waitable-timer
+   #:cancel-waitable-timer
+   #:close-handle))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

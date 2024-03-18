@@ -1028,3 +1028,21 @@
   (window :pointer)
   (rect :pointer))
 
+(cffi:defcfun (create-waitable-timer "CreateWaitableTimerW") :pointer
+  (attributes :pointer)
+  (manual-reset :boolean)
+  (timer-name :pointer))
+
+(cffi:defcfun (set-waitable-timer "SetWaitableTimer") :boolean
+  (timer :pointer)
+  (due-time :pointer)
+  (period :long)
+  (completion-routine :pointer)
+  (arg :pointer)
+  (resume :bool))
+
+(cffi:defcfun (cancel-waitable-timer "CancelWaitableTimer") :boolean
+  (timer :pointer))
+
+(cffi:defcfun (close-handle "CloseHandle") :boolean
+  (handle :pointer))

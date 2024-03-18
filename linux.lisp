@@ -68,7 +68,7 @@
         (setf (itimer-interval-nsec itimer) (if repeat nsecs 0))
         (setf (itimer-value-sec itimer) secs)
         (setf (itimer-value-nsec itimer) nsecs))
-      (timerfd-set-time fd itimer (cffi:null-pointer)))
+      (timerfd-set-time fd () itimer (cffi:null-pointer)))
     (push fd (timers window))
     fd))
 

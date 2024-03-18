@@ -279,6 +279,10 @@ HANDLERS should be event handler bodies:
   ARG        --- Varibale bound to the respective event type argument.
   BODY       --- Body forms to execute when the event is handled.
 
+The special event types INIT and SHUTDOWN can also be handled (with no
+arguments, both) to handle setup and teardown forms when the window is
+created or closed.
+
 See WINDOW (type)
 See EVENT-HANDLER (type)")
   

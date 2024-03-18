@@ -41,26 +41,20 @@
   (count :int)
   (timeout :int))
 
-(defmacro with-poll (fds &body body)
-  (let ((gfds (gensym "FDS")) (count (gensym "COUNT")) (pollfds (gensym "POLLFDS")))
-    `(let* ((,gfds ,fds)
-            (,count (length ,gfds)))
-       (cffi:with-foreign-objects ((,pollfds '(:struct pollfd) ,count))
-         (loop for i from 0
-               for fd in ,gfds
-               for pollfd = (cffi:mem-aptr ,pollfds '(:struct pollfd) i)
-               do (setf (pollfd-fd pollfd) fd)
-                  (setf (pollfd-events pollfd) 1))
-         (flet ((poll (timeout)
-                  (loop for i from 0 below ,count
-                        for pollfd = (cffi:mem-aptr ,pollfds '(:struct pollfd) i)
-                        do (setf (pollfd-revents pollfd) 0))
-                  (when (< 0 (%poll ,pollfds ,count timeout))
-                    (loop for i from 0 below ,count
-                          for pollfd = (cffi:mem-aptr ,pollfds '(:struct pollfd) i)
-                          when (< 0 (pollfd-revents pollfd))
-                          collect (pollfd-fd pollfd)))))
-           ,@body)))))
+(defun poll (fds timeout)
+  (let ((count (length fds)))
+    (cffi:with-foreign-objects ((pollfds '(:struct pollfd) count))
+      (loop for i from 0
+            for fd in fds
+            for pollfd = (cffi:mem-aptr pollfds '(:struct pollfd) i)
+            do (setf (pollfd-fd pollfd) fd)
+               (setf (pollfd-events pollfd) 1)
+               (setf (pollfd-revents pollfd) 0))
+      (when (< 0 (%poll pollfds count timeout))
+        (loop for i from 0 below count
+              for pollfd = (cffi:mem-aptr pollfds '(:struct pollfd) i)
+              when (< 0 (pollfd-revents pollfd))
+              collect (pollfd-fd pollfd))))))
 
 (defclass linux-window (window)
   ((timers :initform () :accessor timers)))
@@ -79,4 +73,6 @@
     fd))
 
 (defmethod fb:cancel-timer ((window linux-window) timer)
-  (cffi:foreign-funcall "close" :int timer))
+  (cffi:foreign-funcall "close" :int timer)
+  (setf (timers window) (remove timer (timers window)))
+  NIL)

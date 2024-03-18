@@ -370,21 +370,20 @@
                   (real (truncate (* 1000 timeout)))
                   ((eql T) 1000)
                   (null 0))))
-    (fb-int::with-poll (list* (wl:display-get-fd display) (fb-int::timers window))
-      (loop while (and (display window) (not (fb:close-requested-p window)))
-            do (loop while (/= 0 (wl:display-prepare-read display))
-                     do (wl:display-dispatch-pending display))
-               (let ((pollres (fb-int::poll millis)))
-                 (if pollres
-                     (dolist (fd pollres)
-                       (cond ((= fd (wl:display-get-fd display))
-                              (wl:display-read-events display)
-                              (wl:display-dispatch-pending display))
-                             (T
-                              (fb:timer-triggered window fd))))
-                     (wl:display-cancel-read display)))
-               (unless (eql T timeout)
-                 (return))))))
+    (loop while (and (display window) (not (fb:close-requested-p window)))
+          do (loop while (/= 0 (wl:display-prepare-read display))
+                   do (wl:display-dispatch-pending display))
+             (let ((pollres (fb-int::poll (list* (wl:display-get-fd display) (fb-int::timers window)) millis)))
+               (if pollres
+                   (dolist (fd pollres)
+                     (cond ((= fd (wl:display-get-fd display))
+                            (wl:display-read-events display)
+                            (wl:display-dispatch-pending display))
+                           (T
+                            (fb:timer-triggered window fd))))
+                   (wl:display-cancel-read display)))
+             (unless (eql T timeout)
+               (return)))))
 
 (defmacro define-listener (name &body callbacks)
   `(wl:define-listener ,name

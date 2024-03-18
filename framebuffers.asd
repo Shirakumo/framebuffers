@@ -11,6 +11,7 @@
   :components ((:file "package")
                (:file "protocol")
                (:file "internal")
+               (:file "linux" :if-feature :unix)
                (:file "documentation")
                (:module "xlib"
                 :if-feature :unix

@@ -57,7 +57,7 @@
         (apply #'make-instance 'window :display display args)
         (error 'wayland-error :message "Failed to connect to Wayland display."))))
 
-(defclass window (fb:window)
+(defclass window (fb-int::linux-window)
   ((display :initarg :display :initform NIL :accessor display)
    (listener :initform (make-listener) :accessor listener)
    (shell-surface :initform NIL :accessor shell-surface)
@@ -284,14 +284,6 @@
   ;; TODO: implement cursor-state
   )
 
-(defmethod fb:set-timer ((window window) delay &key repeat)
-  ;; TODO: implement set-timer
-  )
-
-(defmethod fb:cancel-timer ((window window) timer)
-  ;; TODO: implement cancel-timer
-  )
-
 (defclass display (fb:display)
   ())
 
@@ -372,39 +364,27 @@
           (unless (cffi:null-pointer-p keysyms)
             (org.shirakumo.framebuffers.xlib::keysym-string (cffi:mem-ref keysyms :uint32))))))))
 
-(cffi:defcstruct (pollfd :conc-name pollfd-)
-  (fd :int)
-  (events :short)
-  (revents :short))
-
 (defmethod fb:process-events ((window window) &key timeout)
-  (let ((display (display window)))
-    (cffi:with-foreign-objects ((fd '(:struct pollfd)))
-      (setf (pollfd-fd fd) (wl:display-get-fd display))
-      (setf (pollfd-events fd) 1)
-      (setf (pollfd-revents fd) 0)
-      (flet ((poll (millis)
-               (let ((res (cffi:foreign-funcall "poll" :pointer fd :int 1 :int millis :int)))
-                 (cond ((< 0 res)
-                        (wl:display-read-events display)
-                        (wl:display-dispatch-pending display))
-                       ((< res 0)
-                        (wl:display-cancel-read display)
-                        NIL)))))
-        (etypecase timeout
-          (null
-           (wl:display-dispatch-pending display))
-          (real
-           (cond ((/= 0 (wl:display-prepare-read display))
-                  (wl:display-dispatch-pending display))
-                 (T
-                  (wl:display-flush display)
-                  (poll (truncate (* 1000 timeout))))))
-          ((eql T)
-           (loop while (and (display window) (not (fb:close-requested-p window)))
-                 do (loop while (/= 0 (wl:display-prepare-read display))
-                          do (wl:display-dispatch-pending display))
-                    (poll 1000))))))))
+  (let ((display (display window))
+        (millis (etypecase timeout
+                  (real (truncate (* 1000 timeout)))
+                  ((eql T) 1000)
+                  (null 0))))
+    (fb-int::with-poll (list* (wl:display-get-fd display) (fb-int::timers window))
+      (loop while (and (display window) (not (fb:close-requested-p window)))
+            do (loop while (/= 0 (wl:display-prepare-read display))
+                     do (wl:display-dispatch-pending display))
+               (let ((pollres (fb-int::poll millis)))
+                 (if pollres
+                     (dolist (fd pollres)
+                       (cond ((= fd (wl:display-get-fd display))
+                              (wl:display-read-events display)
+                              (wl:display-dispatch-pending display))
+                             (T
+                              (fb:timer-triggered window fd))))
+                     (wl:display-cancel-read display)))
+               (unless (eql T timeout)
+                 (return))))))
 
 (defmacro define-listener (name &body callbacks)
   `(wl:define-listener ,name

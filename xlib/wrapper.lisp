@@ -155,7 +155,7 @@
                                  :content-scale (content-scale display)
                                  :event-handler event-handler))))))
 
-(defclass window (fb:window)
+(defclass window (#+linux fb-int::linux-window fb:window)
   ((display :initarg :display :accessor display)
    (screen :initarg :screen :accessor screen)
    (xid :initarg :xid :accessor xid)
@@ -461,14 +461,6 @@
 (defmethod fb:local-key-string ((key integer) (window window))
   (keysym-string key))
 
-(defmethod fb:set-timer ((window window) delay &key repeat)
-  ;; TODO: implement set-timer
-  )
-
-(defmethod fb:cancel-timer ((window window) timer)
-  ;; TODO: implement cancel-timer
-  )
-
 (defclass display (fb:display)
   ())
 
@@ -502,34 +494,22 @@
   ;; TODO: implement fullscreen-p
   )
 
-(cffi:defcstruct (pollfd :conc-name pollfd-)
-  (fd :int)
-  (events :short)
-  (revents :short))
-
 (defmethod fb:process-events ((window window) &key timeout)
   (cffi:with-foreign-objects ((event '(:struct xlib:event)))
-    (flet ((process ()
-             (loop while (and (display window) (< 0 (xlib:events-queued (display window) 1)))
-                   do (xlib:next-event (display window) event)
-                      (process-event window (xlib:base-event-type event) event))))
-      (etypecase timeout
-        (null
-         (process))
-        ((or real (eql T))
-         (let ((millis (etypecase timeout
-                         (real (truncate (* 1000 timeout)))
-                         ((eql T) 1000))))
-           (cffi:with-foreign-objects ((fd '(:struct pollfd)))
-             (setf (pollfd-fd fd) (xlib:connection-number (display window)))
-             (setf (pollfd-events fd) 1)
-             (setf (pollfd-revents fd) 0)
-             (if (eql T timeout)
-                 (loop while (and (display window) (not (fb:close-requested-p window)))
-                       do (when (< 0 (cffi:foreign-funcall "poll" :pointer fd :int 1 :int millis :int))
-                            (process)))
-                 (when (< 0 (cffi:foreign-funcall "poll" :pointer fd :int 1 :int millis :int))
-                   (process))))))))
+    (let ((millis (etypecase timeout
+                    (real (truncate (* 1000 timeout)))
+                    ((eql T) 1000)
+                    (null 0))))
+      (fb-int::with-poll (list* (xlib:connection-number (display window)) (fb-int::timers window))
+        (loop while (and (display window) (not (fb:close-requested-p window)))
+              do (dolist (fd (fb-int::poll millis))
+                   (if (= fd (xlib:connection-number (display window)))
+                       (loop while (and (display window) (< 0 (xlib:events-queued (display window) 1)))
+                             do (xlib:next-event (display window) event)
+                                (process-event window (xlib:base-event-type event) event))
+                       (fb:timer-triggered window fd)))
+                 (unless (eql T timeout)
+                   (return)))))
     window))
 
 (defmethod process-event ((window window) type event))

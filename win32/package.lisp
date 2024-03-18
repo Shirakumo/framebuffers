@@ -126,7 +126,14 @@
    #:create-icon
    #:destroy-object
    #:load-image
-   #:set-cursor))
+   #:set-cursor
+   #:open-clipboard
+   #:enum-clipboard-formats
+   #:get-clipboard-data
+   #:close-clipboard
+   #:global-alloc
+   #:global-lock
+   #:global-unlock))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

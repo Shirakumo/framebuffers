@@ -9,6 +9,39 @@
 (cffi:define-foreign-library gdi32
   (T (:default "gdi32")))
 
+(cffi:defbitfield global-alloc-flags
+  (:fixed #x0)
+  (:moveable #x2)
+  (:zeroint #x40))
+
+(cffi:defcenum (clipboard-format :int :allow-undeclared-values t)
+  (:text 1)
+  (:bitmap 2)
+  (:metafilepict 3)
+  (:sylk 4)
+  (:dif 5)
+  (:tiff 6)
+  (:oemtext 7)
+  (:dib 8)
+  (:palette 9)
+  (:pendata 10)
+  (:riff 11)
+  (:wave 12)
+  (:unicodetext 13)
+  (:enhmetafile 14)
+  (:hdrop 15)
+  (:locale 16)
+  (:dibv5 17)
+  (:ownerdisplay #x0080)
+  (:dsptext #x0081)
+  (:dspbitmap #x0082)
+  (:dspmetafilepict #x0083)
+  (:dspenhmetafile #x008e)
+  (:privatefirst #x0200)
+  (:privatelast #x02ff)
+  (:gdiobjfirst #x0300)
+  (:gdiobjlast #x03ff))
+
 (cffi:defcenum load-image-type
   (:bitmap 0)
   (:icon 1)
@@ -1127,3 +1160,24 @@
 
 (cffi:defcfun (set-cursor "SetCursor") :boolean
   (cursor :pointer))
+
+(cffi:defcfun (open-clipboard "OpenClipboard") :boolean
+  (handle :pointer))
+
+(cffi:defcfun (enum-clipboard-formats "EnumClipboardFormats") clipboard-format
+  (format clipboard-format))
+
+(cffi:defcfun (get-clipboard-data "GetClipboardData") :pointer
+  (format clipboard-format))
+
+(cffi:defcfun (close-clipboard "CloseClipboard") :boolean)
+
+(cffi:defcfun (global-alloc "GlobalAlloc") :pointer
+  (flags global-alloc-flags)
+  (size :size))
+
+(cffi:defcfun (global-lock "GlobalLock") :pointer
+  (handle :pointer))
+
+(cffi:defcfun (global-unlock "GlobalUnlock") :boolean
+  (handle :pointer))

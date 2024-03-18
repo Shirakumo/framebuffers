@@ -224,12 +224,35 @@
   (setf (fb-int:floating-p window) value))
 
 (defmethod fb:clipboard ((window window))
-  ;; TODO: get clipboard string
-  )
+  (loop until (win32:open-clipboard (ptr window))
+        do (sleep 0.001))
+  (unwind-protect
+       (loop for format = (win32:enum-clipboard-formats 0)
+             then (win32:enum-clipboard-formats format)
+             until (= 0 format)
+             do (case format
+                  (:unicodetext
+                   (let* ((obj (win32:get-clipboard-data format))
+                          (str (win32:global-lock obj)))
+                     (unwind-protect (return (com:wstring->string str)) 
+                       (win32:global-unlock obj))))
+                  ;; TODO: handle icon clipboard
+                  #++(:bitmap)
+                  ;; TODO: handle file clipboard
+                  #++(:hdrop)))
+    (win32:close-clipboard)))
 
 (defmethod (setf fb:clipboard) ((string string) (window window))
-  ;; TODO: set clipboard string
-  )
+  (let* ((len (com:wstring-length string))
+         (obj (win32:global-alloc '(:moveable) (* 2 len)))
+         (buf (win32:global-lock obj)))
+    (unwind-protect (com:string->wstring string buf)
+      (win32:global-unlock obj))
+    (loop until (win32:open-clipboard (ptr window))
+          do (sleep 0.001))
+    (win32:empty-clipboard)
+    (win32:set-clipboard-data :unicodetext obj)
+    (win32:close-clipboard)))
 
 (defun make-icon (window icon &key (x 0) (y 0) (icon T))
   (cffi:with-foreign-objects ((bi '(:struct bitmap-info))

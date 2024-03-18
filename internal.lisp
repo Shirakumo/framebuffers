@@ -395,7 +395,6 @@
   (let ((buffer (static-vectors:make-static-vector (* 4 w h) :initial-element 0)))
     (when old-buffer
       ;; Copy sub-region back.
-      ;; TODO: scale it instead
       (dotimes (y (min h oh))
         (dotimes (x (min w ow))
           (dotimes (z 4)

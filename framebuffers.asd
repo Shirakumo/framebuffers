@@ -73,6 +73,7 @@
   :depends-on (:framebuffers/protocol
                :mmap))
 
+#++
 (asdf:defsystem framebuffers/cocoa
   :version "0.0.0"
   :license "zlib"
@@ -87,6 +88,7 @@
                              (:file "wrapper"))))
   :depends-on (:framebuffers/protocol))
 
+#++
 (asdf:defsystem framebuffers/mezzano
   :version "0.0.0"
   :license "zlib"
@@ -96,6 +98,21 @@
   :serial T
   :components ((:module "mezzano"
                 :components ((:file "package")
+                             (:file "keycodes")
+                             (:file "wrapper"))))
+  :depends-on (:framebuffers/protocol))
+
+#++
+(asdf:defsystem framebuffers/drm
+  :version "0.0.0"
+  :license "zlib"
+  :author "Yukari Hafner <shinmera@tymoon.eu>"
+  :maintainer "Yukari Hafner <shinmera@tymoon.eu>"
+  :description "Framebuffer backend for Linux' Direct Rendering Manager via libdrm"
+  :serial T
+  :components ((:module "cocoa"
+                :components ((:file "package")
+                             (:file "bindings")
                              (:file "keycodes")
                              (:file "wrapper"))))
   :depends-on (:framebuffers/protocol))

@@ -275,6 +275,11 @@
   (data :pointer)
   (elements :int))
 
+(cffi:defcfun (delete-property "XDeleteProperty") :int
+  (display :pointer)
+  (window xid)
+  (property atom))
+
 (cffi:defcfun (get-window-property "XGetWindowProperty") :int
   (display :pointer)
   (window xid)

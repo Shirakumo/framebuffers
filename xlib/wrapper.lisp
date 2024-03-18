@@ -438,9 +438,27 @@
   ;; TODO: implement clipboard setting
   )
 
-(defmethod (setf fb:icon) (value (window window))
-  ;; TODO: implement icon
-  )
+(defmethod (setf fb:icon) ((value null) (window window))
+  (xlib:delete-property (display window) (xid window) (atom window "NET_WM_ICON"))
+  (xlib:flush (display window))
+  value)
+
+(defmethod (setf fb:icon) ((value fb:icon) (window window))
+  (let ((longcount (+ 2 (* (fb:width value) (fb:height value))))
+        (buffer (fb:buffer value)))
+    (cffi:with-foreign-objects ((icon :ulong longcount))
+      (setf (cffi:mem-aref icon :ulong 0) (fb:width value))
+      (setf (cffi:mem-aref icon :ulong 1) (fb:height value))
+      (loop for i from 0 below (length buffer) by 4
+            for j from 2
+            do (setf (ldb (byte 8  0) (cffi:mem-aref icon :ulong j)) (aref buffer (+ i 0)))
+               (setf (ldb (byte 8  8) (cffi:mem-aref icon :ulong j)) (aref buffer (+ i 1)))
+               (setf (ldb (byte 8 16) (cffi:mem-aref icon :ulong j)) (aref buffer (+ i 2)))
+               (setf (ldb (byte 8 24) (cffi:mem-aref icon :ulong j)) (aref buffer (+ i 3))))
+      (xlib:change-property (display window) (xid window) (atom window "NET_WM_ICON")
+                            6 32 2 icon longcount)))
+  (xlib:flush (display window))
+  value)
 
 (defmethod (setf fb:cursor-icon) (value (window window))
   ;; TODO: implement cursor-icon

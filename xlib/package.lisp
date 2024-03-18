@@ -134,6 +134,7 @@
    #:init-threads
    #:free-threads
    #:change-property
+   #:delete-property
    #:get-window-property
    #:clear-window
    #:clear-area

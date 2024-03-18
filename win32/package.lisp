@@ -69,6 +69,44 @@
    #:track-mouse-event-flags
    #:track-mouse-event-track
    #:track-mouse-event-hover-time
+   #:device-mode
+   #:device-mode-device-name
+   #:device-mode-spec-version
+   #:device-mode-driver-version
+   #:device-mode-size
+   #:device-mode-driver-extra
+   #:device-mode-fields
+   #:device-mode-position-x
+   #:device-mode-position-y
+   #:device-mode-display-orientation
+   #:device-mode-display-fixed-output
+   #:device-mode-color
+   #:device-mode-duplex
+   #:device-mode-resolution
+   #:device-mode-option
+   #:device-mode-collate
+   #:device-mode-form-name
+   #:device-mode-log-pixels
+   #:device-mode-bits-per-pel
+   #:device-mode-pels-width
+   #:device-mode-pels-height
+   #:device-mode-display-flags
+   #:device-mode-display-frequency
+   #:device-mode-icm-method
+   #:device-mode-icm-intent
+   #:device-mode-media-type
+   #:device-mode-dither-type
+   #:device-mode-reserved-1
+   #:device-mode-reserved-2
+   #:device-mode-panning-width
+   #:device-mode-panning-height
+   #:adapter
+   #:adapter-cb
+   #:adapter-device-name
+   #:adapter-device-string
+   #:adapter-state-flags
+   #:adapter-device-id
+   #:adapter-device-key
    #:adjust-window-rect
    #:bit-blt
    #:bring-window-to-top
@@ -79,6 +117,7 @@
    #:dispatch-message
    #:enable-non-client-dpi-scaling
    #:enum-display-settings
+   #:enum-display-devices
    #:flash-window
    #:get-class-info
    #:get-dc

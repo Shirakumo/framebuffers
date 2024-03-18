@@ -9,6 +9,19 @@
 (cffi:define-foreign-library gdi32
   (T (:default "gdi32")))
 
+(cffi:defbitfield display-setting-flags
+  (:updateregistry #x00000001)
+  (:test #x00000002)
+  (:fullscreen #x00000004)
+  (:global #x00000008)
+  (:set-primary #x00000010)
+  (:videoparameters #x00000020)
+  (:enable-unsafe-modes #x00000100)
+  (:disable-unsafe-modes #x00000200)
+  (:reset #x40000000)
+  (:reset-ex #x20000000)
+  (:noreset #x10000000))
+
 (cffi:defbitfield global-alloc-flags
   (:fixed #x0)
   (:moveable #x2)
@@ -877,6 +890,46 @@
   (track :pointer)
   (hover-time :uint32))
 
+(cffi:defcstruct (device-mode :conc-name device-mode-)
+  (device-name :uint16 :count 32)
+  (spec-version :uint16)
+  (driver-version :uint16)
+  (size :uint16)
+  (driver-extra :uint16)
+  (fields :uint32)
+  (position-x :long)
+  (position-y :long)
+  (display-orientation :uint32)
+  (display-fixed-output :uint32)
+  (color :short)
+  (duplex :short)
+  (resolution :short)
+  (option :short)
+  (collate :short)
+  (form-name :uint16 :count 32)
+  (log-pixels :uint16)
+  (bits-per-pel :uint32)
+  (pels-width :uint32)
+  (pels-height :uint32)
+  (display-flags :uint32)
+  (display-frequency :uint32)
+  (icm-method :uint32)
+  (icm-intent :uint32)
+  (media-type :uint32)
+  (dither-type :uint32)
+  (reserved-1 :uint32)
+  (reserved-2 :uint32)
+  (panning-width :uint32)
+  (panning-height :uint32))
+
+(cffi:defcstruct (adapter :conc-name adapter-)
+  (cb :uint32)
+  (device-name :uint16 :count 32)
+  (device-string :uint16 :count 128)
+  (state-flags :uint32)
+  (device-id :uint16 :count 128)
+  (device-key :uint16 :count 128))
+
 (cffi:defcfun (adjust-window-rect "AdjustWindowRect") :boolean
   (rect :pointer)
   (style window-style)
@@ -898,7 +951,7 @@
 
 (cffi:defcfun (change-display-settings "ChangeDisplaySettingsW") :long
   (dev-mode :pointer)
-  (flags :uint32))
+  (flags display-setting-flags))
 
 (cffi:defcfun (create-window "CreateWindowExW") :pointer
   (ex-style window-style-ex)
@@ -933,6 +986,12 @@
   (device-name :pointer)
   (mode-num :uint32)
   (dev-mode :pointer))
+
+(cffi:defcfun (enum-display-devices "EnumDisplayDevicesW") :boolean
+  (device :pointer)
+  (index :uint32)
+  (output :pointer)
+  (flags :uint32))
 
 (cffi:defcfun (flash-window "FlashWindow") :boolean
   (window :pointer)

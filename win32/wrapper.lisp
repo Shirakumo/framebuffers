@@ -1,5 +1,7 @@
 (in-package #:org.shirakumo.framebuffers.win32)
 
+(defvar *displays* ())
+
 (pushnew :win32 fb-int:*available-backends*)
 
 (defmacro with-rect ((rect x y w h) &body body)
@@ -37,7 +39,8 @@
         (ignore-errors (com:check-hresult (win32:set-process-dpi-awareness :per-monitor-dpi-aware)))
         (ignore-errors (win32:set-process-dpi-aware)))))
 
-(defmethod fb-int:shutdown-backend ((backend (eql :win32))))
+(defmethod fb-int:shutdown-backend ((backend (eql :win32)))
+  (setf *displays* NIL))
 
 (defun create-class ()
   (cffi:with-foreign-objects ((class '(:struct win32:window-class)))
@@ -396,33 +399,101 @@
   (key-string key))
 
 (defclass display (fb:display)
-  ())
+  ((display-handle :initform NIL :initarg :display-handle :accessor display-handle)))
 
 (defstruct (video-mode (:include fb:video-mode)))
 
+(defun translate-mode (mode)
+  (make-video-mode :display display
+                   :width (win32:devmode-pels-width mode)
+                   :height (win32:devmode-pels-height mode)
+                   :refresh-rate (win32:devmode-display-frequency mode)))
+
+(defun enum-modes (display)
+  (cffi:with-foreign-objects ((mode '(:struct win32:devmode)))
+    (delete-duplicates (loop for i from 0
+                             while (win32:enum-display-settings (id display) i mode)
+                             when (and (< 15 (win32:devmode-bits-per-pel mode)))
+                             collect (translate-mode mode))
+                       :key #'id :test #'string=)))
+
+(defun refresh-display (display)
+  (setf (video-modes display) (enum-modes display))
+  (cffi:with-foreign-objects ((mode '(:struct win32:devmode)))
+    (win32:enum-display-settings (id display) -1 mode)
+    (setf (car (location display)) (win32:devmode-position-x mode))
+    (setf (cdr (location display)) (win32:devmode-position-y mode))
+    (let ((mode (translate-mode mode)))
+      (setf (video-mode display) (or (find mode (fb:video-modes display) :key #'id :test #'string=)
+                                     mode))))
+  display)
+
+(cffi:defcallback monitor-callback :bool ((handle :pointer) (dc :pointer) (rect :pointer) (data :pointer))
+  (cffi:with-foreign-objects ((info '(:struct win32:monitor-info)))
+    (when (win32:get-monitor-info handle info)
+      (setf (cffi:mem-ref data :pointer) handle))
+    T))
+
+(defun poll-displays ()
+  (cffi:with-foreign-objects ((adapter '(:struct win32:adapter)))
+    (let ((ids ())
+          (displays ()))
+      ;; First enumerate everything
+      (loop for i from 0
+            for j = 0
+            while (win32:enum-display-devices (cffi:null-pointer) i adapter 0)
+            when (find :device-active (win32:adapter-state-flags adapter))
+            do (let* ((id (win32:adapter-device-name adapter))
+                      (display (find id *displays* :key #'fb:id :test #'string=)))
+                 (unless display
+                   (setf display (make-instance 'display :id id :title (win32:adapter-device-string adapter)))
+                   #++(fb:display-changed display NIL))
+                 (push (refresh-display display) display)))
+      ;; Disable old displays
+      (loop for display in *displays*
+            do (unless (find (fb:id display) ids :test #'string=)
+                 #++(fb:display-changed display T)))
+      (setf *displays* displays))))
+
 (defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
-  ;; TODO: implement list-displays-backend
-  )
+  (or *displays*
+      (poll-displays)))
 
 (defmethod fb:display ((window window))
-  ;; TODO: implement display
-  )
-
-(defmethod fb:video-modes ((display display))
-  ;; TODO: implement video-modes
-  )
-
-(defmethod fb:video-mode ((display display))
-  ;; TODO: implement video-mode
-  )
+  (or (fb:fullscreen-p window)
+      (call-next-method)))
 
 (defmethod (setf fb:fullscreen-p) ((value null) (window window))
-  ;; TODO: implement fullscreen-p
-  )
+  (typecase (fb:fullscreen-p window)
+    (null)
+    (display)
+    (video-mode
+     ;; Restore the original video mode if there was one.
+     (win32:change-display-settings (fb:id (fb:display mode)) (cffi:null-pointer) (cffi:null-pointer) :fullscreen (cffi:null-pointer))
+     (refresh-display (fb:fullscreen-p window))))
+  (setf (fullscreen-p window) value))
 
 (defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
-  ;; TODO: implement fullscreen-p
-  )
+  (unless (eq value (fb:fullscreen-p window))
+    ;; We remember the display if we don't change mode and the video-mode if we need to restore.
+    (cond ((eq value (fb:display-mode (fb:display value))) 
+           (setf (fullscreen-p window) (fb:display value)))
+          (T
+           (cffi:with-foreign-objects ((mode '(:struct win32:devmode)))
+             (fb-int:memset mode 0 (cffi:foreign-type-size '(:struct win32:devmode)))
+             (setf (win32:devmode-size mode) (cffi:foreign-type-size '(:struct win32:devmode)))
+             (setf (win32:devmode-fields mode) '(:pelswidth :pelsheight :displayfrequency))
+             (setf (win32:devmode-pels-width mode) (fb:width value))
+             (setf (win32:devmode-pels-height mode) (fb:height value))
+             (setf (win32:devmode-display-frequency mode) (fb:refresh-rate value))
+             (win32:change-display-settings (fb:id (fb:display value)) mode (cffi:null-pointer) :fullscreen (cffi:null-pointer)))
+           (setf (video-mode (fb:display value)) value)
+           (setf (fullscreen-p window) value)))
+    ;; Now fit the window to the monitor
+    (destructuring-bind (x . y) (location (fb:display value))
+      (destructuring-bind (w . h) (size (fb:display value))
+        (win32:set-window-pos (ptr window) 0 x y w h '(:nozorder :noactivate :nocopybits)))))
+  value)
 
 (defun update-buffer (window w h)
   (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (car (fb:size window)) (cdr (fb:size window))))

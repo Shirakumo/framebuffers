@@ -279,6 +279,24 @@ fb:
 (defmethod (setf fb:fullscreen-p) ((display display) (window window))
   (setf (fb:fullscreen-p window) (video-mode display)))
 
+(defmethod fb:display ((window window))
+  ;; Estimate display by window and display placement
+  (let* ((displays (fb:list-displays))
+         (best (first displays)))
+    (destructuring-bind (ww . wh) (size window)
+      (destructuring-bind (wx . wy) (location window)
+        (flet ((sigdist (display)
+                 (destructuring-bind (mw . mh) (size display)
+                   (destructuring-bind (mx . my) (location display)
+                     (let* ((x- (max wx mx))
+                            (y- (max wy my))
+                            (x+ (min (+ wx ww) (+ mx mw)))
+                            (y+ (min (+ wy wh) (+ my mh))))
+                       (* (- x+ x-) (- y+ y-)))))))
+          (dolist (display (rest displays) best)
+            (when (< (sigdist best) (sigdist display))
+              (setf best display))))))))
+
 (defmethod (setf fb:cursor-icon) ((value null) (window window))
   (setf (fb:cursor-icon window) :arrow))
 

@@ -441,6 +441,7 @@
 (defmethod (setf fb:icon) ((value null) (window window))
   (xlib:delete-property (display window) (xid window) (atom window "NET_WM_ICON"))
   (xlib:flush (display window))
+  (setf (icon window) value)
   value)
 
 (defmethod (setf fb:icon) ((value fb:icon) (window window))
@@ -458,6 +459,7 @@
       (xlib:change-property (display window) (xid window) (atom window "NET_WM_ICON")
                             6 32 2 icon longcount)))
   (xlib:flush (display window))
+  (setf (icon window) value)
   value)
 
 (defmethod (setf fb:cursor-icon) (value (window window))

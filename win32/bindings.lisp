@@ -1181,3 +1181,20 @@
 
 (cffi:defcfun (global-unlock "GlobalUnlock") :boolean
   (handle :pointer))
+
+(cffi:defcfun (drag-query-point "DragQueryPoint") :boolean
+  (handle :pointer)
+  (point :pointer))
+
+(cffi:defcfun (drag-query-file "DragQueryFileW") :uint
+  (handle :pointer)
+  (file :uint)
+  (buf :pointer)
+  (size :uint))
+
+(cffi:defcfun (drag-finish "DragFinish") :boolean
+  (handle :pointer))
+
+(cffi:defcfun (drag-accept-files "DragAcceptFiles") :boolean
+  (handle :pointer)
+  (mode :boolean))

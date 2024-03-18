@@ -97,6 +97,7 @@
     (setf (win32:bitmap-info-green-mask bi) #x0000FF00)
     (setf (win32:bitmap-info-blue-mask bi)  #x000000FF)
     (update-buffer window (fb:width window) (fb:height window))
+    (win32:drag-accept-files ptr T)
     (when (fb:visible-p window)
       (win32:show-window ptr :normal))
     (or (ignore-errors
@@ -223,6 +224,13 @@
   (win32:set-window-pos (ptr window) (if value -1 -2) 0 0 0 0 '(:noactivate :nomove :nosize))
   (setf (fb-int:floating-p window) value))
 
+(defun drag-files (ptr)
+  (loop for i from 0 below (win32:drag-query-file ptr #xffffffff (cffi:null-pointer) 0)
+        for len = (1+ (win32:drag-query-file ptr i (cffi:null-pointer) 0))
+        collect (cffi:with-foreign-objects ((buf :uint16 len))
+                  (win32:drag-query-file ptr i buf len)
+                  (com:wstring->string buf))))
+
 (defmethod fb:clipboard ((window window))
   (loop until (win32:open-clipboard (ptr window))
         do (sleep 0.001))
@@ -238,8 +246,9 @@
                        (win32:global-unlock obj))))
                   ;; TODO: handle icon clipboard
                   #++(:bitmap)
-                  ;; TODO: handle file clipboard
-                  #++(:hdrop)))
+                  (:hdrop
+                   (let ((obj (win32:get-clipboard-data format)))
+                     (return (drag-files obj))))))
     (win32:close-clipboard)))
 
 (defmethod (setf fb:clipboard) ((string string) (window window))
@@ -599,8 +608,13 @@
              (setf (cursor-handle window) (cursor-handle window))
              (return 1)))
           (:dropfiles
-           ;; TODO: implement dnd
-           )))
+           (let ((ptr (cffi:make-pointer wparam)))
+             (cffi:with-foreign-objects ((point :long 2))
+               (win32:drag-query-point ptr point)
+               (fb:mouse-moved window (cffi:mem-aref point :long 0) (cffi:mem-aref point :long 1)))
+             (fb:file-dropped window (drag-files ptr))
+             (win32:drag-finish ptr)
+             (return 0)))))
       (return (win32:def-window-proc ptr message wparam lparam)))))
 
 ;; TODO: touch events

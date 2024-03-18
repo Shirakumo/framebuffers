@@ -133,7 +133,11 @@
    #:close-clipboard
    #:global-alloc
    #:global-lock
-   #:global-unlock))
+   #:global-unlock
+   #:drag-finish
+   #:drag-query-point
+   #:drag-query-file
+   #:drag-accept-files))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

@@ -270,6 +270,9 @@
                                      (find-if #'fb:primary-p (list-displays))
                                      (first (list-displays)))))
 
+(defmethod (setf fb:cursor-icon) ((value null) (window window))
+  (setf (fb:cursor-icon window) :arrow))
+
 (defmacro define-event-callback (name args)
   `(progn
      (defmethod ,name ((window window) ,@args)

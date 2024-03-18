@@ -124,7 +124,9 @@
    #:create-dib-section
    #:create-bitmap
    #:create-icon
-   #:destroy-object))
+   #:destroy-object
+   #:load-image
+   #:set-cursor))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

@@ -581,6 +581,7 @@ See WINDOW (type)")
 May return an ICON instance if one was set explicitly by the user, or
 one of the following keywords defining default cursor types:
 
+  NIL
   :ARROW         --- The default pointer/arrow cursor shape
   :IBEAM         --- A crossbeam usually for text input
   :CROSSHAIR     --- A crosshair usually for precise selection
@@ -594,7 +595,8 @@ one of the following keywords defining default cursor types:
   :NOT-ALLOWED   --- To indicate a deactivated or forbidden
                      interaction
 
-You may also set the cursor-icon in the same way.
+You may also set the cursor-icon in the same way. A backend may also
+support additional icon types, though only the above are required.
 
 The call may fail if the ICON intsance has unsuitable dimensions for
 the backend.

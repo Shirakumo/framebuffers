@@ -79,7 +79,9 @@
    (modifiers :initform () :accessor modifiers)
    (surrogate :initform 0 :accessor surrogate)
    (timers :initform () :accessor timers)
-   (icon-handle :initform NIL :accessor icon-handle)))
+   (icon-handle :initform NIL :accessor icon-handle)
+   (icon-table :initform (make-hash-table :test 'eq) :accessor icon-table)
+   (cursor-handle :initform NIL :accessor cursor-handle)))
 
 (defmethod initialize-instance :after ((window window) &key)
   (let ((ptr (ptr window))
@@ -110,6 +112,9 @@
   (not (null (ptr window))))
 
 (defmethod fb:close ((window window))
+  (loop for icon being the hash-values of (icon-table window)
+        do (win32:destroy-icon icon))
+  (clrhash (icon-table window))
   (loop for timer = (pop (timers window))
         while timer do (fb:cancel-timer window timer))
   (fb-int:clean window icon-handle win32:destroy-icon)
@@ -226,7 +231,7 @@
   ;; TODO: set clipboard string
   )
 
-(defun make-icon (window icon &key (x 0) (y 0) icon)
+(defun make-icon (window icon &key (x 0) (y 0) (icon T))
   (cffi:with-foreign-objects ((bi '(:struct bitmap-info))
                               (ii '(:struct icon-info))
                               (target :pointer))
@@ -270,9 +275,35 @@
     (setf (icon-handle window) icon)
     (setf (icon window) value)))
 
-(defmethod (setf fb:cursor-icon) (value (window window))
-  ;; TODO: implement cursor-icon
-  )
+(defmethod (setf cursor-handle) :before (handle (window window))
+  (when handle
+    (case (cursor-mode window)
+      ((:normal :captured)
+       (win32:set-cursor handle))
+      (T
+       (win32:set-cursor (cffi:null-pointer))))))
+
+(defmethod (setf fb:cursor-icon) ((value keyword) (window window))
+  (let ((id (ecase value
+              (:arrow :normal)
+              (:busy :wait)
+              (:crosshair :cross)
+              (:pointing-hand :hand)
+              (:resize-ew :sizewe)
+              (:resize-ns :sizens)
+              (:resize-nwse :sizenwse)
+              (:resize-nesw :sizenesw)
+              (:resize-all :sizeall)
+              (:not-allowed :no)))
+        (handle (win32:load-image (cffi:null-pointer) id :cursor 0 0 '(:defaultsize :shared))))
+    (setf (cursor-handle window) handle)
+    value))
+
+(defmethod (setf fb:cursor-icon) ((value fb:icon) (window window))
+  (let ((handle (or (gethash value (icon-table window))
+                    (setf (gethash value (icon-table window)) (make-icon value :icon NIL)))))
+    (setf (cursor-handle window) handle)
+    value))
 
 (defmethod (setf fb:cursor-state) (value (window window))
   ;; TODO: implement cursor-state
@@ -544,6 +575,10 @@
           (:dpichanged
            (multiple-value-bind (x y) (dec32 wparam)
              (fb:content-scale-changed window (/ x 96) (/ y 96))))
+          (:setcursor
+           (when (= 1 (ldb (byte 16 0) lparam))
+             (setf (cursor-handle window) (cursor-handle window))
+             (return 1)))
           (:dropfiles
            ;; TODO: implement dnd
            )))

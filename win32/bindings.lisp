@@ -9,6 +9,45 @@
 (cffi:define-foreign-library gdi32
   (T (:default "gdi32")))
 
+(cffi:defcenum load-image-type
+  (:bitmap 0)
+  (:icon 1)
+  (:cursor 2)
+  (:enhmetafile 3))
+
+(cffi:defbitfield load-image-behavior
+  (:defaultcolor #x0000)
+  (:monochrome #x0001)
+  (:color #x0002)
+  (:copyreturnorg #x0004)
+  (:copydeleteorg #x0008)
+  (:loadfromfile #x0010)
+  (:loadtransparent #x0020)
+  (:defaultsize #x0040)
+  (:vgacolor #x0080)
+  (:loadmap3dcolors #x1000)
+  (:createdibsection #x2000)
+  (:copyfromresource #x4000)
+  (:shared #x8000))
+
+(cffi:defcenum (cursor :size)
+  (:normal 32512)
+  (:ibeam 32513)
+  (:wait 32514)
+  (:cross 32515)
+  (:up 32516)
+  (:size 32640)
+  (:icon 32641)
+  (:sizenwse 32642)
+  (:sizenesw 32643)
+  (:sizewe 32644)
+  (:sizens 32645)
+  (:sizeall 32646)
+  (:icocur 32647)
+  (:no 32648)
+  (:hand 32649)
+  (:appstarting 32650))
+
 (cffi:defcenum monitor-dpi-type
   (:effective-dpi 0)
   (:angular-dpi 1)
@@ -1077,3 +1116,14 @@
 
 (cffi:defcfun (destroy-object "DestroyObject") :boolean
   (object :pointer))
+
+(cffi:defcfun (load-image "LoadImageW") :pointer
+  (instance :pointer)
+  (name cursor)
+  (type load-image-type)
+  (cx :int)
+  (cy :int)
+  (behavior load-image-behavior))
+
+(cffi:defcfun (set-cursor "SetCursor") :boolean
+  (cursor :pointer))

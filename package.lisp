@@ -186,4 +186,6 @@
    #:display
    #:id
    #:with-cleanup
-   #:clean))
+   #:clean
+   #:memset
+   #:memcpy))

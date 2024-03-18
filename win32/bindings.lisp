@@ -769,6 +769,13 @@
   (x :long)
   (y :long))
 
+(cffi:defcstruct (icon-info :conc-name icon-info-)
+  (icon :boolean)
+  (xhotspot :uint32)
+  (yhotspot :uint32)
+  (mask :pointer)
+  (color :pointer))
+
 (cffi:defcstruct (bitmap-info :conc-name bitmap-info-)
   (size :uint32)
   (width :long)
@@ -1046,3 +1053,27 @@
 
 (cffi:defcfun (close-handle "CloseHandle") :boolean
   (handle :pointer))
+
+(cffi:defcfun (destroy-icon "DestroyIcon") :boolean
+  (handle :pointer))
+
+(cffi:defcfun (create-dib-section "CreateDIBSection") :pointer
+  (dc :pointer)
+  (bi :pointer)
+  (usage :uint)
+  (bits :pointer)
+  (section :pointer)
+  (offset :uint32))
+
+(cffi:defcfun (create-bitmap "CreateBitmap") :pointer
+  (width :int)
+  (height :int)
+  (planes :uint)
+  (bitcount :uint)
+  (bits :pointer))
+
+(cffi:defcfun (create-icon "CreateIconIndirect") :pointer
+  (icon-info :pointer))
+
+(cffi:defcfun (destroy-object "DestroyObject") :boolean
+  (object :pointer))

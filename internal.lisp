@@ -434,3 +434,21 @@
     #-cffi
     (fill buffer color)
     buffer))
+
+#+cffi
+(progn
+  (declaim (inline memset))
+  (defun memset (ptr type)
+    (cffi:foreign-funcall "memset" :pointer ptr :int 0 :size
+                          (etypecase type
+                            (integer type)
+                            ((or cons symbol) (cffi:foreign-type-size type))))))
+
+#+cffi
+(progn
+  (declaim (inline memcpy))
+  (defun memcpy (dst src type)
+    (cffi:foreign-funcall "memcpy" :pointer dst :pointer src :size
+                          (etypecase type
+                            (integer type)
+                            ((or cons symbol) (cffi:foreign-type-size type))))))

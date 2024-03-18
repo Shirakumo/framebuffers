@@ -37,6 +37,12 @@
    #:message-time
    #:message-x
    #:message-y
+   #:icon-info
+   #:icon-info-icon
+   #:icon-info-xhotspot
+   #:icon-info-yhotspot
+   #:icon-info-mask
+   #:icon-info-color
    #:bitmap-info
    #:bitmap-info-size
    #:bitmap-info-width
@@ -113,7 +119,12 @@
    #:create-waitable-timer
    #:set-waitable-timer
    #:cancel-waitable-timer
-   #:close-handle))
+   #:close-handle
+   #:destroy-icon
+   #:create-dib-section
+   #:create-bitmap
+   #:create-icon
+   #:destroy-object))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

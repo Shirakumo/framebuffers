@@ -141,34 +141,34 @@
 (defmethod (setf pressure) (pressure (touchpoint touchpoint))
   (setf (touchpoint-pressure touchpoint) pressure))
 
-(defmethod print-object ((video-mode video-mode) stream)
+(defmethod print-object ((video-mode fb:video-mode) stream)
   (print-unreadable-object (video-mode stream :type T)
     (format stream "~a" (fb:title video-mode))))
 
-(defmethod fb:display ((video-mode video-mode))
+(defmethod fb:display ((video-mode fb:video-mode))
   (video-mode-display video-mode))
 
-(defmethod display ((video-mode video-mode))
+(defmethod display ((video-mode fb:video-mode))
   (video-mode-display video-mode))
 
-(defmethod (setf display) (display (video-mode video-mode))
+(defmethod (setf display) (display (video-mode fb:video-mode))
   (setf (video-mode-display video-mode) display))
 
-(defmethod width ((video-mode video-mode))
+(defmethod width ((video-mode fb:video-mode))
   (video-mode-width video-mode))
 
-(defmethod height ((video-mode video-mode))
+(defmethod height ((video-mode fb:video-mode))
   (video-mode-height video-mode))
-
-(defmethod refresh-rate ((video-mode video-mode))
+fb:
+(defmethod refresh-rate ((video-mode fb:video-mode))
   (video-mode-refresh-rate video-mode))
 
-(defmethod fb:id ((video-mode video-mode))
+(defmethod fb:id ((video-mode fb:video-mode))
   (format NIL "~dx~d@~d-~a"
           (width video-mode) (height video-mode)
           (refresh-rate video-mode) (id (display video-mode))))
 
-(defmethod fb:title ((video-mode video-mode))
+(defmethod fb:title ((video-mode fb:video-mode))
   (format NIL "~dx~d @ ~dHz ~a"
           (width video-mode) (height video-mode)
           (refresh-rate video-mode) (or (title (display video-mode)) (id (display video-mode)))))
@@ -178,7 +178,9 @@
    (title :initarg :title :initform NIL :reader fb:title :accessor title)
    (size :initform (cons 0 0) :initarg :size :reader fb:size :accessor size)
    (location :initform (cons 0 0) :initarg :location :reader fb:location :accessor location)
-   (primary-p :initform NIL :initarg :primary-p :reader fb:primary-p :accessor primary-p)))
+   (primary-p :initform NIL :initarg :primary-p :reader fb:primary-p :accessor primary-p)
+   (video-mode :initform NIL :initarg :video-mode :reader fb:video-mode :accessor video-mode)
+   (video-modes :initform () :initarg :video-modes :reader fb:video-modes :accessor video-modes)))
 
 (defmethod print-object ((display display) stream)
   (print-unreadable-object (display stream :type T)
@@ -189,6 +191,10 @@
 
 (defmethod height ((display display))
   (cdr (size display)))
+
+(defmethod (setf video-mode) :after ((video-mode fb:video-mode) (display display))
+  (setf (car (size display)) (fb:width video-mode))
+  (setf (cdr (size display)) (fb:height video-mode)))
 
 (defclass window ()
   ((event-handler :initform (make-instance 'event-handler) :accessor event-handler)

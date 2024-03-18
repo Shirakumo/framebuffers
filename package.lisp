@@ -145,7 +145,9 @@
    #:angle
    #:pressure
    #:display
-   #:id)
+   #:id
+   #:video-mode
+   #:video-modes)
   (:export
    #:*available-backends*
    #:make-touchpoint
@@ -186,6 +188,8 @@
    #:pressure
    #:display
    #:id
+   #:video-mode
+   #:video-modes
    #:with-cleanup
    #:clean
    #:memset

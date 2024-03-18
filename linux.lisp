@@ -23,7 +23,7 @@
 
 (cffi:defcfun (timerfd-set-time "timerfd_settime") :int
   (fd :int)
-  (flags :)
+  (flags timerfd-flag)
   (new :pointer)
   (old :pointer))
 

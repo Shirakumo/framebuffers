@@ -22,6 +22,7 @@
    #:event-handler
    #:dynamic-event-handler
    #:icon
+   #:make-icon
    #:touchpoint
    #:radius
    #:angle

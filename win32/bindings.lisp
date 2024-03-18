@@ -949,9 +949,12 @@
 (cffi:defcfun (bring-window-to-top "BringWindowToTop") :bool
   (window :pointer))
 
-(cffi:defcfun (change-display-settings "ChangeDisplaySettingsW") :long
+(cffi:defcfun (change-display-settings "ChangeDisplaySettingsExW") :long
+  (device-name com:wstring)
   (dev-mode :pointer)
-  (flags display-setting-flags))
+  (window :pointer)
+  (flags display-setting-flags)
+  (param :pointer))
 
 (cffi:defcfun (create-window "CreateWindowExW") :pointer
   (ex-style window-style-ex)

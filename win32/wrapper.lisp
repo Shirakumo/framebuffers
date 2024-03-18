@@ -123,7 +123,9 @@
         while timer do (fb:cancel-timer window timer))
   (fb-int:clean window icon-handle win32:destroy-icon)
   (fb-int:clean window bitmap-info cffi:foreign-free)
-  (fb-int:clean window dc win32:release-dc)
+  (when (dc window)
+    (win32:release-dc (ptr window) (dc window))
+    (setf (dc window) NIL))
   (fb-int:clean window ptr win32:destroy-window))
 
 (defun get-window-style (window)
@@ -240,8 +242,8 @@
   (unwind-protect
        (loop for format = (win32:enum-clipboard-formats 0)
              then (win32:enum-clipboard-formats format)
-             until (= 0 format)
              do (case format
+                  (0 (return))
                   (:unicodetext
                    (let* ((obj (win32:get-clipboard-data format))
                           (str (win32:global-lock obj)))
@@ -250,7 +252,7 @@
                   (:dib
                    (let* ((obj (win32:get-clipboard-data format))
                           (buf (make-array (* 4 (win32:bitmap-info-width obj) (win32:bitmap-info-height obj))
-                                           :element-type '(unsigned-byte 4))))
+                                           :element-type '(unsigned-byte 8))))
                      (cffi:with-pointer-to-vector-data (ptr buf)
                        (fb-int:memcpy ptr (cffi:inc-pointer obj (cffi:foreign-type-size '(:struct win32:bitmap-info))) (length buf)))
                      (return (fb:make-icon (win32:bitmap-info-width obj) (win32:bitmap-info-height obj) buf))))
@@ -278,7 +280,7 @@
          (bi (win32:global-lock obj)))
     (unwind-protect
          (progn
-           (fb-int:memset bi 0 hdr)
+           (fb-int:memset bi hdr)
            (setf (win32:bitmap-info-size bi) (- hdr 16))
            (setf (win32:bitmap-info-width bi) (fb:width icon))
            (setf (win32:bitmap-info-height bi) (fb:height icon))
@@ -302,7 +304,7 @@
   (cffi:with-foreign-objects ((bi '(:struct win32:bitmap-info))
                               (ii '(:struct win32:icon-info))
                               (target :pointer))
-    (fb-int::memset bitmapinfo '(:struct bitmap-info))
+    (fb-int:memset bi '(:struct bitmap-info))
     (setf (win32:bitmap-info-size bi) (- (cffi:foreign-type-size '(:struct win32:bitmap-info)) 16))
     (setf (win32:bitmap-info-width bi) (fb:width icon))
     (setf (win32:bitmap-info-height bi) (- (fb:height icon)))
@@ -332,43 +334,43 @@
   (win32:send-message (ptr window) :seticon 1 (win32:get-class (ptr window) -14))
   (when (icon-handle window) (win32:destroy-icon (icon-handle window)))
   (setf (icon-handle window) value)
-  (setf (icon window) value))
+  (setf (fb-int:icon window) value))
 
 (defmethod (setf fb:icon) ((value fb:icon) (window window))
-  (let ((icon (make-icon value)))
+  (let ((icon (make-icon window value)))
     (win32:send-message (ptr window) :seticon 0 icon)
     (win32:send-message (ptr window) :seticon 1 icon)
     (when (icon-handle window) (win32:destroy-icon (icon-handle window)))
     (setf (icon-handle window) icon)
-    (setf (icon window) value)))
+    (setf (fb-int:icon window) value)))
 
 (defmethod (setf cursor-handle) :before (handle (window window))
   (when handle
-    (case (cursor-mode window)
+    (case (fb:cursor-state window)
       ((:normal :captured)
        (win32:set-cursor handle))
       (T
        (win32:set-cursor (cffi:null-pointer))))))
 
 (defmethod (setf fb:cursor-icon) ((value symbol) (window window))
-  (let ((id (ecase value
-              (:arrow :normal)
-              (:busy :wait)
-              (:crosshair :cross)
-              (:pointing-hand :hand)
-              (:resize-ew :sizewe)
-              (:resize-ns :sizens)
-              (:resize-nwse :sizenwse)
-              (:resize-nesw :sizenesw)
-              (:resize-all :sizeall)
-              (:not-allowed :no)))
-        (handle (win32:load-image (cffi:null-pointer) id :cursor 0 0 '(:defaultsize :shared))))
+  (let* ((id (ecase value
+               (:arrow :normal)
+               (:busy :wait)
+               (:crosshair :cross)
+               (:pointing-hand :hand)
+               (:resize-ew :sizewe)
+               (:resize-ns :sizens)
+               (:resize-nwse :sizenwse)
+               (:resize-nesw :sizenesw)
+               (:resize-all :sizeall)
+               (:not-allowed :no)))
+         (handle (win32:load-image (cffi:null-pointer) id :cursor 0 0 '(:defaultsize :shared))))
     (setf (cursor-handle window) handle)
     value))
 
 (defmethod (setf fb:cursor-icon) ((value fb:icon) (window window))
   (let ((handle (or (gethash value (icon-table window))
-                    (setf (gethash value (icon-table window)) (make-icon value :icon-p NIL)))))
+                    (setf (gethash value (icon-table window)) (make-icon window value :icon-p NIL)))))
     (setf (cursor-handle window) handle)
     value))
 
@@ -379,7 +381,9 @@
 (defmethod fb:set-timer ((window window) delay &key repeat)
   (let ((handle (win32:create-waitable-timer (cffi:null-pointer) NIL (cffi:null-pointer)))
         (period (truncate (* 1000 delay))))
-    (win32:set-waitable-timer handle time (if repeat period 0) (cffi:null-pointer) (cffi:null-pointer) NIL)
+    (cffi:with-foreign-objects ((time :uint64))
+      (setf (cffi:mem-ref time :int64) (truncate (* -10000000 delay)))
+      (win32:set-waitable-timer handle time (if repeat period 0) (cffi:null-pointer) (cffi:null-pointer) NIL))
     (push handle (timers window))
     handle))
 
@@ -403,7 +407,7 @@
 
 (defstruct (video-mode (:include fb:video-mode)))
 
-(defun translate-mode (mode)
+(defun translate-mode (display mode)
   (make-video-mode :display display
                    :width (win32:device-mode-pels-width mode)
                    :height (win32:device-mode-pels-height mode)
@@ -412,20 +416,20 @@
 (defun enum-modes (display)
   (cffi:with-foreign-objects ((mode '(:struct win32:device-mode)))
     (delete-duplicates (loop for i from 0
-                             while (win32:enum-display-settings (id display) i mode)
+                             while (win32:enum-display-settings (fb:id display) i mode)
                              when (and (< 15 (win32:device-mode-bits-per-pel mode)))
-                             collect (translate-mode mode))
-                       :key #'id :test #'string=)))
+                             collect (translate-mode display mode))
+                       :key #'fb:id :test #'string=)))
 
 (defun refresh-display (display)
-  (setf (video-modes display) (enum-modes display))
+  (setf (fb-int:video-modes display) (enum-modes display))
   (cffi:with-foreign-objects ((mode '(:struct win32:device-mode)))
-    (win32:enum-display-settings (id display) -1 mode)
-    (setf (car (location display)) (win32:device-mode-position-x mode))
-    (setf (cdr (location display)) (win32:device-mode-position-y mode))
-    (let ((mode (translate-mode mode)))
-      (setf (video-mode display) (or (find mode (fb:video-modes display) :key #'id :test #'string=)
-                                     mode))))
+    (win32:enum-display-settings (fb:id display) -1 mode)
+    (setf (car (fb:location display)) (win32:device-mode-position-x mode))
+    (setf (cdr (fb:location display)) (win32:device-mode-position-y mode))
+    (let ((mode (translate-mode display mode)))
+      (setf (fb-int:video-mode display) (or (find (fb:id mode) (fb:video-modes display) :key #'fb:id :test #'string=)
+                                            mode))))
   display)
 
 (defun poll-displays (&optional window)
@@ -463,29 +467,29 @@
     (display)
     (video-mode
      ;; Restore the original video mode if there was one.
-     (win32:change-display-settings (fb:id (fb:display mode)) (cffi:null-pointer) (cffi:null-pointer) :fullscreen (cffi:null-pointer))
+     (win32:change-display-settings (fb:id (fb:display (fb:fullscreen-p window))) (cffi:null-pointer) (cffi:null-pointer) :fullscreen (cffi:null-pointer))
      (refresh-display (fb:fullscreen-p window))))
-  (setf (fullscreen-p window) value))
+  (setf (fb-int:fullscreen-p window) value))
 
 (defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
   (unless (eq value (fb:fullscreen-p window))
     ;; We remember the display if we don't change mode and the video-mode if we need to restore.
     (cond ((eq value (fb:video-mode (fb:display value))) 
-           (setf (fullscreen-p window) (fb:display value)))
+           (setf (fb-int:fullscreen-p window) (fb:display value)))
           (T
            (cffi:with-foreign-objects ((mode '(:struct win32:device-mode)))
-             (fb-int:memset mode 0 (cffi:foreign-type-size '(:struct win32:device-mode)))
+             (fb-int:memset mode (cffi:foreign-type-size '(:struct win32:device-mode)))
              (setf (win32:device-mode-size mode) (cffi:foreign-type-size '(:struct win32:device-mode)))
              (setf (win32:device-mode-fields mode) '(:pelswidth :pelsheight :displayfrequency))
              (setf (win32:device-mode-pels-width mode) (fb:width value))
              (setf (win32:device-mode-pels-height mode) (fb:height value))
              (setf (win32:device-mode-display-frequency mode) (fb:refresh-rate value))
              (win32:change-display-settings (fb:id (fb:display value)) mode (cffi:null-pointer) :fullscreen (cffi:null-pointer)))
-           (setf (video-mode (fb:display value)) value)
-           (setf (fullscreen-p window) value)))
+           (setf (fb-int:video-mode (fb:display value)) value)
+           (setf (fb-int:fullscreen-p window) value)))
     ;; Now fit the window to the monitor
-    (destructuring-bind (x . y) (location (fb:display value))
-      (destructuring-bind (w . h) (size (fb:display value))
+    (destructuring-bind (x . y) (fb:location (fb:display value))
+      (destructuring-bind (w . h) (fb:size (fb:display value))
         (win32:set-window-pos (ptr window) 0 x y w h '(:nozorder :noactivate :nocopybits)))))
   value)
 
@@ -570,7 +574,7 @@
            (fb:window-closed window)
            (return 0))
           (:syscommand
-           (when (and (fullscreen-p window)
+           (when (and (fb:fullscreen-p window)
                       (or (= #xF140 (logand wparam #xFFF0))
                           (= #xF170 (logand wparam #xFFF0))))
              (return 0)))

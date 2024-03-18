@@ -330,9 +330,10 @@ See WINDOW (type)")
     "Closes and deallocates the window permanently.
 
 After this the window will no longer be valid and cannot be used
-further.
+further. The CLOSE-REQUESTED-P will also be forced to T.
 
 See VALID-P
+See CLOSE-REQUESTED-P
 See WINDOW (type)")
   
   (function width

@@ -260,6 +260,9 @@
 (defmethod height ((window window))
   (cdr (size window)))
 
+(defmethod fb:close :before ((window window))
+  (setf (close-requested-p window) T))
+
 (defun find-mode-by-id (id)
   (loop for display in (list-displays)
         do (when (string= id (fb:id display))

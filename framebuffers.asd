@@ -58,7 +58,8 @@
   :depends-on (:framebuffers/protocol
                :mmap))
 
-(asdf:defsystem framebuffers/xlib:version "0.0.0"
+(asdf:defsystem framebuffers/xlib
+  :version "0.0.0"
   :license "zlib"
   :author "Yukari Hafner <shinmera@tymoon.eu>"
   :maintainer "Yukari Hafner <shinmera@tymoon.eu>"

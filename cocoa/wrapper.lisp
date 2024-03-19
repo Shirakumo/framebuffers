@@ -1,33 +1,50 @@
-(in-package #:org.shirakumo.framebuffers.BACKEND)
+(in-package #:org.shirakumo.framebuffers.cocoa)
 
-(pushnew :BACKEND fb-int:*available-backends*)
+(pushnew :cocoa fb-int:*available-backends*)
 
-(define-condition BACKEND-error (fb:framebuffer-error)
+(define-condition cocoa-error (fb:framebuffer-error)
   ()
   (:report (lambda (c s) (format s ""))))
 
-(defmethod fb-int:init-backend ((backend (eql :BACKEND)))
-  ;; TODO: implement init-backend
-  )
+(defmethod fb-int:init-backend ((backend (eql :cocoa)))
+  (objc:init))
 
-(defmethod fb-int:shutdown-backend ((backend (eql :BACKEND)))
-  ;; TODO: implement shutdown-backend
-  )
+(defmethod fb-int:shutdown-backend ((backend (eql :cocoa)))
+  (objc:shutdown))
 
-(defmethod fb-int:open-backend ((backend (eql :BACKEND)) &key)
-  ;; TODO: implement list-displays-backend
-  )
+(defmethod fb-int:open-backend ((backend (eql :cocoa)) &key size location title (visible-p T))
+  (cocoa:nsapplication-shared-application)
+  (cocoa:nsapp-set-activation-policy :regular)
+  (let* ((screen (cocoa:frame (cocoa:nsscreen-main-screen)))
+         (w (or (car size) (cocoa:rect-width screen)))
+         (h (or (cdr size) (cocoa:rect-height screen)))
+         (x (or (car location) (truncate (- (cocoa:rect-width screen) w) 2)))
+         (y (or (cdr location) (truncate (- (cocoa:rect-height screen) h) 2)))
+         (rect (cocoa:make-rect x y w h))
+         (window (cocoa:init-with-content-rect (cocoa:alloc "NSWindow") rect '(:closable :titled) :buffered NIL)))
+    (make-instance 'window :ptr window
+                           :size (cons w h)
+                           :location (cons x y))))
 
-(defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
+(defmethod fb-int:list-displays-backend ((backend (eql :cocoa)))
   ;; TODO: implement list-displays-backend
   )
 
 (defclass window (fb:window)
-  ((buffer :initarg :buffer :initform NIL :reader fb:buffer :accessor buffer)))
+  ((ptr :initarg :ptr :initform NIL :accessor ptr)
+   (buffer :initarg :buffer :initform NIL :reader fb:buffer :accessor buffer)))
+
+(defmethod initialize-instance :after ((window window) &key)
+  (let ((ptr (ptr window)))
+    (cocoa:set-release-when-closed ptr NIL)
+    (cocoa:set-opaque ptr T)
+    (cocoa:set-background-color ptr (cocoa:nscolor-clear-color))
+    (cocoa:set-accepts-mouse-moved-events ptr T)
+    (cocoa:set-title ptr (or title (fb-int:default-title)))
+    (cocoa:nsapp-activate-ignoring-other-apps T)))
 
 (defmethod fb:valid-p ((window window))
-  ;; TODO: implement valid-p
-  )
+  (not (null (ptr window))))
 
 (defmethod fb:close ((window window))
   ;; TODO: implement close

@@ -73,7 +73,6 @@
   :depends-on (:framebuffers/protocol
                :mmap))
 
-#++
 (asdf:defsystem framebuffers/cocoa
   :version "0.0.0"
   :license "zlib"
@@ -86,7 +85,8 @@
                              (:file "bindings")
                              (:file "keycodes")
                              (:file "wrapper"))))
-  :depends-on (:framebuffers/protocol))
+  :depends-on (:framebuffers/protocol
+               :cocoas))
 
 #++
 (asdf:defsystem framebuffers/mezzano

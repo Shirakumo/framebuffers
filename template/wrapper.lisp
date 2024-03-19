@@ -97,15 +97,23 @@
   ;; TODO: implement clipboard fetching
   )
 
-(defmethod (setf fb:clipboard) (string (window window))
+(defmethod (setf fb:clipboard) ((string string) (window window))
   ;; TODO: implement clipboard setting
   )
 
-(defmethod (setf fb:icon) (value (window window))
+(defmethod (setf fb:icon) ((value null) (window window))
   ;; TODO: implement icon
   )
 
-(defmethod (setf fb:cursor-icon) (value (window window))
+(defmethod (setf fb:icon) ((value fb:icon) (window window))
+  ;; TODO: implement icon
+  )
+
+(defmethod (setf fb:cursor-icon) ((value symbol) (window window))
+  ;; TODO: implement cursor-icon
+  )
+
+(defmethod (setf fb:cursor-icon) ((value fb:icon) (window window))
   ;; TODO: implement cursor-icon
   )
 

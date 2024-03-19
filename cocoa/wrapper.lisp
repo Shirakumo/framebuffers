@@ -26,12 +26,9 @@
                            :size (cons w h)
                            :location (cons x y))))
 
-(defmethod fb-int:list-displays-backend ((backend (eql :cocoa)))
-  ;; TODO: implement list-displays-backend
-  )
-
 (defclass window (fb:window)
   ((ptr :initarg :ptr :initform NIL :accessor ptr)
+   (view :initarg :view :initform NIL :accessor view)
    (buffer :initarg :buffer :initform NIL :reader fb:buffer :accessor buffer)))
 
 (defmethod initialize-instance :after ((window window) &key)
@@ -47,60 +44,95 @@
   (not (null (ptr window))))
 
 (defmethod fb:close ((window window))
-  ;; TODO: implement close
-  )
+  (fb-int:clean window view cocoa:release)
+  (fb-int:clean window ptr cocoa:close)
+  (loop while (cocoa:process-event)))
+
+(defun tf-y (y)
+  (- (cocoa:rect-size-height (cocoa:cg-display-bounds (cocoa:cg-main-display-id))) y 1))
 
 (defmethod (setf fb:size) (size (window window))
-  ;; TODO: implement size
-  )
+  (objc:with-objects ((rect (cocoa:content-rect-for-frame-rect (ptr window) (cocoa:frame (ptr window)))))
+    (incf (cocoa:rect-origin-y rect) (- (cocoa:rect-size-heigh rectt) (cdr size)))
+    (setf (cocoa:rect-size rect) (cocoa:make-size (car size) (cdr size)))
+    (cocoa:set-frame (ptr window) (cocoa:frame-rect-for-content-rect (ptr window) rect) T)))
 
 (defmethod (setf fb:location) (location (window window))
-  ;; TODO: implement location
-  )
+  (objc:with-objects ((rect (cocoa:frame (view window)))
+                      (dummy (cocoa:make-rect (car location) (tf-y (+ (cdr location) (cocoa:rect-size-height rect) -1)) 0 0))
+                      (frame (cocoa:frame-rect-for-content-rect (ptr window) dummy)))
+    (cocoa:set-frame-origin (ptr window) (cocoa:rect-origin frame))))
 
 (defmethod (setf fb:title) (title (window window))
-  ;; TODO: implement title
-  )
+  (cocoa:set-title (ptr window) title)
+  (cocoa:set-miniwindow-title (ptr window) string)
+  (setf (fb-int:title window) title))
 
 (defmethod (setf fb:visible-p) (state (window window))
-  ;; TODO: implement visible-p
-  )
+  (if state
+      (cocoa:order-front (ptr window) NIL)
+      (cocoa:order-out (ptr window) NIL))
+  (setf (fb-int:visible-p window) state))
 
 (defmethod (setf fb:maximized-p) (state (window window))
-  ;; TODO: implement maximized-p
-  )
+  (unless (eq state (fb-int:maximized-p window))
+    (cocoa:zoom (ptr window) NIL)
+    (setf (fb-int:iconified-p window) state))
+  state)
 
 (defmethod (setf fb:iconified-p) (state (window window))
-  ;; TODO: implement iconified-p
-  )
+  (when state
+    (cocoa:miniaturize (ptr window) NIL)
+    (setf (fb-int:iconified-p window) state))
+  state)
 
 (defmethod (setf fb:minimum-size) (value (window window))
-  ;; TODO: implement minimum-size
-  )
+  (objc:with-objects ((size (cocoa:make-size (max 1 (or (car value) 0))
+                                             (max 1 (or (cdr value) 0)))))
+    (cocoa:set-content-min-size (ptr window) size)
+    (setf (car (fb:minimum-size window)) (max 1 (or (car value) 0)))
+    (setf (cdr (fb:minimum-size window)) (max 1 (or (cdr value) 0)))
+    value))
 
 (defmethod (setf fb:maximum-size) (value (window window))
-  ;; TODO: implement maximum-size
-  )
+  (objc:with-objects ((size (cocoa:make-size (or (car value) most-positive-double-float)
+                                             (or (cdr value) most-positive-double-float))))
+    (cocoa:set-content-max-size (ptr window) size)
+    (setf (car (fb:maximum-size window)) (car value))
+    (setf (cdr (fb:maximum-size window)) (cdr value))
+    value))
 
 (defmethod (setf fb:focused-p) (value (window window))
-  ;; TODO: implement focused-p
-  )
+  (when value
+    (cocoa:nsapp-activate-ignoring-other-apps T)
+    (cocoa:make-key-and-order-front (ptr window) NIL)
+    (setf (fb-int:focused-p window) value))
+  value)
 
 (defmethod (setf fb:borderless-p) (value (window window))
-  ;; TODO: implement borderless-p
-  )
+  (let ((mask (cocoa:style-mask (ptr window))))
+    (setf mask (if value
+                   (set-union '(:borderless) (set-difference mask '(:titled :closable)))
+                   (set-union '(:titled :closable) (set-difference mask '(:borderless)))))
+    (cocoa:set-style-mask (ptr window) mask))
+  (cocoa:make-first-responder (ptr window) (view window))
+  (setf (fb-int:floating-p window) value))
 
 (defmethod (setf fb:always-on-top-p) (value (window window))
   ;; TODO: implement always-on-top-p
   )
 
 (defmethod (setf fb:resizable-p) (value (window window))
-  ;; TODO: implement resizable-p
-  )
+  (let ((mask (cocoa:style-mask (ptr window))))
+    (setf mask (if value
+                   (set-difference mask '(:resizable))
+                   (set-union mask '(:resizable))))
+    (cocoa:set-style-mask (ptr window) mask)
+    (cocoa:set-collection-behavior (ptr window) (if value '(:full-screen-primary :managed) '(:full-screen-none)))))
 
 (defmethod (setf fb:floating-p) (value (window window))
-  ;; TODO: implement floating-p
-  )
+  (cocoa:set-level (ptr window) (if value :floating-window-level :normal-window-level))
+  (setf (fb-int:floating-p window) value))
 
 (defmethod (setf fb:fullscreen-p) ((value null) (window window))
   ;; TODO: implement fullscreen-p
@@ -111,18 +143,29 @@
   )
 
 (defmethod fb:clipboard ((window window))
-  ;; TODO: implement clipboard fetching
-  )
+  (objc:with-objects ((pasteboard (cocoa:nspasteboard-general-pasteboard)))
+    (dolist (type (cocoa:types pasteboard))
+      (case type
+        (:string (return (cocoa:string-for-type pasteboard :string)))))))
 
-(defmethod (setf fb:clipboard) (string (window window))
-  ;; TODO: implement clipboard setting
-  )
+(defmethod (setf fb:clipboard) ((string string) (window window))
+  (objc:with-objects ((pasteboard (cocoa:nspasteboard-general-pasteboard)))
+    (cocoa:declare-types pasteboard '(:string) NIL)
+    (cocoa:set-string pasteboard string :string)))
 
-(defmethod (setf fb:icon) (value (window window))
+(defmethod (setf fb:icon) ((value null) (window window))
   ;; TODO: implement icon
   )
 
-(defmethod (setf fb:cursor-icon) (value (window window))
+(defmethod (setf fb:icon) ((value fb:icon) (window window))
+  ;; TODO: implement icon
+  )
+
+(defmethod (setf fb:cursor-icon) ((value symbol) (window window))
+  ;; TODO: implement cursor-icon
+  )
+
+(defmethod (setf fb:cursor-icon) ((value fb:icon) (window window))
   ;; TODO: implement cursor-icon
   )
 
@@ -139,8 +182,7 @@
   )
 
 (defmethod fb:request-attention ((window window))
-  ;; TODO: implement request-attention
-  )
+  (cocoa:nsapp-request-user-attention :informational-request))
 
 (defmethod fb:set-timer ((window window) delay &key repeat)
   ;; TODO: implement set-timer
@@ -152,6 +194,10 @@
 
 (defmethod fb:display ((window window))
   ;; TODO: implement display
+  )
+
+(defmethod fb-int:list-displays-backend ((backend (eql :cocoa)))
+  ;; TODO: implement list-displays-backend
   )
 
 (defclass display (fb:display)

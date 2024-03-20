@@ -60,6 +60,7 @@ Once you have your window instance, you must periodically call ``process-events`
 ## Supported Backends
 Currently this library supports the following backends:
 
+; - Cocoa
 ; - Wayland
 - Win32
 - X11

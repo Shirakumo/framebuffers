@@ -30,7 +30,7 @@
   `(objc::define-objc-class ,name ,super
      ,@(loop for (name rettype args . body) in methods
              collect `(,name ,rettype ,args
-                             (let ((window (fb-int:ptr-window objc::self)))
+                             (let ((window (fb-int:ptr-window self)))
                                (declare (ignorable window))
                                ,@body)))))
 
@@ -41,10 +41,22 @@
   (window-should-close/ :bool ((sender :id))
     (fb:window-closed window)
     NIL)
-  (window-did-resize/ :void ((notification :pointer)))
-  (window-did-move/ :void ((notification :pointer)))
-  (window-did-miniaturize/ :void ((notification :pointer)))
-  (window-did-deminiaturize/ :void ((notification :pointer)))
+  (window-did-resize/ :void ((notification :pointer))
+    (let ((max (cocoa:is-zoomed self)))
+      (unless (eql max (fb:maximized-p window))
+        (fb:window-maximized window max)))
+    (objc:with-objects ((content-rect (cocoa:frame (view window)))
+                        (rect (cocoa:convert-rect-to-backing/ (view window) content-rect)))
+      (fb:window-resized window (cocoa:rect-size-width rect) (cocoa:rect-size-height rect))))
+  (window-did-move/ :void ((notification :pointer))
+    (objc:with-objects ((rect (cocoa:content-rect-for-frame-rect/ self (cocoa:frame self))))
+      (fb:window-moved window
+                       (cocoa:rect-origin-x rect)
+                       (tf-y (+ (cocoa:rect-origin-y rect) (cocoa:rect-size-height rect) -1)))))
+  (window-did-miniaturize/ :void ((notification :pointer))
+    (fb:window-iconified window T))
+  (window-did-deminiaturize/ :void ((notification :pointer))
+    (fb:window-iconified window NIL))
   (window-did-become-key/ :void ((notification :pointer)))
   (window-did-resign-key/ :void ((notification :pointer)))
   (can-become-key-window :bool () T)

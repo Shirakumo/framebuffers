@@ -24,7 +24,8 @@
          (window (cocoa:init-with-content-rect (cocoa:alloc "FBWindow") rect '(:closable :titled) :buffered NIL)))
     (make-instance 'window :ptr window
                            :size (cons w h)
-                           :location (cons x y))))
+                           :location (cons x y)
+                           :title (or title (fb-int:default-title)))))
 
 (defmacro define-objc-class (name super &body methods)
   `(objc::define-objc-class ,name ,super
@@ -46,10 +47,10 @@
       (unless (eql max (fb:maximized-p window))
         (fb:window-maximized window max)))
     (objc:with-objects ((content-rect (cocoa:frame (view window)))
-                        (rect (cocoa:convert-rect-to-backing/ (view window) content-rect)))
+                        (rect (cocoa:convert-rect-to-backing (view window) content-rect)))
       (fb:window-resized window (cocoa:rect-w rect) (cocoa:rect-h rect))))
   (window-did-move/ :void ((notification :pointer))
-    (objc:with-objects ((rect (cocoa:content-rect-for-frame-rect/ self (cocoa:frame self))))
+    (objc:with-objects ((rect (cocoa:content-rect-for-frame-rect self (cocoa:frame self))))
       (fb:window-moved window
                        (cocoa:rect-x rect)
                        (tf-y (+ (cocoa:rect-y rect) (cocoa:rect-h rect) -1)))))
@@ -116,7 +117,7 @@
     (cocoa:set-opaque ptr T)
     (cocoa:set-background-color ptr (cocoa:nscolor-clear-color))
     (cocoa:set-accepts-mouse-moved-events ptr T)
-    (cocoa:set-title ptr (or title (fb-int:default-title)))
+    (cocoa:set-title ptr (fb:title window))
     (cocoa:set-content-view ptr view)
     (cocoa:make-first-responder-view ptr view)
     (cocoa:nsapp-activate-ignoring-other-apps T)))
@@ -127,17 +128,18 @@
 (defmethod fb:close ((window window))
   (setf (fb-int:ptr-window (ptr window)) NIL)
   (setf (fb-int:ptr-window (view window)) NIL)
-  (fb-int:clean window view cocoa:release)
-  (fb-int:clean window ptr cocoa:close)
-  (loop while (cocoa:process-event)))
+  (fb-int:clean window view objc:release)
+  (fb-int:clean window ptr objc:close)
+  (loop while (objc:process-event)))
 
 (defun tf-y (y)
   (- (cocoa:rect-h (cocoa:cg-display-bounds (cocoa:cg-main-display-id))) y 1))
 
 (defmethod (setf fb:size) (size (window window))
   (objc:with-objects ((rect (cocoa:content-rect-for-frame-rect (ptr window) (cocoa:frame (ptr window)))))
-    (incf (cocoa:rect-y rect) (- (cocoa:rect-heigh rectt) (cdr size)))
-    (setf (cocoa:rect rect) (cocoa:make-size (car size) (cdr size)))
+    (incf (cocoa:rect-y rect) (- (cocoa:rect-h rect) (cdr size)))
+    (setf (cocoa:rect-w rect) (car size))
+    (setf (cocoa:rect-h rect) (cdr size))
     (cocoa:set-frame (ptr window) (cocoa:frame-rect-for-content-rect (ptr window) rect) T)))
 
 (defmethod (setf fb:location) (location (window window))
@@ -148,7 +150,7 @@
 
 (defmethod (setf fb:title) (title (window window))
   (cocoa:set-title (ptr window) title)
-  (cocoa:set-miniwindow-title (ptr window) string)
+  (cocoa:set-miniwindow-title (ptr window) title)
   (setf (fb-int:title window) title))
 
 (defmethod (setf fb:visible-p) (state (window window))
@@ -258,7 +260,8 @@
              (real (float timeout 0d0))
              (null 0.0d0))))
     (loop while (and (ptr window) (not (fb:close-requested-p window)))
-          do (cocoa:process-events :timeout s)
+          do (objc:process-event :timeout s)
+             (loop while (objc:process-event))
              (unless (eql T timeout)
                (return)))))
 

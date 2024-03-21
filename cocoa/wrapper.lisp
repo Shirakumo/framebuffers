@@ -2,12 +2,16 @@
 
 (pushnew :cocoa fb-int:*available-backends*)
 
-(define-condition cocoa-error (fb:framebuffer-error)
-  ()
-  (:report (lambda (c s) (format s ""))))
+(define-condition cocoa-error (fb:framebuffer-error objc:foundation-error)
+  ())
+
+(cffi:defcallback %foundation-error :void ((exception :pointer))
+  (objc:foundation-error exception 'cocoa-error))
 
 (defmethod fb-int:init-backend ((backend (eql :cocoa)))
-  (objc:init))
+  (objc:init)
+  (org.shirakumo.cocoas.cffi:set-uncaught-exception-handler
+   (cffi:callback '%foundation-error)))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :cocoa)))
   (objc:shutdown))

@@ -89,7 +89,21 @@
   (mouse-entered/ :void ((event :pointer)))
   (scroll-wheel/ :void ((event :pointer)))
   (view-did-change-backing-properties :void ())
-  (draw-rect/ :void ((rect :id)))
+
+  (draw-rect/ :void ((rect (:struct cocoa:rect)))
+    (let* ((buffer (fb:buffer window))
+           (context (cocoa:cgcontext (cocoa:nsgraphicscontext-current-context)))
+           (space (cocoa:cg-color-space-create-device-rgb))
+           (provider (cocoa:cg-data-provider-create-with-data (cffi:null-pointer)
+                                                              (static-vectors:static-vector-pointer buffer)
+                                                              (length buffer)
+                                                              (cffi:null-pointer)))
+           (image (cocoa:cg-image-create width height 8 32 (* width 4) space '(:none-skip-first :byte-order-32-little) provider (cffi:null-pointer) NIL :default)))
+      (cocoa:cg-color-space-release space)
+      (cocoa:cg-data-provider-release provider)
+      (cocoa:cg-context-draw-image context rect image)
+      (cocoa:cg-image-release image)))
+
   (update-tracking-areas :void ())
   (key-down/ :void ((event :pointer)))
   (flags-changed/ :void ((event :pointer)))
@@ -255,8 +269,7 @@
   )
 
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
-  ;; TODO: implement swap-buffers
-  )
+  (cocoa:set-needs-display-in-rect (view window) (cocoa:make-rect x y w h)))
 
 (defmethod fb:process-events ((window window) &key timeout)
   (let ((s (etypecase timeout

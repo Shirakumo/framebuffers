@@ -83,7 +83,19 @@
    #:set-string
    #:floating-window-level
    #:normal-window-level
-   #:main-menu-window-level))
+   #:main-menu-window-level
+   #:cgcontext
+   #:nsgraphicscontext-current-context
+   #:cg-display-bounds
+   #:cg-main-display-id
+   #:window-level-for-key
+   #:cg-color-space-create-device-rgb
+   #:cg-data-provider-create-with-data
+   #:cg-image-create
+   #:cg-color-space-release
+   #:cg-data-provider-release
+   #:cg-context-draw-image
+   #:cg-image-release))
 
 (defpackage #:org.shirakumo.framebuffers.cocoa
   (:use #:cl)

@@ -193,13 +193,13 @@
 (objc:define-objcmethod (set-level "setLevel:") :void
   (level :int32))
 
-(objc:define-objcmethod (types "types") :pointer)
+(objc:define-objcmethod (types "types") objc:cfarray)
 
 (objc:define-objcmethod (string-for-type "stringForType:") objc:nsstring
   (type :pointer))
 
 (objc:define-objcmethod (declare-types "declareTypes:owner:") :void
-  (types :pointer)
+  (types objc:cfarray)
   (owner :boolean))
 
 (objc:define-objcmethod (set-string "setString") :void

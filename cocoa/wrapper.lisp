@@ -39,6 +39,8 @@
     (4 4 &rest (&whole 2 6 6 &body)))
 
 (define-objc-class "FBWindow" "NSWindow"
+  (can-become-key-window :bool () T)
+  (can-become-main-window :bool () T)
   (window-should-close/ :bool ((sender :id))
     (fb:window-closed window)
     NIL)
@@ -59,18 +61,16 @@
   (window-did-deminiaturize/ :void ((notification :pointer))
     (fb:window-iconified window NIL))
   (window-did-become-key/ :void ((notification :pointer)))
-  (window-did-resign-key/ :void ((notification :pointer)))
-  (can-become-key-window :bool () T)
-  (can-become-main-window :bool () T))
+  (window-did-resign-key/ :void ((notification :pointer))))
 
 (define-objc-class "FBContentView" "NSView"
   (can-become-key-view :bool () T)
   (accepts-first-responder :bool () T)
   (wants-update-layer :bool () T)
+  (accepts-first-mouse/ :bool ((event :pointer)) T)
   (update-layer :void ()
     (fb:window-refreshed window))
   (cursor-update/ :void ((event :pointer)))
-  (accepts-first-mouse/ :bool ((event :pointer)) T)
   (mouse-down/ :void ((event :pointer)))
   (mouse-dragged/ :void ((event :pointer)))
   (mouse-up/ :void ((event :pointer)))
@@ -221,14 +221,14 @@
 
 (defmethod fb:clipboard ((window window))
   (objc:with-objects ((pasteboard (cocoa:nspasteboard-general-pasteboard)))
-    (dolist (type (cocoa:types pasteboard))
-      (case type
-        (:string (return (cocoa:string-for-type pasteboard :string)))))))
+    (loop for type across (cocoa:types pasteboard)
+          do (cond ((cffi:pointer-eq type cocoa:paste-string)
+                    (return (cocoa:string-for-type pasteboard cocoa:paste-string)))))))
 
 (defmethod (setf fb:clipboard) ((string string) (window window))
   (objc:with-objects ((pasteboard (cocoa:nspasteboard-general-pasteboard)))
-    (cocoa:declare-types pasteboard '(:string) NIL)
-    (cocoa:set-string pasteboard string :string)))
+    (cocoa:declare-types pasteboard (list cocoa:paste-string) NIL)
+    (cocoa:set-string pasteboard string cocoa:paste-string)))
 
 (defmethod (setf fb:icon) ((value null) (window window))
   ;; TODO: implement icon

@@ -6,6 +6,23 @@
    (#:objc #:org.shirakumo.cocoas))
   (:shadow #:close)
   (:export
+   #:paste-url
+   #:paste-collaboration-metadata
+   #:paste-color
+   #:paste-file-url
+   #:paste-font
+   #:paste-html
+   #:paste-multiple-text-selection
+   #:paste-pdf
+   #:paste-png
+   #:paste-rtf
+   #:paste-rtfd
+   #:paste-ruler
+   #:paste-sound
+   #:paste-string
+   #:paste-tabular-text
+   #:paste-text-finder-options
+   #:paste-tiff
    #:point
    #:point-x
    #:point-y

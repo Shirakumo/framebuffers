@@ -1,5 +1,7 @@
 (in-package #:org.shirakumo.framebuffers.mezzano)
 
+(defvar *default-display* NIL)
+
 (pushnew :mezzano fb-int:*available-backends*)
 
 (define-condition mezzano-error (fb:framebuffer-error)
@@ -7,19 +9,26 @@
   (:report (lambda (c s) (format s ""))))
 
 (defmethod fb-int:init-backend ((backend (eql :mezzano)))
-  ;; TODO: implement init-backend
-  )
+  (unless *default-display*
+    ;; TDOO: query actual size?
+    (let ((mode (make-video-mode :width 800
+                                 :height 600
+                                 :refresh-rate 60)))
+      (setf *default-display* (make-instance 'display
+                                             :primary-p T
+                                             :title "Default"
+                                             :id "-"
+                                             :size (cons (fb:width mode) (fb:height mode))
+                                             :video-mode mode
+                                             :video-modes (list mode))))))
 
-(defmethod fb-int:shutdown-backend ((backend (eql :mezzano)))
-  ;; TODO: implement shutdown-backend
-  )
+(defmethod fb-int:shutdown-backend ((backend (eql :mezzano))))
 
 (defmethod fb-int:open-backend ((backend (eql :mezzano)) &rest args &key &allow-other-keys)
   (apply #'make-instance 'window :fifo (mezzano.supervisor:make-fifo 50) args))
 
 (defmethod fb-int:list-displays-backend ((backend (eql :mezzano)))
-  ;; TODO: implement list-displays-backend
-  )
+  (list *default-display*))
 
 (defclass window (fb:window mezzano.gui.compositor:window)
   ((buffer :initarg :buffer :initform NIL :reader fb:buffer :accessor buffer)
@@ -51,8 +60,9 @@
   )
 
 (defmethod (setf fb:size) (size (window window))
-  ;; TODO: implement size
-  )
+  (process-event window (make-instance 'mezzano.gui.compositor:resize-request-event
+                                       :width (car size) :height (cdr size)))
+  size)
 
 (defmethod (setf fb:location) (location (window window))
   ;; TODO: implement location
@@ -67,20 +77,18 @@
   )
 
 (defmethod (setf fb:maximized-p) (state (window window))
-  ;; TODO: implement maximized-p
-  )
+  state)
 
 (defmethod (setf fb:iconified-p) (state (window window))
-  ;; TODO: implement iconified-p
-  )
+  state)
 
 (defmethod (setf fb:minimum-size) (value (window window))
-  ;; TODO: implement minimum-size
-  )
+  (setf (car (fb:minimum-size window)) (max 0 (car value)))
+  (setf (cdr (fb:minimum-size window)) (max 0 (cdr value))))
 
 (defmethod (setf fb:maximum-size) (value (window window))
-  ;; TODO: implement maximum-size
-  )
+  (setf (car (fb:maximum-size window)) (car value))
+  (setf (cdr (fb:maximum-size window)) (cdr value)))
 
 (defmethod (setf fb:focused-p) (value (window window))
   ;; TODO: implement focused-p
@@ -91,16 +99,14 @@
   )
 
 (defmethod (setf fb:always-on-top-p) (value (window window))
-  ;; TODO: implement always-on-top-p
-  )
+  value)
 
 (defmethod (setf fb:resizable-p) (value (window window))
   ;; TODO: implement resizable-p
-  )
+  (setf (fb-int:resizable-p window) value))
 
 (defmethod (setf fb:floating-p) (value (window window))
-  ;; TODO: implement floating-p
-  )
+  value)
 
 (defmethod (setf fb:fullscreen-p) ((value null) (window window))
   ;; TODO: implement fullscreen-p
@@ -110,21 +116,16 @@
   ;; TODO: implement fullscreen-p
   )
 
-(defmethod fb:clipboard ((window window))
-  ;; TODO: implement clipboard fetching
-  )
+(defmethod fb:clipboard ((window window)))
 
 (defmethod (setf fb:clipboard) ((string string) (window window))
-  ;; TODO: implement clipboard setting
-  )
+  string)
 
 (defmethod (setf fb:icon) ((value null) (window window))
-  ;; TODO: implement icon
-  )
+  value)
 
 (defmethod (setf fb:icon) ((value fb:icon) (window window))
-  ;; TODO: implement icon
-  )
+  value)
 
 (defmethod (setf fb:cursor-icon) ((value symbol) (window window))
   ;; TODO: implement cursor-icon
@@ -135,8 +136,7 @@
   )
 
 (defmethod (setf fb:cursor-state) (value (window window))
-  ;; TODO: implement cursor-state
-  )
+  (setf (fb-int:cursor-state window) value))
 
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   ;; We have to re-encode to copy into the framebuffer. Very sad.
@@ -162,9 +162,7 @@
   ;; TODO: implement process-events
   )
 
-(defmethod fb:request-attention ((window window))
-  ;; TODO: implement request-attention
-  )
+(defmethod fb:request-attention ((window window)))
 
 (defmethod fb:set-timer ((window window) delay &key repeat)
   ;; TODO: implement set-timer
@@ -175,22 +173,12 @@
   )
 
 (defmethod fb:display ((window window))
-  ;; TODO: implement display
-  )
+  *default-display*)
 
 (defclass display (fb:display)
   ())
 
 (defstruct (video-mode (:include fb:video-mode)))
-
-(defmethod fb:video-modes ((display display))
-  ;; TODO: implement video-modes
-  )
-
-(defmethod fb:video-mode ((display display))
-  ;; TODO: implement video-mode
-  )
-
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:window-activation-event))
   (fb:window-focused window (mezzano.gui.compositor:state event)))
@@ -216,12 +204,13 @@
     size))
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:resize-request-event))
-  (let ((new-size (adjust-size window (cons (mezzano.gui.compositor:width event)
-                                            (mezzano.gui.compositor:height event)))))
-    (unless (equal new-size (fb:size window))
-      (update-buffer window (car new-size) (cdr new-size))
-      (fb:window-resized window (car new-size) (cdr new-size))
-      (fb:window-refreshed window))))
+  (when (fb:resizable-p window)
+    (let ((new-size (adjust-size window (cons (mezzano.gui.compositor:width event)
+                                              (mezzano.gui.compositor:height event)))))
+      (unless (equal new-size (fb:size window))
+        (update-buffer window (car new-size) (cdr new-size))
+        (fb:window-resized window (car new-size) (cdr new-size))
+        (fb:window-refreshed window)))))
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:resize-event))
   (fb:window-refreshed window))

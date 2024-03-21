@@ -182,6 +182,10 @@
    (video-mode :initform NIL :initarg :video-mode :reader fb:video-mode :accessor video-mode)
    (video-modes :initform () :initarg :video-modes :reader fb:video-modes :accessor video-modes)))
 
+(defmethod initialize-instance :after ((display display))
+  (dolist (mode (video-modes display))
+    (setf (video-mode-display mode) display)))
+
 (defmethod print-object ((display display) stream)
   (print-unreadable-object (display stream :type T)
     (format stream "~a~@[ PRIMARY~]" (or (title display) (id display)) (primary-p display))))

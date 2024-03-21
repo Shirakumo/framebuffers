@@ -95,7 +95,15 @@
    #:cg-color-space-release
    #:cg-data-provider-release
    #:cg-context-draw-image
-   #:cg-image-release))
+   #:cg-image-release
+   #:modifier-flags
+   #:key-code
+   #:button-number
+   #:scrolling-delta-x
+   #:scrolling-delta-y
+   #:has-precise-scrolling-deltas
+   #:location-in-window
+   #:set-needs-display-in-rect))
 
 (defpackage #:org.shirakumo.framebuffers.cocoa
   (:use #:cl)

@@ -11,6 +11,13 @@
   (:icon            64)
   (:mini            128))
 
+(cffi:defbitfield modifier-flags
+  (:caps-lock #.(ash 1 16))
+  (:shift #.(ash 1 17))
+  (:control #.(ash 1 18))
+  (:alt #.(ash 1 19))
+  (:super #.(ash 1 20)))
+
 (cffi:defbitfield collection-behavior
   (:default 0)
   (:can-join-all-spaces 1)
@@ -284,3 +291,20 @@
 (define-symbol-macro normal-window-level (window-level-for-key :normal))
 
 (define-symbol-macro main-menu-window-level (window-level-for-key :main-menu))
+
+(objc:define-objcmethod (modifier-flags "modifierFlags") modifier-flags)
+
+(objc:define-objcmethod (key-code "keyCode") :ushort)
+
+(objc:define-objcmethod (button-number "buttonNumber") objc:nsinteger)
+
+(objc:define-objcmethod (scrolling-delta-x "scrollingDeltaX") objc:cgfloat)
+
+(objc:define-objcmethod (scrolling-delta-y "scrollingDeltaY") objc:cgfloat)
+
+(objc:define-objcmethod (has-precise-scrolling-deltas "hasPreciseScrollingDeltas") :boolean)
+
+(objc:define-objcmethod (location-in-window "locationInWindow") (:struct point))
+
+(objc:define-objcmethod (set-needs-display-in-rect "setNeedsDisplayInRect:") :void
+  (rect (:struct rect)))

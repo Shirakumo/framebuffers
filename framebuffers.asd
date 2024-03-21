@@ -86,6 +86,7 @@
                              (:file "keycodes")
                              (:file "wrapper"))))
   :depends-on (:framebuffers/protocol
+               :cffi-libffi
                :cocoas))
 
 #++

@@ -4,6 +4,7 @@
    (#:fb #:org.shirakumo.framebuffers)
    (#:fb-int #:org.shirakumo.framebuffers.int)
    (#:objc #:org.shirakumo.cocoas))
+  (:shadow #:close)
   (:export
    #:point
    #:point-x
@@ -29,6 +30,7 @@
    #:init
    #:init-with-content-rect
    #:alloc
+   #:close
    #:is-zoomed
    #:convert-rect-to-backing
    #:content-rect-for-frame-rect
@@ -49,6 +51,7 @@
    #:order-out
    #:zoom
    #:miniaturize
+   #:deminiaturize
    #:set-content-min-size
    #:set-content-max-size
    #:make-key-and-order-front
@@ -60,7 +63,10 @@
    #:types
    #:string-for-type
    #:declare-types
-   #:set-string))
+   #:set-string
+   #:floating-window-level
+   #:normal-window-level
+   #:main-menu-window-level))
 
 (defpackage #:org.shirakumo.framebuffers.cocoa
   (:use #:cl)

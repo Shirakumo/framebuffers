@@ -129,7 +129,7 @@
   (setf (fb-int:ptr-window (ptr window)) NIL)
   (setf (fb-int:ptr-window (view window)) NIL)
   (fb-int:clean window view objc:release)
-  (fb-int:clean window ptr objc:close)
+  (fb-int:clean window ptr cocoa:close)
   (loop while (objc:process-event)))
 
 (defun tf-y (y)

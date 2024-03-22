@@ -194,4 +194,5 @@
    #:with-cleanup
    #:clean
    #:memset
-   #:memcpy))
+   #:memcpy
+   #:dbg))

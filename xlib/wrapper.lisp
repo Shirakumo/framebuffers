@@ -1,10 +1,6 @@
 (in-package #:org.shirakumo.framebuffers.xlib)
 (pushnew :xlib fb-int:*available-backends*)
 
-(defun dbg (fmt &rest args)
-  (format *standard-output* "~&> ~?~%" fmt args)
-  (finish-output *standard-output*))
-
 (define-condition xlib-error (fb:framebuffer-error)
   ((code :initarg :code :initform NIL :reader code)
    (message :initarg :message :initform NIL :reader message))

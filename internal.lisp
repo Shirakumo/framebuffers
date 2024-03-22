@@ -1,5 +1,9 @@
 (in-package #:org.shirakumo.framebuffers.int)
 
+(defun dbg (fmt &rest args)
+  (format *standard-output* "~&> ~?~%" fmt args)
+  (finish-output *standard-output*))
+
 (defvar *here* #.(make-pathname :name NIL :type NIL :defaults (or *compile-file-pathname* *load-pathname* (error "Need compile-file or load."))))
 (defvar *windows-table* (make-hash-table :test 'eql))
 (defvar *available-backends* ())

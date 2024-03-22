@@ -44,6 +44,7 @@
 (defclass window (fb:window mezzano.gui.compositor:window)
   ((buffer :initform NIL :reader fb:buffer :accessor buffer)
    (original-size :initform (cons NIL NIL) :accessor original-size)
+   (original-location :initform (cons NIL NIL) :accessor original-location)
    (frame :initform NIL :accessor frame)
    (timers :initform () :accessor timers)))
 
@@ -60,9 +61,13 @@
                                                                   :initial-z-order :top)))
 
 (defun update-buffer (window w h)
-  (let ((new-framebuffer (mezzano.gui:make-surface w h)))
-    (mezzano.gui.widgets:resize-frame (frame window) new-framebuffer)
-    (mezzano.gui.compositor:resize-window (window window) new-framebuffer))
+  (multiple-value-bind (left right top bottom) (if (or (fb:fullscreen-p window)
+                                                       (fb:borderless-p window))
+                                                   (values 0 0 0 0)
+                                                   (mezzano.gui.widgets:frame-size (frame window)))
+    (let ((new-framebuffer (mezzano.gui:make-surface (+ w left right) (+ h top bottom))))
+      (mezzano.gui.widgets:resize-frame (frame window) new-framebuffer)
+      (mezzano.gui.compositor:resize-window (window window) new-framebuffer)))
   (fb-int:resize-buffer w h (buffer window) (fb:width window) (fb:height window))
   (setf (car (fb-int:size window)) w)
   (setf (cdr (fb-int:size window)) h))
@@ -112,7 +117,12 @@
   value)
 
 (defmethod (setf fb:borderless-p) (value (window window))
-  (setf (fb-int:borderless-p window) value))
+  (unless (eq value (fb:borderless-p window))
+    ;; FIXME: nudge the window position to keep the center frame position intact
+    (setf (fb-int:borderless-p window) value)
+    (update-buffer window (fb:width window) (fb:height window))
+)
+  value)
 
 (defmethod (setf fb:always-on-top-p) (value (window window))
   value)
@@ -127,12 +137,16 @@
 (defmethod (setf fb:fullscreen-p) ((value null) (window window))
   (when (fb:fullscreen-p window)
     (setf (fb-int:fullscreen-p window) value)
-    (setf (fb:size window) (original-size window)))
+    (setf (fb:size window) (original-size window))
+    (setf (fb:location window) (original-location window)))
   value)
 
 (defmethod (setf fb:fullscreen-p) ((value fb:video-mode) (window window))
   (unless (fb:fullscreen-p window)
     (setf (fb-int:fullscreen-p window) value)
+    (setf (car (original-location window)) (car (fb:location window)))
+    (setf (cdr (original-location window)) (cdr (fb:location window)))
+    (setf (fb:location window) (cons 0 0))
     (setf (car (original-size window)) (car (fb:size window)))
     (setf (cdr (original-size window)) (cdr (fb:size window)))
     (setf (fb:size window) (fb:size value)))
@@ -169,24 +183,32 @@
            key ())))
 
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
-  ;; We have to re-encode to copy into the framebuffer. Very sad.
-  (loop with row-gap = (- (fb:width window) w)
-        with src = (fb:buffer window)
-        with dst = (mezzano.gui.compositor:window-buffer window)
-        with si = 0
-        with di = 0
-        for yi of-type (unsigned-byte 16) from y below (+ y h)
-        do (loop for xi of-type (unsigned-byte 16) from x below (+ x w)
-                 for px = (aref src (+ si 0))
-                 do (setf (ldb (byte 8  8) px) (aref src (+ si 1)))
-                    (setf (ldb (byte 8 16) px) (aref src (+ si 2)))
-                    (setf (ldb (byte 8 24) px) (aref src (+ si 3)))
-                    (setf (aref dst di) px)
-                    (incf si 4)
-                    (incf di 1))
-           (incf si (* 4 row-gap))
-           (incf di row-gap))
-  (mezzano.gui.compositor:damage-window window x y w h))
+  (multiple-value-bind (left right top bottom) (if (or (fb:fullscreen-p window)
+                                                       (fb:borderless-p window))
+                                                   (values 0 0 0 0)
+                                                   (mezzano.gui.widgets:frame-size (frame window)))
+    ;; We have to re-encode to copy into the framebuffer. Very sad.
+    ;; However, we have to ignore the frame borders unless we're borderless
+    ;; anyway so copying is kinda mandatory. OH WELL. At least let's try to
+    ;; do it semi-intelligently.
+    (loop with src = (fb:buffer window)
+          with dst = (mezzano.gui.compositor:window-buffer window)
+          with srow-gap of-type (unsigned-byte 16) = (* 4 (- (fb:width window) w))
+          with drow-gap of-type (unsigned-byte 16) = (- w (mezzano.gui.compositor:width window))
+          with si of-type (unsigned-byte 16) = (+ (* 4 x) (* y srow-gap))
+          with di of-type (unsigned-byte 16) = (+ (+ x left) (* (+ y top) drow-gap))
+          for yi of-type (unsigned-byte 16) from y below (+ y h)
+          do (loop for xi of-type (unsigned-byte 16) from x below (+ x w)
+                   for px = (aref src (+ si 0))
+                   do (setf (ldb (byte 8  8) px) (aref src (+ si 1)))
+                      (setf (ldb (byte 8 16) px) (aref src (+ si 2)))
+                      (setf (ldb (byte 8 24) px) (aref src (+ si 3)))
+                      (setf (aref dst di) px)
+                      (incf si 4)
+                      (incf di 1))
+             (incf si srow-gap)
+             (incf di drow-gap))
+    (mezzano.gui.compositor:damage-window window (+ x left) (+ y top) w h)))
 
 (defmethod fb:process-events ((window window) &key timeout)
   (let ((fifo (mezzano.gui.compositor::mailbox window)))
@@ -292,8 +314,12 @@
 (defmethod process-event ((window window) (event mezzano.gui.compositor:resize-request-event))
   (when (and (fb:resizable-p window)
              (not (fb:fullscreen-p window)))
-    (setf (fb:size window) (adjust-size window (cons (mezzano.gui.compositor:width event)
-                                                     (mezzano.gui.compositor:height event))))))
+    (multiple-value-bind (left right top bottom) (if (or (fb:fullscreen-p window)
+                                                         (fb:borderless-p window))
+                                                     (values 0 0 0 0)
+                                                     (mezzano.gui.widgets:frame-size (frame window)))
+      (setf (fb:size window) (adjust-size window (cons (- (mezzano.gui.compositor:width event) left right)
+                                                       (- (mezzano.gui.compositor:height event) top bottom)))))))
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:resize-event))
   (fb:window-refreshed window))
@@ -304,3 +330,6 @@
                   (if (mezzano.gui.compositor:key-releasep event) :release :press)
                   (char-code (mezzano.gui.compositor:key-scancode event))
                   (mezzano.gui.compositor:key-modifier-state event)))
+
+;; TODO: key repeats
+;; TODO: double click

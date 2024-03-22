@@ -29,14 +29,15 @@
 (defmethod fb-int:shutdown-backend ((backend (eql :mezzano))))
 
 (defmethod fb-int:open-backend ((backend (eql :mezzano)) &rest args &key &allow-other-keys)
-  (let ((w (fb:width *default-display*))
-        (h (fb:height *default-display*)))
-    (apply #'make-instance 'window 
-           :mailbox (mezzano.supervisor:make-fifo 50)
-           :thread (mezzano.supervisor:current-thread)
-           :buffer (mezzano.gui:make-surface w h)
-           :size (or size (cons w h))
-           args)))
+  (with-resignalling
+    (let ((w (fb:width *default-display*))
+          (h (fb:height *default-display*)))
+      (apply #'make-instance 'window 
+             :mailbox (mezzano.supervisor:make-fifo 50)
+             :thread (mezzano.supervisor:current-thread)
+             :buffer (mezzano.gui:make-surface w h)
+             :size (or size (cons w h))
+             args))))
 
 (defmethod fb-int:list-displays-backend ((backend (eql :mezzano)))
   (list *default-display*))
@@ -61,16 +62,17 @@
                                                                   :initial-z-order :top)))
 
 (defun update-buffer (window w h)
-  (multiple-value-bind (left right top bottom) (if (or (fb:fullscreen-p window)
-                                                       (fb:borderless-p window))
-                                                   (values 0 0 0 0)
-                                                   (mezzano.gui.widgets:frame-size (frame window)))
-    (let ((new-framebuffer (mezzano.gui:make-surface (+ w left right) (+ h top bottom))))
-      (mezzano.gui.widgets:resize-frame (frame window) new-framebuffer)
-      (mezzano.gui.compositor:resize-window (window window) new-framebuffer)))
-  (fb-int:resize-buffer w h (buffer window) (fb:width window) (fb:height window))
-  (setf (car (fb-int:size window)) w)
-  (setf (cdr (fb-int:size window)) h))
+  (with-resignalling
+    (multiple-value-bind (left right top bottom) (if (or (fb:fullscreen-p window)
+                                                         (fb:borderless-p window))
+                                                     (values 0 0 0 0)
+                                                     (mezzano.gui.widgets:frame-size (frame window)))
+      (let ((new-framebuffer (mezzano.gui:make-surface (+ w left right) (+ h top bottom))))
+        (mezzano.gui.widgets:resize-frame (frame window) new-framebuffer)
+        (mezzano.gui.compositor:resize-window (window window) new-framebuffer)))
+    (fb-int:resize-buffer w h (buffer window) (fb:width window) (fb:height window))
+    (setf (car (fb-int:size window)) w)
+    (setf (cdr (fb-int:size window)) h)))
 
 (defmethod fb:valid-p ((window window))
   (not (null (frame window))))
@@ -187,6 +189,7 @@
                                                        (fb:borderless-p window))
                                                    (values 0 0 0 0)
                                                    (mezzano.gui.widgets:frame-size (frame window)))
+    (declare (ignore right bottom sync))
     ;; We have to re-encode to copy into the framebuffer. Very sad.
     ;; However, we have to ignore the frame borders unless we're borderless
     ;; anyway so copying is kinda mandatory. OH WELL. At least let's try to
@@ -248,7 +251,7 @@
 (defmethod fb:display ((window window))
   *default-display*)
 
-(defclass display (fb:display)
+(defclass display (fb-int:display)
   ())
 
 (defstruct (video-mode (:include fb:video-mode)))

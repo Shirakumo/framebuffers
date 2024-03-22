@@ -28,15 +28,18 @@
 
 (defmethod fb-int:shutdown-backend ((backend (eql :mezzano))))
 
-(defmethod fb-int:open-backend ((backend (eql :mezzano)) &rest args &key &allow-other-keys)
+(defmethod fb-int:open-backend ((backend (eql :mezzano)) &rest args &key size location &allow-other-keys)
   (with-resignalling
-    (let ((w (fb:width *default-display*))
-          (h (fb:height *default-display*)))
+    (let* ((w (fb:width *default-display*))
+           (h (fb:height *default-display*))
+           (x (or (car location) (truncate (- w (or (car size) w)) 2)))
+           (y (or (cdr location) (truncate (- h (or (cdr size) h)) 2))))
       (apply #'make-instance 'window 
              :mailbox (mezzano.supervisor:make-fifo 50)
              :thread (mezzano.supervisor:current-thread)
              :buffer (mezzano.gui:make-surface w h)
              :size (or size (cons w h))
+             :x x :y y
              args))))
 
 (defmethod fb-int:list-displays-backend ((backend (eql :mezzano)))

@@ -62,7 +62,8 @@
                                       :set-cursor-function (mezzano.gui.widgets:default-cursor-function window)))
   (mezzano.gui.compositor::submit-compositor-event (make-instance 'mezzano.gui.compositor:window-create-event
                                                                   :window window
-                                                                  :initial-z-order :top)))
+                                                                  :initial-z-order :top))
+  (update-buffer window (fb:width window) (fb:height window)))
 
 (defun update-buffer (window w h)
   (with-resignalling
@@ -72,8 +73,8 @@
                                                      (mezzano.gui.widgets:frame-size (frame window)))
       (let ((new-framebuffer (mezzano.gui:make-surface (+ w left right) (+ h top bottom))))
         (mezzano.gui.widgets:resize-frame (frame window) new-framebuffer)
-        (mezzano.gui.compositor:resize-window (window window) new-framebuffer)))
-    (fb-int:resize-buffer w h (buffer window) (fb:width window) (fb:height window))
+        (mezzano.gui.compositor:resize-window window new-framebuffer)))
+    (setf (buffer window) (fb-int:resize-buffer w h (buffer window) (fb:width window) (fb:height window)))
     (setf (car (fb-int:size window)) w)
     (setf (cdr (fb-int:size window)) h)))
 
@@ -198,22 +199,18 @@
     ;; anyway so copying is kinda mandatory. OH WELL. At least let's try to
     ;; do it semi-intelligently.
     (loop with src = (fb:buffer window)
-          with dst = (mezzano.gui.compositor:window-buffer window)
+          with dst = (mezzano.gui:surface-pixels (mezzano.gui.compositor:window-buffer window))
           with srow-gap of-type (unsigned-byte 16) = (* 4 (- (fb:width window) w))
-          with drow-gap of-type (unsigned-byte 16) = (- w (mezzano.gui.compositor:width window))
           with si of-type (unsigned-byte 16) = (+ (* 4 x) (* y srow-gap))
-          with di of-type (unsigned-byte 16) = (+ (+ x left) (* (+ y top) drow-gap))
           for yi of-type (unsigned-byte 16) from y below (+ y h)
           do (loop for xi of-type (unsigned-byte 16) from x below (+ x w)
                    for px = (aref src (+ si 0))
                    do (setf (ldb (byte 8  8) px) (aref src (+ si 1)))
                       (setf (ldb (byte 8 16) px) (aref src (+ si 2)))
                       (setf (ldb (byte 8 24) px) (aref src (+ si 3)))
-                      (setf (aref dst di) px)
-                      (incf si 4)
-                      (incf di 1))
-             (incf si srow-gap)
-             (incf di drow-gap))
+                      (setf (aref dst (+ yi top) (+ xi left)) px)
+                      (incf si 4))
+             (incf si srow-gap))
     (mezzano.gui.compositor:damage-window window (+ x left) (+ y top) w h)))
 
 (defmethod fb:process-events ((window window) &key timeout)
@@ -258,6 +255,9 @@
   ())
 
 (defstruct (video-mode (:include fb:video-mode)))
+
+(defmethod process-event ((window window) (event mezzano.gui.compositor:window-create-event))
+  (fb:window-refreshed window))
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:window-activation-event))
   (when (not (or (fb:fullscreen-p window)
@@ -333,8 +333,8 @@
 (defmethod process-event ((window window) (event mezzano.gui.compositor:key-event))
   (fb:key-changed window
                   (translate-key (mezzano.gui.compositor:key-scancode event))
-                  (if (mezzano.gui.compositor:key-releasep event) :release :press)
                   (char-code (mezzano.gui.compositor:key-scancode event))
+                  (if (mezzano.gui.compositor:key-releasep event) :release :press)
                   (mezzano.gui.compositor:key-modifier-state event)))
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:event)))

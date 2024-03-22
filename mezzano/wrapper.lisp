@@ -160,6 +160,14 @@
 (defmethod (setf fb:cursor-state) (value (window window))
   (setf (fb-int:cursor-state window) value))
 
+(defmethod key-scan-code (key (window window))
+  (gethash key *codetable*))
+
+(defmethod local-key-string (key (window window))
+  (string (mezzano.gui.compositor::convert-scancode-to-key
+           mezzano.gui.compositor::*current-keymap*
+           key ())))
+
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   ;; We have to re-encode to copy into the framebuffer. Very sad.
   (loop with row-gap = (- (fb:width window) w)
@@ -292,7 +300,7 @@
 
 (defmethod process-event ((window window) (event mezzano.gui.compositor:key-event))
   (fb:key-changed window
-                  (translate-key (mezzano.gui.compositor:key-key event))
+                  (translate-key (mezzano.gui.compositor:key-scancode event))
                   (if (mezzano.gui.compositor:key-releasep event) :release :press)
-                  (mezzano.gui.compositor:key-scancode event)
+                  (char-code (mezzano.gui.compositor:key-scancode event))
                   (mezzano.gui.compositor:key-modifier-state event)))

@@ -340,6 +340,14 @@
   ;; TODO: implement cursor-state
   )
 
+(defmethod key-scan-code (key (window window))
+  ;; TODO: key-scan-code
+  )
+
+(defmethod local-key-string (key (window window))
+  ;; TODO: local-key-string
+  )
+
 (defmethod fb:swap-buffers ((window window) &key (x 0) (y 0) (w (fb:width window)) (h (fb:height window)) sync)
   (let ((rect (cocoa:make-rect x y w h)))
     (destructuring-bind (w . h) (fb:size window)

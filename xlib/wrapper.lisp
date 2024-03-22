@@ -47,6 +47,7 @@
                   (xlib:free array))))
       (error "Server does not support 32bpp format."))))
 
+(defvar *global-display* NIL)
 (defvar *init* NIL)
 
 (defmethod fb-int:init-backend ((backend (eql :xlib)))
@@ -55,12 +56,20 @@
       (cffi:use-foreign-library xlib:x11))
     (unless (cffi:foreign-library-loaded-p 'xlib:xext)
       (ignore-errors (cffi:use-foreign-library xlib:xext)))
-    ;; Try to open the display once to ensure we have a connection
+    (unless (cffi:foreign-library-loaded-p 'xlib:xrandr)
+      (ignore-errors (cffi:use-foreign-library xlib:xrandr)))
+    (unless (cffi:foreign-library-loaded-p 'xlib:xcursor)
+      (ignore-errors (cffi:use-foreign-library xlib:xcursor)))
+    (unless (cffi:foreign-library-loaded-p 'xlib:xinerama)
+      (ignore-errors (cffi:use-foreign-library xlib:xinerama)))
+    (unless (cffi:foreign-library-loaded-p 'xlib:xi)
+      (ignore-errors (cffi:use-foreign-library xlib:xi)))
     (let ((display (xlib:open-display (cffi:null-pointer))))
       (when (cffi:null-pointer-p display)
         (error "Failed to open display."))
-      (unwind-protect (check-pixmap-formats display)
-        (xlib:close-display display)))
+      (fb-int:with-cleanup (xlib:close-display display)
+        (check-pixmap-formats display)
+        (setf *global-display* display)))
     (xlib:init-threads)
     (setf *init* T)
     (xlib:set-error-handler (cffi:callback error-handler))
@@ -68,6 +77,9 @@
 
 (defmethod fb-int:shutdown-backend ((backend (eql :xlib)))
   (when *init*
+    (when *global-display*
+      (xlib:close-display *global-display*)
+      (setf *global-display* NIL))
     (xlib:free-threads)
     (setf *init* NIL)))
 
@@ -477,32 +489,116 @@
 (defmethod fb:local-key-string ((key integer) (window window))
   (keysym-string key))
 
-(defclass display (fb:display)
-  ())
+(defvar *displays* ())
 
-(defstruct (video-mode (:include fb:video-mode)))
+(defclass display (fb-int:display)
+  ((crtc :initarg :crtc :initform NIL :accessor crtc)
+   (xinerama :initarg :xinerama :initform NIL :accessor xinerama)))
 
-(defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
-  ;; TODO: implement list-displays-backend
-  )
+(defstruct (video-mode (:include fb:video-mode))
+  mode-id)
+
+(defun list-video-modes (sr ci oi)
+  (loop for i from 0 below (xlib:output-info-mode-count oi)
+        for mi = (dotimes (i (xlib:screen-resources-mode-count sr))
+                   (let ((mode (cffi:mem-aptr (xlib:screen-resources-modes sr) '(:struct xlib:mode-info) i)))
+                     (when (= (xlib:mode-info-id mode) (cffi:mem-aref (xlib:output-info-modes oi) :int i))
+                       (return mode))))
+        unless (member :interlace (cffi:mode-info-flags mi))
+        collect (let ((w (xlib:mode-info-width mi))
+                      (h (xlib:mode-info-height mi))
+                      (ht (xlib:mode-info-htotal))
+                      (vt (xlib:mode-info-vtotal)))
+                  (when (member (xlib:crtc-info-rotation ci) '(:rotate-90 :rotate-270))
+                    (rotatef w h))
+                  (make-video-mode :width w :height h :refresh-rate
+                                   (if (and (< 0 vt) (< 0 ht))
+                                       (round (/ (xlib:mode-info-dot-clock mi) ht vt))
+                                       60)
+                                   :mode-id (xlib:mode-info-id mode)))))
+
+(defun poll-xrandr (display &optional window)
+  ;; First, gather a list of all displays
+  (let ((sr (xlib:xrr-get-screen-resources-current display (xlib:default-root-window display)))
+        (primary (xlib:xrr-get-output-primary display (xlib:default-root-window display)))
+        (screens (when (cffi:foreign-library-loaded-p 'xlib:xinerama)
+                   (cffi:with-foreign-objects ((count :int))
+                     (cons (xlib:xnerama-query-screens display count)
+                           (cffi:mem-ref count :int)))))
+        (found ()))
+    (dotimes (i (xlib:screen-resources-output-count sr))
+      (let ((out (cffi:mem-aref (xlib:screen-resources-outputs sr) :pointer i))
+            (oi (xlib:xrr-get-output-info display sr out)))
+        (unless (or (not (eq :connected (xlib:output-info-connection oi)))
+                    (= 0 (xlib:output-info-crtc oi)))
+          (let* ((ci (xlib:xrr-get-crtc-info display (xlib:output-info-crtc oi)))
+                 (modes (list-video-modes sr ci oi)))
+            (push (list out
+                        :crtc (xlib:output-info-crtc oi)
+                        :title (xlib:output-info-name oi)
+                        :xinerama (dotimes (i (cdr screens))
+                                    (let ((scr (cffi:mem-aptr (car screens) '(:struct xlib:screen) i)))
+                                      (when (and (= (xlib:crtc-info-x ci) (xlib:screen-x scr))
+                                                 (= (xlib:crtc-info-y ci) (xlib:screen-y scr))
+                                                 (= (xlib:crtc-info-width ci) (xlib:screen-width scr))
+                                                 (= (xlib:crtc-info-height ci) (xlib:screen-height scr)))
+                                        (return i))))
+                        :primary-p (= primary out)
+                        :video-modes modes
+                        :video-mode (find (xlib:crtc-info-mode ci) modes :key #'video-mode-mode-id))
+                  found)
+            (xlib:xrr-free-crtc-info ci)))
+        (xlib:xrr-free-output-info oi)))
+    (xlib:xrr-free-screen-resources sr)
+    (when screens (xlib:free (car screens)))
+    ;; Next, diff it and update
+    (loop for cons on found
+          for data = (car cons)
+          for display = (find (car data) *displays* :key #'fb:id)
+          do (cond (display
+                    (apply #'reinitalize-instance display :id data))
+                   (T
+                    (setf display (apply #'make-instance 'display :id data))
+                    (when window (fb:display-connected window display T))))
+             (setf (car cons) display))
+    (loop for display in *displays*
+          do (unless (find display found)
+               (when window (fb:display-connected window display NIL))))
+    (setf *displays* found)))
+
+(defmethod fb-int:list-displays-backend ((backend (eql :xlib)))
+  (cond ((cffi:foreign-library-loaded-p 'xlib:xrandr)
+         (poll-xrandr *global-display*))
+        (T
+         (or *displays*
+             (let* ((w (xlib:display-width *global-display* (xlib:default-screen *global-display*)))
+                    (h (xlib:display-height *global-display* (xlib:default-screen *global-display*)))
+                    (mode (fb-int:make-video-mode NIL w h 60))
+                    (display (make-instance 'display
+                                            :id "-"
+                                            :title "Display"
+                                            :size (cons w h)
+                                            :primary-p T
+                                            :video-mode mode
+                                            :video-modes (list mode))))
+               (setf *displays* (list display)))))))
 
 (defmethod fb:display ((window window))
-  ;; TODO: implement display
-  )
-
-(defmethod fb:video-modes ((display display))
-  ;; TODO: implement video-modes
-  )
-
-(defmethod fb:video-mode ((display display))
-  ;; TODO: implement video-mode
-  )
+  (etypecase (fb:fullscreen-p window)
+    (fb:video-mode (fb:display (fb:fullscreen-p window)))
+    (fb:display (fb:fullscreen-p window))
+    (null (call-next-method))))
 
 (defmethod (setf fb:fullscreen-p) ((value null) (window window))
   ;; TODO: implement fullscreen-p
   )
 
 (defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
+  ;; TODO: implement fullscreen-p
+  )
+
+(defmethod (setf fb:fullscreen-p) ((value fb:video-mode) (window window))
+  ;; Don't have Xrandr, so just fullscreen with resize.
   ;; TODO: implement fullscreen-p
   )
 

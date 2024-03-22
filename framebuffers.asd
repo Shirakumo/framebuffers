@@ -56,6 +56,7 @@
                              (:file "keycodes")
                              (:file "wrapper"))))
   :depends-on (:framebuffers/protocol
+               :framebuffers/xlib
                :mmap))
 
 (asdf:defsystem framebuffers/xlib

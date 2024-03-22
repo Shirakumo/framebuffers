@@ -4,6 +4,10 @@
   (:export
    #:x11
    #:xext
+   #:xrandr
+   #:xinerama
+   #:xcursor
+   #:xi
    #:xid
    #:atom
    #:xrm-value

@@ -220,11 +220,11 @@
   (let ((fifo (mezzano.gui.compositor::mailbox window)))
     (labels ((poll-events ()
                (loop for event = (mezzano.supervisor:fifo-pop fifo nil)
-                     while event do (dispatch-event window evt)))
+                     while event do (process-event window event)))
              (wait (timeout)
-               (dolist (obj (mezzano.sync:wait-for-objects-with-timeout
-                             timeout
-                             (list* fifo (timers window))))
+               (dolist (obj (apply #'mezzano.sync:wait-for-objects-with-timeout
+                                   timeout
+                                   (list* fifo (timers window))))
                  (if (eq obj fifo)
                      (poll-events)
                      (fb:timer-triggered window obj)))))
@@ -336,6 +336,8 @@
                   (if (mezzano.gui.compositor:key-releasep event) :release :press)
                   (char-code (mezzano.gui.compositor:key-scancode event))
                   (mezzano.gui.compositor:key-modifier-state event)))
+
+(defmethod process-event ((window window) (event mezzano.gui.compositor:event)))
 
 ;; TODO: key repeats
 ;; TODO: double click

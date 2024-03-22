@@ -30,17 +30,18 @@
 
 (defmethod fb-int:open-backend ((backend (eql :mezzano)) &rest args &key size location &allow-other-keys)
   (with-resignalling
-    (let* ((w (fb:width *default-display*))
-           (h (fb:height *default-display*))
-           (x (or (car location) (truncate (- w (or (car size) w)) 2)))
-           (y (or (cdr location) (truncate (- h (or (cdr size) h)) 2))))
-      (apply #'make-instance 'window 
-             :mailbox (mezzano.supervisor:make-fifo 50)
-             :thread (mezzano.supervisor:current-thread)
-             :buffer (mezzano.gui:make-surface w h)
-             :size (or size (cons w h))
-             :x x :y y
-             args))))
+    (multiple-value-bind (w h) (mezzano.gui.compositor::screen-dimensions)
+      ;; First force an update to the display to ensure we catch missing events
+      (let ((x (or (car location) (truncate (- w (or (car size) w)) 2)))
+            (y (or (cdr location) (truncate (- h (or (cdr size) h)) 2))))
+        (apply #'make-instance 'window 
+               :mailbox (mezzano.supervisor:make-fifo 50)
+               :thread (mezzano.supervisor:current-thread)
+               :buffer (mezzano.gui:make-surface w h)
+               :size (or size (cons w h))
+               :location (cons x y)
+               :x x :y y
+               args)))))
 
 (defmethod fb-int:list-displays-backend ((backend (eql :mezzano)))
   (list *default-display*))
@@ -63,7 +64,9 @@
   (mezzano.gui.compositor::submit-compositor-event (make-instance 'mezzano.gui.compositor:window-create-event
                                                                   :window window
                                                                   :initial-z-order :top))
-  (update-buffer window (fb:width window) (fb:height window)))
+  (update-buffer window (fb:width window) (fb:height window))
+  ;; KLUDGE: Mezzano does not seem to place the window right by default, so move it now.
+  (setf (fb:location window) (fb:location window)))
 
 (defun update-buffer (window w h)
   (with-resignalling

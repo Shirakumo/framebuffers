@@ -173,6 +173,10 @@
           (width video-mode) (height video-mode)
           (refresh-rate video-mode) (or (title (display video-mode)) (id (display video-mode)))))
 
+(defmethod fb:size ((video-mode fb:video-mode))
+  (cons (video-mode-width video-mode)
+        (video-mode-height video-mode)))
+
 (defclass display ()
   ((id :initarg :id :reader fb:id :accessor id)
    (title :initarg :title :initform NIL :reader fb:title :accessor title)
@@ -182,7 +186,7 @@
    (video-mode :initform NIL :initarg :video-mode :reader fb:video-mode :accessor video-mode)
    (video-modes :initform () :initarg :video-modes :reader fb:video-modes :accessor video-modes)))
 
-(defmethod initialize-instance :after ((display display))
+(defmethod initialize-instance :after ((display display) &key)
   (dolist (mode (video-modes display))
     (setf (video-mode-display mode) display)))
 
@@ -396,7 +400,8 @@
   (setf (car (content-scale window)) yscale))
 
 (defun resize-buffer (w h &optional old-buffer ow oh)
-  (let ((buffer (static-vectors:make-static-vector (* 4 w h) :initial-element 0)))
+  (let ((buffer #+static-vectors (static-vectors:make-static-vector (* 4 w h) :initial-element 0)
+                #-static-vectors (make-array (* 4 w h) :element-type '(unsigned-byte 8) :initial-element 0)))
     (when old-buffer
       ;; Copy sub-region back.
       (dotimes (y (min h oh))
@@ -404,7 +409,7 @@
           (dotimes (z 4)
             (setf (aref buffer (+ z (* 4 (+ x (* w y)))))
                   (aref old-buffer (+ z (* 4 (+ x (* ow y)))))))))
-      (static-vectors:free-static-vector old-buffer))
+      #+static-vectors (static-vectors:free-static-vector old-buffer))
     buffer))
 
 (defmacro with-cleanup (cleanup &body body)
@@ -442,6 +447,7 @@
                     do (process-events ,window :timeout T))
            (close ,window))))))
 
+#-mezzano
 (trivial-indent:define-indentation with-window
     (4 &rest (&whole 2 6 &body)))
 

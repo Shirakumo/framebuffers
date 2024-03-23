@@ -805,6 +805,9 @@
   (outputs :pointer)
   (output-count :int))
 
+(cffi:defcfun (xrr-update-configuration "XRRUpdateConfiguration") :int
+  (event :pointer))
+
 (cffi:defcfun (xinerama-query-extension "XineramaQueryExtension") :bool
   (display :pointer)
   (event-base :pointer)

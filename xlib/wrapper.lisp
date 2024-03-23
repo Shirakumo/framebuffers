@@ -657,7 +657,14 @@
                  (return))))
     window))
 
-(defmethod process-event ((window window) type event))
+(defmethod process-event ((window window) type event)
+  (when (cffi:foreign-library-loaded-p 'xlib:xrandr)
+    ;; FIXME: this is dumb, but I'm lazy
+    (cffi:with-foreign-objects ((event-base :int) (error-base :int))
+      (xlib:xrr-query-extension (display window) event-base error-base)
+      (when (= (xlib:base-event-type event) (+ 1 (cffi:mem-ref event-base :int)))
+        (xlib:xrr-update-configuration event)
+        (poll-xrandr (display window) window)))))
 
 (flet ((process-key-event (window action event)
          (when (and (eql action :release) (< 0 (xlib:events-queued (display window) 1)))

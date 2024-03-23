@@ -301,6 +301,7 @@
    #:xrr-free-output-info
    #:xrr-free-screen-resources
    #:xrr-set-crtc-config
+   #:xrr-update-configuration
    #:xinerama-query-extension
    #:xinerama-query-screens))
 

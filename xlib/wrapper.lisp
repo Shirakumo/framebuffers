@@ -662,7 +662,7 @@
     ;; FIXME: this is dumb, but I'm lazy
     (cffi:with-foreign-objects ((event-base :int) (error-base :int))
       (xlib:xrr-query-extension (display window) event-base error-base)
-      (when (= (xlib:base-event-type event) (+ 1 (cffi:mem-ref event-base :int)))
+      (when (eql (xlib:base-event-type event) (+ 1 (cffi:mem-ref event-base :int)))
         (xlib:xrr-update-configuration event)
         (poll-xrandr (display window) window)))))
 

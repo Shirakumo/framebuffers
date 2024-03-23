@@ -783,8 +783,14 @@
                     (setf (xlib:base-event-window rpl) (xlib:default-root-window (display window)))
                     ;; SubstructureNotifyMask | SubstructureRedirectMask
                     (xlib:send-event (display window) (xid window) NIL 1572864 rpl))))))
+        ((atomp window (xlib:client-message-event-message-type event) "XdndEnter"))
+        ((atomp window (xlib:client-message-event-message-type event) "XdndPosition"))
         ((atomp window (xlib:client-message-event-message-type event) "XdndDrop")
          ;; TODO: implement drops
+         )))
+
+(defmethod process-event ((window window) (type (eql :selection-notify)) event)
+  (cond ((atomp window (xlib:selection-event-selection-property event) "XdndSelection")
          )))
 
 ;; TODO: touch events

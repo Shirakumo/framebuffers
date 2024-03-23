@@ -21,7 +21,7 @@
 (cffi:defctype xid :ulong)
 (cffi:defctype atom :ulong)
 
-(cffi:defcenum event-type
+(cffi:defcenum (event-type :uint :allow-other-keys T)
   (:key-press 2)
   (:key-release 3)
   (:button-press 4)

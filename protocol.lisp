@@ -125,3 +125,5 @@
 
 ;;; TODO:
 ;;;; Input Method support
+;;;; Display gamma curves
+;;;; Display physical dimensions

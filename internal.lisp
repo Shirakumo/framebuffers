@@ -168,14 +168,16 @@
   (video-mode-refresh-rate video-mode))
 
 (defmethod fb:id ((video-mode fb:video-mode))
-  (format NIL "~dx~d@~d-~a"
+  (format NIL "~dx~d@~d~@[-~a~]"
           (width video-mode) (height video-mode)
-          (refresh-rate video-mode) (id (display video-mode))))
+          (refresh-rate video-mode) (when (display video-mode)
+                                      (id (display video-mode)))))
 
 (defmethod fb:title ((video-mode fb:video-mode))
-  (format NIL "~dx~d @ ~dHz ~a"
+  (format NIL "~dx~d @ ~dHz~@[ ~a~]"
           (width video-mode) (height video-mode)
-          (refresh-rate video-mode) (or (title (display video-mode)) (id (display video-mode)))))
+          (refresh-rate video-mode) (when (display video-mode)
+                                      (or (title (display video-mode)) (id (display video-mode))))))
 
 (defmethod fb:size ((video-mode fb:video-mode))
   (cons (video-mode-width video-mode)
@@ -190,7 +192,7 @@
    (video-mode :initform NIL :initarg :video-mode :reader fb:video-mode :accessor video-mode)
    (video-modes :initform () :initarg :video-modes :reader fb:video-modes :accessor video-modes)))
 
-(defmethod initialize-instance :after ((display display) &key)
+(defmethod shared-initialize :after ((display display) slots &key)
   (dolist (mode (video-modes display))
     (setf (video-mode-display mode) display)))
 

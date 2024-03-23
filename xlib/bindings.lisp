@@ -666,3 +666,139 @@
 (cffi:defcfun (xshm-detach "XShmDetach") :bool
   (display :pointer)
   (shm :pointer))
+
+;; Xrandr Xinerama
+(cffi:defbitfield (mode-flags :ulong)
+  (:H-Sync-Positive   #x00000001)
+  (:H-Sync-Negative   #x00000002)
+  (:V-Sync-Positive   #x00000004)
+  (:V-Sync-Negative   #x00000008)
+  (:Interlace         #x00000010)
+  (:Double-Scan       #x00000020)
+  (:C-Sync            #x00000040)
+  (:C-Sync-Positive   #x00000080)
+  (:C-Sync-Negative   #x00000100)
+  (:H-Skew-Present    #x00000200)
+  (:BCast             #x00000400)
+  (:Pixel-Multiplex   #x00000800)
+  (:Double-Clock      #x00001000)
+  (:Clock-Divide-By-2 #x00002000))
+
+(cffi:defbitfield (rotation :ushort)
+  (:0 1)
+  (:90 2)
+  (:180 4)
+  (:270 8)
+  (:reflect-x 16)
+  (:reflect-y 32))
+
+(cffi:defcenum (connection :ushort)
+  (:connected 0)
+  (:disconnected 1)
+  (:unknown 2))
+
+(cffi:defcstruct (output-info :conc-name output-info-)
+  (timestamp :ulong)
+  (crtc xid)
+  (name :string)
+  (name-length :int)
+  (mm-width :ulong)
+  (mm-height :ulong)
+  (connection connection)
+  (subpixel-order :ushort)
+  (crtc-count :int)
+  (crtcs :pointer)
+  (clone-count :int)
+  (clones :pointer)
+  (mode-count :int)
+  (preferred :int)
+  (modes :pointer))
+
+(cffi:defcstruct (screen-resources :conc-name screen-resources-)
+  (timestamp :ulong)
+  (config-timestamp :ulong)
+  (crtc-count :int)
+  (crtcs :pointer)
+  (output-count :int)
+  (outputs :pointer)
+  (mode-count :int)
+  (modes :pointer))
+
+(cffi:defcstruct (mode-info :conc-name mode-info-)
+  (id xid)
+  (width :uint)
+  (height :uint)
+  (dot-clock :ulong)
+  (hsync-start :uint)
+  (hsync-end :uint)
+  (htotal :uint)
+  (hskew :uint)
+  (vsync-start :uint)
+  (vsync-end :uint)
+  (vtotal :uint)
+  (name :string)
+  (name-length :uint)
+  (flags mode-flags))
+
+(cffi:defcstruct (crtc-info :conc-name crtc-info-)
+  (timestamp :ulong)
+  (x :int)
+  (y :int)
+  (width :uint)
+  (height :uint)
+  (mode xid)
+  (rotation rotation)
+  (output-count :int)
+  (outputs :pointer)
+  (rotations rotation)
+  (possible-count :int)
+  (possibles :pointer))
+
+(cffi:defcstruct (screen :conc-name screen-)
+  (number :int)
+  (x :short)
+  (y :short)
+  (width :short)
+  (height :short))
+
+(cffi:defcfun (xrr-query-extension "XRRQueryExtension") :bool
+  (display :pointer)
+  (event-base :pointer)
+  (error-base :pointer))
+
+(cffi:defcfun (xrr-get-screen-resources-current "XRRGetScreenResourcesCurrent") :pointer
+  (display :pointer)
+  (root xid))
+
+(cffi:defcfun (xrr-get-output-primary "XRRGetOutputPrimary") xid
+  (display :pointer)
+  (root xid))
+
+(cffi:defcfun (xrr-get-output-info "XRRGetOutputInfo") :pointer
+  (display :pointer)
+  (screen-resources :pointer)
+  (output xid))
+
+(cffi:defcfun (xrr-get-crtc-info "XRRGetCrtcInfo") :pointer
+  (display :pointer)
+  (screen-resources :pointer)
+  (crtc xid))
+
+(cffi:defcfun (xrr-free-crtc-info "XRRFreeCrtcInfo") :void
+  (info :pointer))
+
+(cffi:defcfun (xrr-free-output-info "XRRFreeOutputInfo") :void
+  (info :pointer))
+
+(cffi:defcfun (xrr-free-screen-resources "XRRFreeScreenResources") :void
+  (info :pointer))
+
+(cffi:defcfun (xinerama-query-extension "XineramaQueryExtension") :bool
+  (display :pointer)
+  (event-base :pointer)
+  (error-base :pointer))
+
+(cffi:defcfun (xinerama-query-screens "XineramaQueryScreens") :pointer
+  (display :pointer)
+  (count :pointer))
+

@@ -966,4 +966,15 @@ dependent on how often PROCESS-EVENTS is called.
 See EVENT-HANDLER (type)
 See SET-TIMER
 See CANCEL-TIMER
-See PROCESS-EVENTS"))
+See PROCESS-EVENTS")
+
+  (function display-connected
+    "Callback for when a display connection state has changed.
+
+Note that this is only called for the first window to process events
+after the display change has occurred. It is up to you to make sure
+all relevant windows have processed the change.
+
+See DISPLAY (type)
+See EVENT-HANDLER (type)
+See LIST-DISPLAYS"))

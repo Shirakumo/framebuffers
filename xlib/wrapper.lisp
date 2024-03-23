@@ -498,12 +498,8 @@
 
 (defclass display (fb-int:display)
   ((crtc :initarg :crtc :initform NIL :accessor crtc)
+   (default-mode :initform NIL :accessor default-mode)
    (xinerama :initarg :xinerama :initform NIL :accessor xinerama)))
-
-(defmethod shared-initialize :after ((display display) slots &key)
-  (when (fb:video-mode display)
-    (setf (car (fb:size display)) (fb:width (fb:video-mode display)))
-    (setf (cdr (fb:size display)) (fb:height (fb:video-mode display)))))
 
 (defstruct (video-mode (:include fb:video-mode))
   mode-id)
@@ -602,18 +598,47 @@
     (fb:display (fb:fullscreen-p window))
     (null (call-next-method))))
 
+(defun activate-mode (mode &optional (display *global-display*))
+  (let* ((sr (xlib:xrr-get-screen-resources-current display (xlib:default-root-window display)))
+         (ci (xlib:xrr-get-crtc-info display sr (crtc (fb:display mode)))))
+    (xlib:xrr-set-crtc-config display sr (crtc (fb:display mode)) 0
+                              (xlib:crtc-info-x ci) (xlib:crtc-info-y ci)
+                              (video-mode-mode-id mode)
+                              (xlib:crtc-info-rotation ci)
+                              (xlib:crtc-info-outputs ci)
+                              (xlib:crtc-info-output-count ci))
+    (xlib:xrr-free-crtc-info ci)
+    (xlib:xrr-free-screen-resources sr)
+    (setf (fb-int:video-mode (fb:display mode)) mode)))
+
 (defmethod (setf fb:fullscreen-p) ((value null) (window window))
-  ;; TODO: implement fullscreen-p
-  )
+  (when (fb:fullscreen-p window)
+    (typecase (fb:fullscreen-p window)
+      (display)
+      (video-mode
+       (activate-mode (default-mode (fb:display (fb:fullscreen-p window))) (display window))))
+    ;; Restore old size
+    (when (cffi:foreign-library-loaded-p 'xlib:xinerama)
+      (xlib:delete-property (display window) (xid window) (atom window "NET_WM_FULLSCREEN_MONITORS")))
+    (send-client-event window "NET_WM_STATE" 0 (atom window "NET_WM_STATE_FULLSCREEN") 0 1 0))
+  (setf (fb-int:fullscreen-p window) value))
 
 (defmethod (setf fb:fullscreen-p) ((value video-mode) (window window))
-  ;; TODO: implement fullscreen-p
-  )
+  (unless (eq value (fb:fullscreen-p window))
+    (cond ((eq value (fb:video-mode (fb:display value)))
+           (setf (fb-int:fullscreen-p window) (fb:display value)))
+          (T
+           (setf (default-mode (fb:display window)) (fb:video-mode (fb:display value)))
+           (activate-mode value (display window))
+           (setf (fb-int:fullscreen-p window) value)))
+    (when (cffi:foreign-library-loaded-p 'xlib:xinerama)
+      (let ((xi (xinerama (fb:display value))))
+        (send-client-event window "NET_WM_FULLSCREEN_MONITORS" xi xi xi xi 0)))
+    (send-client-event window "NET_WM_STATE" 1 (atom window "NET_WM_STATE_FULLSCREEN") 0 1 0)))
 
 (defmethod (setf fb:fullscreen-p) ((value fb:video-mode) (window window))
   ;; Don't have Xrandr, so just fullscreen with resize.
-  ;; TODO: implement fullscreen-p
-  )
+  (setf (fb:size window) (cons (fb:width value) (fb:height value))))
 
 (defmethod fb:process-events ((window window) &key timeout)
   (cffi:with-foreign-objects ((event '(:struct xlib:event)))

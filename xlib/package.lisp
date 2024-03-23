@@ -300,6 +300,7 @@
    #:xrr-free-crtc-info
    #:xrr-free-output-info
    #:xrr-free-screen-resources
+   #:xrr-set-crtc-config
    #:xinerama-query-extension
    #:xinerama-query-screens))
 

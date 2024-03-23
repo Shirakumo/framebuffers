@@ -793,6 +793,18 @@
 (cffi:defcfun (xrr-free-screen-resources "XRRFreeScreenResources") :void
   (info :pointer))
 
+(cffi:defcfun (xrr-set-crtc-config "XRRSetCrtcConfig") :int
+  (display :Pointer)
+  (screen-resources :pointer)
+  (crtc xid)
+  (timestamp :ulong)
+  (x :int)
+  (y :int)
+  (mode xid)
+  (rotation rotation)
+  (outputs :pointer)
+  (output-count :int))
+
 (cffi:defcfun (xinerama-query-extension "XineramaQueryExtension") :bool
   (display :pointer)
   (event-base :pointer)

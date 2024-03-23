@@ -194,7 +194,10 @@
 
 (defmethod shared-initialize :after ((display display) slots &key)
   (dolist (mode (video-modes display))
-    (setf (video-mode-display mode) display)))
+    (setf (video-mode-display mode) display))
+  (when (fb:video-mode display)
+    (setf (car (fb:size display)) (fb:width (fb:video-mode display)))
+    (setf (cdr (fb:size display)) (fb:height (fb:video-mode display)))))
 
 (defmethod print-object ((display display) stream)
   (print-unreadable-object (display stream :type T)

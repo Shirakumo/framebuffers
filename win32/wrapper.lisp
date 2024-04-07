@@ -24,9 +24,9 @@
 (defun win32-error (&key function-name message)
   (com:win32-error T :function-name function-name :message message :type 'win32-error))
 
-(defmacro check-result (form)
+(defmacro check-result (form &optional (function-name (car form)))
   `(unless ,form
-     (win32-error :function-name ',(car form))))
+     (win32-error :function-name ',function-name)))
 
 (defmethod fb-int:init-backend ((backend (eql :win32)))
   (unless (cffi:foreign-library-loaded-p 'win32:user32)
@@ -66,13 +66,13 @@
          (y (or (cdr location) (round (- screen-h h) 2)))
          (style (list :maximizebox :thickframe)))
     (let ((ptr (win32:create-window 0 (create-class) title style x y w h (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer))))
-      (when (cffi:null-pointer-p ptr)
-        (win32-error :function-name 'win32:create-window))
-      (make-instance 'window :ptr ptr
-                             :size (cons w h)
-                             :location (cons x y)
-                             :visible-p visible-p
-                             :event-handler event-handler))))
+      (if (cffi:null-pointer-p ptr)
+          (win32-error :function-name 'win32:create-window)
+          (make-instance 'window :ptr ptr
+                                 :size (cons w h)
+                                 :location (cons x y)
+                                 :visible-p visible-p
+                                 :event-handler event-handler)))))
 
 (defclass window (fb:window)
   ((ptr :initarg :ptr :accessor ptr)
@@ -91,6 +91,8 @@
         (bi (bitmap-info window)))
     (setf (fb-int:ptr-window ptr) window)
     (setf (dc window) (win32:get-dc ptr))
+    (when (cffi:null-pointer-p (dc window))
+      (win32-error :function-name 'win32:get-dc))
     (setf (win32:bitmap-info-size bi) (- (cffi:foreign-type-size '(:struct win32:bitmap-info)) 16))
     (setf (win32:bitmap-info-planes bi) 1)
     (setf (win32:bitmap-info-bit-count bi) 32)
@@ -102,7 +104,7 @@
     (update-buffer window (fb:width window) (fb:height window))
     (win32:drag-accept-files ptr T)
     (when (fb:visible-p window)
-      (win32:show-window ptr :normal))
+      (check-result (win32:show-window ptr :normal)))
     (or (ignore-errors
          (cffi:with-foreign-objects ((x :uint) (y :uint))
            (win32:get-dpi-for-monitor (win32:monitor-from-window ptr 2) 0 x y)
@@ -147,7 +149,7 @@
     (win32:adjust-window-rect rect (get-window-style window) NIL)
     (let ((w (- (win32:rect-right rect) (win32:rect-left rect)))
           (h (- (win32:rect-bottom rect) (win32:rect-top rect))))
-      (win32:set-window-pos (ptr window) 0 0 0 w h '(:noactivate :nozorder :nomove :noownerzorder))
+      (check-result (win32:set-window-pos (ptr window) 0 0 0 w h '(:noactivate :nozorder :nomove :noownerzorder)))
       size)))
 
 (defmethod (setf fb:location) (location (window window))
@@ -155,23 +157,27 @@
     (win32:adjust-window-rect rect (get-window-style window) NIL)
     (let ((x (win32:rect-left rect))
           (y (win32:rect-top rect)))
-      (win32:set-window-pos (ptr window) 0 x y 0 0 '(:noactivate :nozorder :nosize)))
+      (check-result (win32:set-window-pos (ptr window) 0 x y 0 0 '(:noactivate :nozorder :nosize))))
     location))
 
 (defmethod (setf fb:title) (title (window window))
-  (win32:set-window-text (ptr window) title)
+  (check-result (win32:set-window-text (ptr window) title))
+  (setf (fb-int:title window) title)
   title)
 
 (defmethod (setf fb:visible-p) (state (window window))
-  (win32:show-window (ptr window) (if state :showna :hide))
+  (check-result (win32:show-window (ptr window) (if state :shown :hide)))
+  (setf (fb-int:visible-p window) state)
   state)
 
 (defmethod (setf fb:maximized-p) (state (window window))
-  (win32:show-window (ptr window) (if state :maximize :restore))
+  (check-result (win32:show-window (ptr window) (if state :maximize :restore)))
+  (setf (fb-int:maximized-p window) state)
   state)
 
 (defmethod (setf fb:iconified-p) (state (window window))
-  (win32:show-window (ptr window) (if state :minimize :restore))
+  (check-result (win32:show-window (ptr window) (if state :minimize :restore)))
+  (setf (fb-int:iconified-p window) state)
   state)
 
 (defmethod (setf fb:minimum-size) (value (window window))
@@ -198,7 +204,8 @@
   (when value
     (win32:bring-window-to-top (ptr window))
     (win32:set-foreground-window (ptr window))
-    (win32:set-focus (ptr window)))
+    (win32:set-focus (ptr window))
+    (setf (fb-int:focused-p window) value))
   value)
 
 (defun update-window-styles (window)

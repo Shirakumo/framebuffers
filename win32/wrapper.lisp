@@ -104,7 +104,7 @@
     (update-buffer window (fb:width window) (fb:height window))
     (win32:drag-accept-files ptr T)
     (when (fb:visible-p window)
-      (check-result (win32:show-window ptr :normal)))
+      (win32:show-window ptr :normal))
     (or (ignore-errors
          (cffi:with-foreign-objects ((x :uint) (y :uint))
            (win32:get-dpi-for-monitor (win32:monitor-from-window ptr 2) 0 x y)
@@ -166,17 +166,17 @@
   title)
 
 (defmethod (setf fb:visible-p) (state (window window))
-  (check-result (win32:show-window (ptr window) (if state :shown :hide)))
+  (win32:show-window (ptr window) (if state :shown :hide))
   (setf (fb-int:visible-p window) state)
   state)
 
 (defmethod (setf fb:maximized-p) (state (window window))
-  (check-result (win32:show-window (ptr window) (if state :maximize :restore)))
+  (win32:show-window (ptr window) (if state :maximize :restore))
   (setf (fb-int:maximized-p window) state)
   state)
 
 (defmethod (setf fb:iconified-p) (state (window window))
-  (check-result (win32:show-window (ptr window) (if state :minimize :restore)))
+  (win32:show-window (ptr window) (if state :minimize :restore))
   (setf (fb-int:iconified-p window) state)
   state)
 

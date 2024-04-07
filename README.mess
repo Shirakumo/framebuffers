@@ -5,7 +5,7 @@ This library implements direct access to underlying operating system framebuffer
 A trivial example is as follows, assuming ``org.shirakumo.framebuffers`` is locally nicknamed to ``fb``:
 
 :: common lisp
-(fb:with-window (w :size '(800 . 600))
+(fb:with-window (w :size '(800 . 600)))
 ::
 
 This will open a window and start its event loop. When the user requests a close, it'll automatically close it and clean it back up again.

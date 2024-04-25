@@ -790,6 +790,7 @@
          )))
 
 (defmethod process-event ((window window) (type (eql :selection-notify)) event)
+  #++
   (cond ((atomp window (xlib:selection-event-selection-property event) "XdndSelection")
          )))
 

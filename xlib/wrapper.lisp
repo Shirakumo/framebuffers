@@ -223,9 +223,15 @@
         (image (image window)))
     (cond ((xshm window)
            (xlib:xshm-put-image display (xid window) (gc window) image x y x y w h NIL))
+          #+static-vectors
           (T
            (setf (xlib:image-data image) (static-vectors:static-vector-pointer (buffer window)))
-           (xlib:put-image display (xid window) (gc window) image x y x y w h)))
+           (xlib:put-image display (xid window) (gc window) image x y x y w h))
+          #-static-vectors
+          (T
+           (cffi:with-pointer-to-vector-data (ptr (buffer window))
+             (setf (xlib:image-data image) ptr)
+             (xlib:put-image display (xid window) (gc window) image x y x y w h))))
     (if sync
         (xlib:sync display)
         (xlib:flush display))
@@ -289,6 +295,7 @@
     (xlib:destroy-image (image window))
     (setf (image window) NIL))
   (when (buffer window)
+    #+static-vectors
     (static-vectors:free-static-vector (buffer window))
     (setf (buffer window) NIL))
   (when (xid window)

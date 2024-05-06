@@ -196,3 +196,6 @@
    #:memset
    #:memcpy
    #:dbg))
+
+(when (find-package '#:static-vectors)
+  (push :static-vectors *features*))

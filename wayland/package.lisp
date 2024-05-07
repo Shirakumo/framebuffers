@@ -1,6 +1,8 @@
 (defpackage #:org.shirakumo.framebuffers.wayland.cffi
   (:use #:cl)
   (:shadow #:array)
+  (:local-nicknames
+   (#:fb-int #:org.shirakumo.framebuffers.int))
   (:export
    #:wayland
    #:xkbcommon

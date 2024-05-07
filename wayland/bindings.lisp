@@ -48,6 +48,16 @@
   (flags :uint32)
   (args :pointer))
 
+;; KLUDGE: work around for (setf (cffi:mem-aref x '(:union y)) z) being a no-op
+(defmacro %set-argument (val var i)
+  `(etypecase ,val
+     (string
+      (setf (cffi:mem-aref ,var :string ,i) ,val))
+     (cffi:foreign-pointer
+      (setf (cffi:mem-aref ,var :pointer ,i) ,val))
+     (integer
+      (setf (cffi:mem-aref ,var :int64 ,i) ,val))))
+
 (defmacro define-vararg (name lambda-list call)
   (let ((args (car (last lambda-list)))
         (arglist (gensym "ARGLIST")))
@@ -56,7 +66,7 @@
                   (cffi:with-foreign-objects ((,arglist '(:union argument) (length ,args)))
                     (loop for i from 0
                           for arg in ,args
-                          do (setf (cffi:mem-aref ,arglist '(:union argument) i) arg))
+                          do (%set-argument arg ,arglist i))
                     (let ((,args ,arglist))
                       ,call))
                   (let ((,args (cffi:null-pointer)))
@@ -66,7 +76,7 @@
                   `(cffi:with-foreign-objects ((,',arglist '(:union argument) ,(length ,args)))
                      ,@(loop for i from 0
                              for arg in ,args
-                             collect `(setf (cffi:mem-aref ,',arglist '(:union argument) ,i) ,arg))
+                             collect `(%set-argument ,arg ,',arglist ,i))
                      (let ((,',args ,',arglist)
                            ,@(list ,@(loop for arg in lambda-list
                                            until (eql arg '&rest)

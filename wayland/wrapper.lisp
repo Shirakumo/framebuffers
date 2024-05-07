@@ -22,16 +22,19 @@
       var))
 
 (defmacro np! (form &optional window)
-  `(let ((val ,form))
+  ;; KLUDGE: this is obviously dumb, we're doing this just for debugging for now.
+  `(let* ((args (list ,@(rest form)))
+          (val (apply #',(car form) args)))
      (if (cffi:null-pointer-p val)
-         (wayland-error ,window "Call to ~a returned unsuccessfully" ',(car form))
+         (wayland-error ,window "Call to ~a returned unsuccessfully~{~%  ~a~}" ',(car form) args)
          val)))
 
 (defmacro zp! (form &optional window)
-  `(let ((val ,form))
+  `(let* ((args (list ,@(rest form)))
+          (val (apply #',(car form) args)))
      (if (zerop val)
          val
-         (wayland-error ,window "Call to ~a returned unsuccessfully" ',(car form)))))
+         (wayland-error ,window "Call to ~a returned unsuccessfully~{~%  ~a~}" ',(car form) args))))
 
 (defun try-display (display)
   (let ((display (wl:display-connect display)))

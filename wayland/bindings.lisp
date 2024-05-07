@@ -463,6 +463,12 @@
             ("pong" "u" NIL))
   :events (("ping" "u" NIL)))
 
+(define-interface xdg-popup-interface
+  :name "xdg_popup_interface"
+  :version 6
+  :methods (("destroy" ""))
+  :events (("popup_done" "")))
+
 (define-interface xdg-positioner-interface
   :name "xdg_positioner"
   :version 6

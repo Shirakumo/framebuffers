@@ -107,7 +107,7 @@
       (fb-int:with-cleanup (fb:close window)
         (setf (fb-int:ptr-window display) window)
         (setf (registry window) (np! (wl:display-get-registry display)))
-        (zp! (wl:proxy-add-listener (display window) (display-listener (listener window)) display))
+        #++(zp! (wl:proxy-add-listener (display window) (display-listener (listener window)) display))
         (zp! (wl:proxy-add-listener (registry window) (registry-listener (listener window)) display))
         (wl:display-dispatch display)
         (wl:display-roundtrip display)

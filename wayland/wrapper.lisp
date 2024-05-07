@@ -122,6 +122,7 @@
             (setf (shm-pool window) (np! (wl:shm-create-pool (shm window) fd size)))))
         (setf (draw-buffer window) (np! (wl:shm-pool-create-buffer (shm-pool window) 0 w h (* w 4) 1)))
         (setf (surface window) (np! (wl:compositor-create-surface (compositor window))))
+        (setf (fb:visible-p window) visible-p)
         (when (fractional-scale-manager window)
           (setf (fractional-scale window) (wl:wp-fractional-scale-manager-v1-get-fractional-scale (fractional-scale-manager window) (surface window)))
           (zp! (wl:proxy-add-listener (fractional-scale-manager window) (wp-fractional-scale-listener (listener window)) (display window))))
@@ -134,8 +135,7 @@
         (wl:surface-damage (surface window) 0 0 w h)
         (wl:surface-commit (surface window))
         (setf (car (fb:size window)) w)
-        (setf (cdr (fb:size window)) h)
-        (setf (fb:visible-p window) visible-p)))))
+        (setf (cdr (fb:size window)) h)))))
 
 (defmethod fb:valid-p ((window window))
   (not (null (display window))))

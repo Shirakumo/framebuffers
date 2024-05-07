@@ -413,9 +413,9 @@
 
 (define-listener registry-listener
   (global ((registry :pointer) (id :uint32) (interface :string) (version :uint32))
-    (fb-int:dbg "Registry: ~a" interface)
+    (fb-int:dbg "Registry: ~a ~a ~a ~a" registry id interface version)
     (cond ((string= interface "wl_compositor")
-           (setf (compositor window) (np? (wl:registry-bind registry id (cffi:get-var-pointer 'wl:compositor-interface) (min version 3)))))
+           (setf (compositor window) (np? (wl:registry-bind registry id wl::compositor (min version 3)))))
           ((string= interface "wl_shm")
            (setf (shm window) (np? (wl:registry-bind registry id (cffi:get-var-pointer 'wl:shm-interface) 1))))
           ((string= interface "wl_shell")

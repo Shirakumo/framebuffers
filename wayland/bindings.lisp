@@ -345,7 +345,6 @@
 
 (cffi:defcvar (buffer-interface "wl_buffer_interface") (:struct interface))
 (cffi:defcvar (callback-interface "wl_callback_interface") (:struct interface))
-(cffi:defcvar (compositor-interface "wl_compositor_interface") (:struct interface))
 (cffi:defcvar (keyboard-interface "wl_keyboard_interface") (:struct interface))
 (cffi:defcvar (pointer-interface "wl_pointer_interface") (:struct interface))
 (cffi:defcvar (registry-interface "wl_registry_interface") (:struct interface))
@@ -408,6 +407,11 @@
                      (make-interface ',sname ,name ,version ',methods ',events))))
 
          (define-symbol-macro ,sname (,sname)))))
+
+(define-interface compositor
+  :name "wl_compositor"
+  :methods (("create_surface" "n" NIL)
+            ("create_region" "n" NIL)))
 
 (define-interface xdg-activation-v1-interface
   :name "xdg_activation_v1"
@@ -572,7 +576,8 @@
 (define-marshal-fun pointer-set-cursor NIL (serial surface hotspot-x hotspot-y))
 
 (defun registry-bind (registry name interface version)
-  (proxy-marshal-flags registry REGISTRY-BIND interface version 0 name (interface-name interface) version (cffi:null-pointer)))
+  (proxy-marshal-flags registry REGISTRY-BIND interface version 0
+                       name (cffi:mem-ref (cffi:foreign-slot-pointer interface '(:struct interface) 'name) :pointer) version (cffi:null-pointer)))
 
 (define-marshal-fun seat-get-keyboard keyboard-interface (NIL))
 

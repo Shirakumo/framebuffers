@@ -32,9 +32,10 @@
 (defmacro zp! (form &optional window)
   `(let* ((args (list ,@(rest form)))
           (val (apply #',(car form) args)))
-     (if (zerop val)
+     (if (<= 0 val)
          val
-         (wayland-error ,window "Call to ~a returned unsuccessfully~{~%  ~a~}" ',(car form) args))))
+         (wayland-error ,window "Call to ~a returned unsuccessfully~{~%  ~a~}~%~a" ',(car form) args
+                        (cffi:mem-ref (cffi::fs-pointer-or-lose "errno" ':default) :int)))))
 
 (defun try-display (display)
   (let ((display (wl:display-connect display)))
@@ -109,8 +110,8 @@
         (setf (registry window) (np! (wl:display-get-registry display)))
         #++(zp! (wl:proxy-add-listener (display window) (display-listener (listener window)) display))
         (zp! (wl:proxy-add-listener (registry window) (registry-listener (listener window)) display))
-        (wl:display-dispatch display)
-        (wl:display-roundtrip display)
+        (zp! (wl:display-dispatch display))
+        (zp! (wl:display-roundtrip display))
         (unless (compositor window)
           (wayland-error NIL "Couldn't find a compositor."))
         (setf (xkb-context window) (wl:xkb-context-new 0))

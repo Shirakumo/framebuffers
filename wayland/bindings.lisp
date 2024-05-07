@@ -621,7 +621,7 @@
 
 (define-marshal-fun xdg-wm-base-pong NIL (serial))
 
-(define-marshal-fun xdg-surface-get-toplevel xdg-toplevel-interface ())
+(define-marshal-fun xdg-surface-get-toplevel xdg-toplevel-interface (NIL))
 
 (define-marshal-fun xdg-surface-ack-configure NIL (serial))
 

@@ -110,7 +110,7 @@
         (setf (registry window) (np! (wl:display-get-registry display)))
         #++(zp! (wl:proxy-add-listener (display window) (display-listener (listener window)) display))
         (zp! (wl:proxy-add-listener (registry window) (registry-listener (listener window)) display))
-        (zp! (wl:display-dispatch display))
+        (zp! (wl:display-roundtrip display))
         (zp! (wl:display-roundtrip display))
         (unless (compositor window)
           (wayland-error NIL "Couldn't find a compositor."))

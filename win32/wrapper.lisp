@@ -166,7 +166,7 @@
   title)
 
 (defmethod (setf fb:visible-p) (state (window window))
-  (win32:show-window (ptr window) (if state :shown :hide))
+  (win32:show-window (ptr window) (if state :show :hide))
   (setf (fb-int:visible-p window) state)
   state)
 

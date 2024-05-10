@@ -722,6 +722,15 @@
   (:convertibleslatemode #x2003)
   (:systemdocked #x2004))
 
+(cffi:defcenum (get-window-long :int :allow-undeclared-values t)
+  (:wndproc -4)
+  (:hinstance -6)
+  (:hwndparent -8)
+  (:id -12)
+  (:style -16)
+  (:exstyle -20)
+  (:userdata -21))
+
 (cffi:defcenum cursor
   (:arrow 32512)
   (:ibeam 32513)
@@ -762,7 +771,12 @@
   (:group #x00020000)
   (:tabstop #x00010000)
   (:minimizebox #x00020000)
-  (:maximizebox #x00010000))
+  (:maximizebox #x00010000)
+  ;; WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
+  (:overlappedwindow #x00CF0000)
+  (:tiledwindow #x00CF0000)
+  ;; WS_POPUP | WS_BORDER | WS_SYSMENU
+  (:popupwindow #x80880000))
 
 (cffi:defbitfield window-style-ex
   (:dlgmodalframe #x00000001)
@@ -1038,7 +1052,7 @@
 
 (cffi:defcfun (get-window "GetWindowLongW") :ssize
   (window :pointer)
-  (index :int))
+  (index get-window-long))
 
 (cffi:defcfun (get-window-rect "GetWindowRect") :bool
   (window :pointer)
@@ -1120,7 +1134,7 @@
 
 (cffi:defcfun (set-window "SetWindowLongW") :ssize
   (window :pointer)
-  (index :int)
+  (index get-window-long)
   (new-long :ssize))
 
 (cffi:defcfun (set-window-pos "SetWindowPos") :boolean

@@ -64,7 +64,7 @@
          (h (or (cdr size) screen-h))
          (x (or (car location) (round (- screen-w w) 2)))
          (y (or (cdr location) (round (- screen-h h) 2)))
-         (style (list :maximizebox :thickframe)))
+         (style (list :clipsiblings :clipchildren :sysmenu :minimizebox :caption)))
     (let ((ptr (win32:create-window 0 (create-class) title style x y w h (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer))))
       (if (cffi:null-pointer-p ptr)
           (win32-error :function-name 'win32:create-window)
@@ -132,12 +132,12 @@
 
 (defun get-window-style (window)
   (let ((style '(:clipsiblings
-                 :clipchildren
-                 :sysmenu
-                 :minimizebox)))
+                 :clipchildren)))
     (cond ((fb:borderless-p window)
            (push :popup style))
           (T
+           (push :sysmenu style)
+           (push :minimizebox style)
            (push :caption style)
            (when (fb:resizable-p window)
              (push :maximizebox style)
@@ -209,12 +209,19 @@
   value)
 
 (defun update-window-styles (window)
-  (let ((style (cffi:foreign-bitfield-symbols 'win32::window-style (win32:get-window (ptr window) :STYLE))))
-    (setf style (remove :overlappedwindow (remove :popup style)))
-    (union style (get-window-style window))
+  ;; we want to mask off some named constants that are multiple bits,
+  ;; so do that in bits rather than trying to figure out which
+  ;; keywords they would expand to
+  (let* ((mask (cffi:foreign-bitfield-value 'win32::window-style
+                                            '(:popup :overlappedwindow)))
+         (style (cffi:foreign-bitfield-symbols 'win32::window-style
+                                               (logandc1 mask
+                                                         (win32:get-window (ptr window) :STYLE)))))
+    (setf style (union style (get-window-style window)))
     (with-rect (rect 0 0 0 0)
+      (win32:get-window-rect (ptr window) rect)
       (win32:adjust-window-rect rect style NIL)
-      (win32:set-window (ptr window) :STYLE style)
+      (win32:set-window (ptr window) :STYLE (cffi:foreign-bitfield-value 'win32::window-style style))
       (win32:set-window-pos (ptr window) 0 (win32:rect-left rect) (win32:rect-top rect) (rect-width rect) (rect-height rect)
                             '(:framechanged :noactivate :nozorder)))))
 

@@ -66,21 +66,22 @@
 (defun list-displays ()
   (list-displays-backend (or *backend* (init))))
 
-(defun open (&rest args &key size location title visible-p maximum-size minimum-size maximized-p iconified-p borderless-p always-on-top-p floating-p &allow-other-keys)
+(defun open (&rest args &key size location title visible-p maximum-size minimum-size maximized-p iconified-p borderless-p always-on-top-p floating-p resizable-p &allow-other-keys)
   (declare (ignore size location title visible-p))
   (let ((window (apply #'open-backend (or *backend* (init))
                        ;; We filter this way to allow backend-specific extension args
                        (loop for (k v) on args by #'cddr
-                             for culled-prop-p = (find k '(:maximum-size :minimum-size :maximized-p :iconified-p :borderless-p :always-on-top-p :floating-p))
+                             for culled-prop-p = (find k '(:maximum-size :minimum-size :maximized-p :iconified-p :borderless-p :always-on-top-p :floating-p :resizable-p))
                              unless culled-prop-p collect k
                              unless culled-prop-p collect v))))
-    (when maximum-size (setf (maximum-size window) maximum-size))
-    (when minimum-size (setf (minimum-size window) minimum-size))
-    (when maximized-p (setf (maximized-p window) maximized-p))
-    (when iconified-p (setf (iconified-p window) iconified-p))
-    (when borderless-p (setf (borderless-p window) borderless-p))
-    (when always-on-top-p (setf (always-on-top-p window) always-on-top-p))
-    (when floating-p (setf (floating-p window) floating-p))
+    (when maximum-size (setf (fb:maximum-size window) maximum-size))
+    (when minimum-size (setf (fb:minimum-size window) minimum-size))
+    (when maximized-p (setf (fb:maximized-p window) maximized-p))
+    (when iconified-p (setf (fb:iconified-p window) iconified-p))
+    (when borderless-p (setf (fb:borderless-p window) borderless-p))
+    (when always-on-top-p (setf (fb:always-on-top-p window) always-on-top-p))
+    (when floating-p (setf (fb:floating-p window) floating-p))
+    (when resizable-p (setf (fb:resizable-p window) resizable-p))
     window))
 
 (defmethod print-object ((icon fb:icon) stream)

@@ -124,6 +124,9 @@
 (defgeneric display-connected (event-handler display connected-p))
 
 ;;; TODO:
+;;;; move-to-front
+;;;; move-to-back
+;;;; wait-for-events (multiple windows)
 ;;;; Input Method support
 ;;;; Display gamma curves
 ;;;; Display physical dimensions

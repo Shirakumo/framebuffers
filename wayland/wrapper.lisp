@@ -370,6 +370,22 @@
           (unless (cffi:null-pointer-p keysyms)
             (org.shirakumo.framebuffers.xlib::keysym-string (cffi:mem-ref keysyms :uint32))))))))
 
+(defmethod fb-int:wait-for-events ((backend (eql :wayland)) windows &key timeout)
+  (let ((millis (etypecase timeout
+                  (real (truncate (* 1000 timeout)))
+                  ((eql T) 1000)
+                  (null 0)))
+        (fds (loop for window in windows
+                   append (list* (wl:display-get-fd (display window)) (fb-int::timers window))))
+        (found ()))
+    (loop (dolist (fd (fb-int::poll fds millis))
+            (dolist (window windows)
+              (when (or (eql fd (wl:display-get-fd (display window)))
+                        (find fd (fb-int::timers window)))
+                (push window found))))
+          (when (or found (not (eql T timeout)))
+            (return found)))))
+
 (defmethod fb:process-events ((window window) &key timeout)
   (let ((display (display window))
         (millis (etypecase timeout

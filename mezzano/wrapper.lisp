@@ -216,6 +216,22 @@
              (incf si srow-gap))
     (mezzano.gui.compositor:damage-window window (+ x left) (+ y top) w h)))
 
+(defmethod fb-int:wait-for-events ((backend (eql :mezzano)) windows &key timeout)
+  (let ((secs (etypecase timeout
+                (real timeout)
+                ((eql T) 1.0)
+                (null 0.0)))
+        (handles (loop for window in windows
+                       append (list* (mezzano.gui.compositor::mailbox window) (timers window))))
+        (found ()))
+    (loop (dolist (handle (apply #'mezzano.sync:wait-for-objects-with-timeout secs handles))
+            (dolist (window windows)
+              (when (or (eql fd (mezzano.gui.compositor::mailbox window))
+                        (find fd (timers window)))
+                (push window found))))
+          (when (or found (not (eql T timeout)))
+            (return found)))))
+
 (defmethod fb:process-events ((window window) &key timeout)
   (let ((fifo (mezzano.gui.compositor::mailbox window)))
     (labels ((poll-events ()

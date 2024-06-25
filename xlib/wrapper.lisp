@@ -647,6 +647,22 @@
   ;; Don't have Xrandr, so just fullscreen with resize.
   (setf (fb:size window) (cons (fb:width value) (fb:height value))))
 
+(defmethod fb-int:wait-for-events ((backend (eql :xlib)) windows &key timeout)
+  (let ((millis (etypecase timeout
+                  (real (truncate (* 1000 timeout)))
+                  ((eql T) 1000)
+                  (null 0)))
+        (fds (loop for window in windows
+                   append (list* (xlib:connection-number (display window)) (fb-int::timers window))))
+        (found ()))
+    (loop (dolist (fd (fb-int::poll fds millis))
+            (dolist (window windows)
+              (when (or (eql fd (xlib:connection-number (display window)))
+                        (find fd (fb-int::timers window)))
+                (push window found))))
+          (when (or found (not (eql T timeout)))
+            (return found)))))
+
 (defmethod fb:process-events ((window window) &key timeout)
   (cffi:with-foreign-objects ((event '(:struct xlib:event)))
     (let ((millis (etypecase timeout

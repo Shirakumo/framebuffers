@@ -158,6 +158,7 @@
    #:shutdown-backend
    #:open-backend
    #:list-displays-backend
+   #:wait-for-events
    #:default-title
    #:ptr-int
    #:ptr-window

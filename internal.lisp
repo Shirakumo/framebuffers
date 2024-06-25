@@ -13,6 +13,7 @@
 (defgeneric shutdown-backend (backend))
 (defgeneric open-backend (backend &key))
 (defgeneric list-displays-backend (backend))
+(defgeneric wait-for-events (backend windows &key timeout))
 
 (defun static-file (path)
   (merge-pathnames path *here*))
@@ -456,6 +457,10 @@
                     until (close-requested-p ,window)
                     do (process-events ,window :timeout T))
            (close ,window))))))
+
+(defmethod process-events ((windows list) &key timeout)
+  (dolist (window (wait-for-events *backend* windows :timeout timeout))
+    (process-events window :timeout NIL)))
 
 #-mezzano
 (trivial-indent:define-indentation with-window

@@ -548,6 +548,35 @@
                            (static-vectors:static-vector-pointer (buffer window))
                            (bitmap-info window) 0 #x00CC0020)))
 
+(defmethod fb-int:wait-for-events ((backend (eql :win32)) windows &key timeout)
+  (let ((millis (etypecase timeout
+                  (null 0)
+                  ((eql T) 1000)
+                  (real (truncate (* 1000 timeout)))))
+        (count (loop for window in windows
+                     sum (length (timers window))))
+        (found ()))
+    (cffi:with-foreign-objects ((msg '(:struct win32:message))
+                                (handles :pointer count))
+      (loop with i = 0
+            for window in windows
+            do (loop for timer in (timers window)
+                     do (setf (cffi:mem-aref handles :pointer i) timer)
+                        (incf i)))
+      (loop (let ((idx (win32:msg-wait-for-multiple-objects count handles NIL millis #xFFFF)))
+              (when (< idx count)
+                (loop for window in windows
+                      for left = 0 then right
+                      for right = (length (timers window))
+                      do (when (< (1- left) idx right)
+                           (push window found)
+                           (return))))
+              (dolist (window windows)
+                (when (win32:peek-message msg (ptr window) 0 0 1)
+                  (push window found))))
+            (when (or found (not (eql T timeout)))
+              (return found))))))
+
 (defmethod fb:process-events ((window window) &key timeout)
   (cffi:with-foreign-objects ((msg '(:struct win32:message)))
     (flet ((poll-events ()

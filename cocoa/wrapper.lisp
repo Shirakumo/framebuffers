@@ -365,6 +365,10 @@
         (cocoa:cg-image-release image)
         (cocoa:set-needs-display-in-rect (view window) rect)))))
 
+(defmethod fb-int:wait-for-events ((backend (eql :cocoa)) windows &key timeout)
+  ;; TODO: implement wait-for-events
+  )
+
 (defmethod fb:process-events ((window window) &key timeout)
   (let ((s (etypecase timeout
              ((eql T) 1.0d0)

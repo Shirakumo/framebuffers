@@ -77,8 +77,10 @@
           (cffi:close-foreign-library 'xlib:xinerama))))
     (xlib:init-threads)
     (setf *init* T)
-    (xlib:set-error-handler (cffi:callback error-handler))
-    (xlib:set-io-error-handler (cffi:callback io-error-handler))))
+    (ignore-errors
+     (xlib:set-error-handler (cffi:callback error-handler)))
+    (ignore-errors
+     (xlib:set-io-error-handler (cffi:callback io-error-handler)))))
 
 (defmethod fb-int:shutdown-backend ((backend (eql :xlib)))
   (when *init*
@@ -133,7 +135,8 @@
 
 (defmethod fb-int:open-backend ((backend (eql :xlib)) &key (size (cons NIL NIL)) (location (cons NIL NIL)) (title (fb-int:default-title)) (visible-p T) event-handler display)
   (with-creation (display (xlib:open-display (or display (cffi:null-pointer)))) (xlib:close-display display)
-    (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer))
+    (ignore-errors
+     (xlib:set-io-error-exit-handler display (cffi:callback io-error-exit-handler) (cffi:null-pointer)))
     (unless *keytable*
       (init-keytable display (probe-xkb display)))
     (let* ((screen (xlib:default-screen display))

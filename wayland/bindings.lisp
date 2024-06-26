@@ -1,9 +1,11 @@
 (in-package #:org.shirakumo.framebuffers.wayland.cffi)
 
 (cffi:define-foreign-library wayland
+  (:linux (:or (:default "libwayland-client") "libwayland-client.so.0"))
   (T (:or (:default "libwayland-client") (:default "wayland-client"))))
 
 (cffi:define-foreign-library xkbcommon
+  (:linux (:or (:default "libxkbcommon") "libxkbcommon.so.0"))
   (T (:or (:default "libxkbcommon") (:default "xkbcommon"))))
 
 ;;; core defs

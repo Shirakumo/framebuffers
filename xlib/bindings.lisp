@@ -1,21 +1,27 @@
 (in-package #:org.shirakumo.framebuffers.xlib.cffi)
 
 (cffi:define-foreign-library x11
+  (:linux (:or (:default "libX11") "libX11.so.6"))
   (T (:or (:default "libX11") (:default "X11"))))
 
 (cffi:define-foreign-library xext
+  (:linux (:or (:default "libXext") "libXext.so.6"))
   (T (:or (:default "libXext") (:default "Xext"))))
 
 (cffi:define-foreign-library xrandr
+  (:linux (:or (:default "libXrandr") "libXrandr.so.2"))
   (T (:or (:default "libXrandr") (:default "Xrandr"))))
 
 (cffi:define-foreign-library xinerama
+  (:linux (:or (:default "libXinerama") "libXinerama.so.1"))
   (T (:or (:default "libXinerama") (:default "Xinerama"))))
 
 (cffi:define-foreign-library xcursor
+  (:linux (:or (:default "libXcursor") "libXcursor.so.1"))
   (T (:or (:default "libXcursor") (:default "Xcursor"))))
 
 (cffi:define-foreign-library xi
+  (:linux (:or (:default "libXi") "libXi.so.6"))
   (T (:or (:default "libXi") (:default "Xi"))))
 
 (cffi:defctype xid :ulong)

@@ -199,4 +199,8 @@
    #:dbg))
 
 (when (find-package '#:static-vectors)
-  (push :static-vectors *features*))
+  (push :static-vectors *features*)
+  (ignore-errors
+   (let ((buf (static-vectors:make-static-vector 4096 :alignment 4096)))
+     (static-vectors:free-static-vector buf)
+     (push :static-vectors-aligned *features*))))

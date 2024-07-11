@@ -411,7 +411,7 @@
   (setf (car (content-scale window)) yscale))
 
 (defun resize-buffer (w h &optional old-buffer ow oh)
-  (let ((buffer #+static-vectors (static-vectors:make-static-vector (* 4 w h) :initial-element 0)
+  (let ((buffer #+static-vectors (static-vectors:make-static-vector (* 4 w h) :initial-element 0 #+static-vectors-aligned :alignment #+static-vectors-aligned 4096)
                 #-static-vectors (make-array (* 4 w h) :element-type '(unsigned-byte 8) :initial-element 0)))
     (when old-buffer
       ;; Copy sub-region back.

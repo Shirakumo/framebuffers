@@ -185,7 +185,7 @@
 (defmethod initialize-instance :after ((window window) &key)
   (setf (fb-int:ptr-window (display window)) window)
   (unless (xkb window) (setf (xkb window) (probe-xkb (display window))))
-  #++
+  #+static-vectors-aligned
   (unless (xshm window) (when (ignore-errors (xlib:xshm-query-extension (display window)))
                           (cffi:foreign-alloc '(:struct xlib:shm-segment-info))))
   (unless (gc window) (setf (gc window) (xlib:default-gc (display window) (screen window))))

@@ -119,7 +119,7 @@
                                       (type :pointer))
             (when (xlib:xrm-get-resource db "Xft.dpi" "Xft.Dpi" type value)
               (when (and (not (cffi:null-pointer-p (cffi:mem-ref type :pointer)))
-                         (string= "String" (cffi:mem-ref (cffi:mem-ref type :pointer) :string)))
+                         (string= "String" (cffi:foreign-string-to-lisp (cffi:mem-ref type :pointer))))
                 (setf xdpi (cffi:foreign-funcall "atof" :pointer (xlib:xrm-value-addr value) :double))
                 (setf ydpi xdpi)))
             (xlib:xrm-destroy-database db)))))

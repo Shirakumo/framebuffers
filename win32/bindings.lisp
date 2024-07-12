@@ -9,6 +9,9 @@
 (cffi:define-foreign-library gdi32
   (T (:default "gdi32")))
 
+(defconstant ENUM-CURRENT-SETTINGS (ldb (byte 32 0) -1))
+(defconstant ENUM-REGISTRY-SETTINGS (ldb (byte 32 0) -2))
+
 (cffi:defbitfield display-setting-flags
   (:updateregistry #x00000001)
   (:test #x00000002)
@@ -936,11 +939,19 @@
   (panning-width :uint32)
   (panning-height :uint32))
 
+(cffi:defbitfield (adapter-state-flags :uint32)
+  (:device-active 1)
+  (:device-primary-device 4)
+  (:device-mirroring-driver 8)
+  (:device-vga-compatible 16)
+  (:device-removable 32)
+  (:device-modes-pruned 134217728))
+
 (cffi:defcstruct (adapter :conc-name adapter-)
   (cb :uint32)
   (device-name :uint16 :count 32)
   (device-string :uint16 :count 128)
-  (state-flags :uint32)
+  (state-flags adapter-state-flags)
   (device-id :uint16 :count 128)
   (device-key :uint16 :count 128))
 
@@ -1000,12 +1011,12 @@
   (window :pointer))
 
 (cffi:defcfun (enum-display-settings "EnumDisplaySettingsW") :boolean
-  (device-name :pointer)
+  (device-name (:string :encoding :utf-16/le))
   (mode-num :uint32)
   (dev-mode :pointer))
 
 (cffi:defcfun (enum-display-devices "EnumDisplayDevicesW") :boolean
-  (device :pointer)
+  (device (:string :encoding :utf-16/le))
   (index :uint32)
   (output :pointer)
   (flags :uint32))

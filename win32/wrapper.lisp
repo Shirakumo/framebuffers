@@ -416,7 +416,7 @@
 (defmethod fb:local-key-string ((key integer) (window window))
   (key-string key))
 
-(defclass display (fb:display)
+(defclass display (fb-int:display)
   ((display-handle :initform NIL :initarg :display-handle :accessor display-handle)))
 
 (defstruct (video-mode (:include fb:video-mode)))
@@ -438,7 +438,7 @@
 (defun refresh-display (display)
   (setf (fb-int:video-modes display) (enum-modes display))
   (cffi:with-foreign-objects ((mode '(:struct win32:device-mode)))
-    (win32:enum-display-settings (fb:id display) -1 mode)
+    (win32:enum-display-settings (fb:id display) win32:ENUM-CURRENT-SETTINGS mode)
     (setf (car (fb:location display)) (win32:device-mode-position-x mode))
     (setf (cdr (fb:location display)) (win32:device-mode-position-y mode))
     (let ((mode (translate-mode display mode)))
@@ -448,6 +448,8 @@
 
 (defun poll-displays (&optional window)
   (cffi:with-foreign-objects ((adapter '(:struct win32:adapter)))
+    (setf (win32:adapter-cb adapter)
+          (cffi:foreign-type-size '(:struct win32:adapter)))
     (let ((ids ())
           (displays ()))
       ;; First enumerate everything
@@ -455,19 +457,21 @@
             for j = 0
             while (win32:enum-display-devices (cffi:null-pointer) i adapter 0)
             when (find :device-active (win32:adapter-state-flags adapter))
-            do (let* ((id (win32:adapter-device-name adapter))
-                      (display (find id *displays* :key #'fb:id :test #'string=)))
-                 (unless display
-                   (setf display (make-instance 'display :id id :title (win32:adapter-device-string adapter)))
-                   (when window (fb:display-connected window display NIL)))
-                 (push (refresh-display display) display)))
+              do (let* ((id (com:wstring->string (win32:adapter-device-name adapter) 32))
+                        (display (find id *displays* :key #'fb:id :test #'string=)))
+                   (unless display
+                     ;; call again with specific device id to get monitor name
+                     (check-result (win32:enum-display-devices id 0 adapter 0))
+                     (setf display (make-instance 'display :id id :title (com:wstring->string (win32:adapter-device-string adapter) 128)))
+                     (when window (fb:display-connected window display NIL)))
+                   (push (refresh-display display) displays)))
       ;; Disable old displays
       (loop for display in *displays*
             do (unless (find (fb:id display) ids :test #'string=)
                  (when window (fb:display-connected window display T))))
       (setf *displays* displays))))
 
-(defmethod fb-int:list-displays-backend ((backend (eql :BACKEND)))
+(defmethod fb-int:list-displays-backend ((backend (eql :win32)))
   (or *displays*
       (poll-displays)))
 

@@ -180,7 +180,9 @@
    #:drag-finish
    #:drag-query-point
    #:drag-query-file
-   #:drag-accept-files))
+   #:drag-accept-files
+   #:ENUM-CURRENT-SETTINGS
+   #:ENUM-REGISTRY-SETTINGS))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

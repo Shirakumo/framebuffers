@@ -50,7 +50,7 @@
           (T
            (setf (win32:window-class-style class) '(:owndc :vredraw :hredraw))
            (setf (win32:window-class-proc class) (cffi:callback handle-event))
-           (setf (win32:window-class-cursor class) (win32:load-cursor (cffi:null-pointer) :arrow))
+           (setf (win32:window-class-cursor class) (win32:load-cursor 0 :arrow))
            (setf (win32:window-class-class-name class) "clframebuffer")
            (let ((cls (win32:register-class class)))
              (if (= 0 cls)
@@ -65,8 +65,8 @@
          (x (or (car location) (round (- screen-w w) 2)))
          (y (or (cdr location) (round (- screen-h h) 2)))
          (style (list :clipsiblings :clipchildren :sysmenu :minimizebox :caption)))
-    (let ((ptr (win32:create-window 0 (create-class) title style x y w h (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer))))
-      (if (cffi:null-pointer-p ptr)
+    (let ((ptr (win32:create-window 0 (create-class) title style x y w h 0 0 0 (cffi:null-pointer))))
+      (if (zerop ptr)
           (win32-error :function-name 'win32:create-window)
           (make-instance 'window :ptr ptr
                                  :size (cons w h)
@@ -78,7 +78,7 @@
   ((ptr :initarg :ptr :accessor ptr)
    (dc :initarg :dc :accessor dc)
    (buffer :reader fb:buffer :initform NIL :accessor buffer)
-   (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-info)) :accessor bitmap-info)
+   (bitmap-info :initform (cffi:foreign-alloc '(:struct win32:bitmap-v5-header)) :accessor bitmap-info)
    (modifiers :initform () :accessor modifiers)
    (surrogate :initform 0 :accessor surrogate)
    (timers :initform () :accessor timers)
@@ -91,9 +91,10 @@
         (bi (bitmap-info window)))
     (setf (fb-int:ptr-window ptr) window)
     (setf (dc window) (win32:get-dc ptr))
-    (when (cffi:null-pointer-p (dc window))
+    (when (zerop (dc window))
       (win32-error :function-name 'win32:get-dc))
-    (setf (win32:bitmap-info-size bi) (- (cffi:foreign-type-size '(:struct win32:bitmap-info)) 16))
+    (fb-int:memset bi 'win32:bitmap-v5-header)
+    (setf (win32:bitmap-info-size bi) (cffi:foreign-type-size '(:struct win32:bitmap-v5-header)))
     (setf (win32:bitmap-info-planes bi) 1)
     (setf (win32:bitmap-info-bit-count bi) 32)
     (setf (win32:bitmap-info-compression bi) 3)
@@ -104,10 +105,11 @@
     (update-buffer window (fb:width window) (fb:height window))
     (win32:drag-accept-files ptr T)
     (when (fb:visible-p window)
+      (win32:show-window ptr :normal)
       (win32:show-window ptr :normal))
     (or (ignore-errors
          (cffi:with-foreign-objects ((x :uint) (y :uint))
-           (win32:get-dpi-for-monitor (win32:monitor-from-window ptr 2) 0 x y)
+           (win32:get-dpi-for-monitor (win32:monitor-from-window ptr :default-to-nearest) 0 x y)
            (setf (car (fb:content-scale window)) (/ (cffi:mem-ref x :uint) 96))
            (setf (car (fb:content-scale window)) (/ (cffi:mem-ref y :uint) 96))))
         (progn
@@ -261,14 +263,14 @@
                   (:unicodetext
                    (let* ((obj (win32:get-clipboard-data format))
                           (str (win32:global-lock obj)))
-                     (unwind-protect (return (com:wstring->string str)) 
+                     (unwind-protect (return (com:wstring->string str))
                        (win32:global-unlock obj))))
                   (:dib
                    (let* ((obj (win32:get-clipboard-data format))
                           (buf (make-array (* 4 (win32:bitmap-info-width obj) (win32:bitmap-info-height obj))
                                            :element-type '(unsigned-byte 8))))
                      (cffi:with-pointer-to-vector-data (ptr buf)
-                       (fb-int:memcpy ptr (cffi:inc-pointer obj (cffi:foreign-type-size '(:struct win32:bitmap-info))) (length buf)))
+                       (fb-int:memcpy ptr (cffi:inc-pointer obj (cffi:foreign-type-size '(:struct win32:bitmap-v5-header))) (length buf)))
                      (return (fb:make-icon (win32:bitmap-info-width obj) (win32:bitmap-info-height obj) buf))))
                   (:hdrop
                    (let ((obj (win32:get-clipboard-data format)))
@@ -289,13 +291,13 @@
 
 (defmethod (setf fb:clipboard) ((icon fb:icon) (window window))
   (let* ((len (* 4 (fb:width icon) (fb:height icon)))
-         (hdr (cffi:foreign-type-size '(:struct win32:bitmap-info)))
+         (hdr (cffi:foreign-type-size '(:struct win32:bitmap-v5-header)))
          (obj (win32:global-alloc '(:moveable) (+ hdr len)))
          (bi (win32:global-lock obj)))
     (unwind-protect
          (progn
            (fb-int:memset bi hdr)
-           (setf (win32:bitmap-info-size bi) (- hdr 16))
+           (setf (win32:bitmap-info-size bi) hdr)
            (setf (win32:bitmap-info-width bi) (fb:width icon))
            (setf (win32:bitmap-info-height bi) (fb:height icon))
            (setf (win32:bitmap-info-planes bi) 1)
@@ -315,11 +317,11 @@
     (win32:close-clipboard)))
 
 (defun make-icon (window icon &key (x 0) (y 0) (icon-p T))
-  (cffi:with-foreign-objects ((bi '(:struct win32:bitmap-info))
+  (cffi:with-foreign-objects ((bi '(:struct win32:bitmap-v5-header))
                               (ii '(:struct win32:icon-info))
                               (target :pointer))
-    (fb-int:memset bi '(:struct bitmap-info))
-    (setf (win32:bitmap-info-size bi) (- (cffi:foreign-type-size '(:struct win32:bitmap-info)) 16))
+    (fb-int:memset bi '(:struct win32:bitmap-v5-header))
+    (setf (win32:bitmap-info-size bi) (cffi:foreign-type-size '(:struct win32:bitmap-v5-header)))
     (setf (win32:bitmap-info-width bi) (fb:width icon))
     (setf (win32:bitmap-info-height bi) (- (fb:height icon)))
     (setf (win32:bitmap-info-planes bi) 1)
@@ -457,12 +459,12 @@
             for j = 0
             while (win32:enum-display-devices (cffi:null-pointer) i adapter 0)
             when (find :device-active (win32:adapter-state-flags adapter))
-              do (let* ((id (com:wstring->string (win32:adapter-device-name adapter) 32))
+              do (let* ((id (win32:adapter-device-name adapter))
                         (display (find id *displays* :key #'fb:id :test #'string=)))
                    (unless display
                      ;; call again with specific device id to get monitor name
                      (check-result (win32:enum-display-devices id 0 adapter 0))
-                     (setf display (make-instance 'display :id id :title (com:wstring->string (win32:adapter-device-string adapter) 128)))
+                     (setf display (make-instance 'display :id id :title (win32:adapter-device-string adapter)))
                      (when window (fb:display-connected window display NIL)))
                    (push (refresh-display display) displays)))
       ;; Disable old displays
@@ -550,7 +552,7 @@
     (win32:invalidate-rect (ptr window) rect T)
     (win32:stretch-di-bits (dc window) x (- h y) w (- h) x y w h
                            (static-vectors:static-vector-pointer (buffer window))
-                           (bitmap-info window) 0 #x00CC0020)))
+                           (bitmap-info window) :rgb-colors :src-copy)))
 
 (defmethod fb-int:wait-for-events ((backend (eql :win32)) windows &key timeout)
   (let ((millis (etypecase timeout
@@ -576,7 +578,7 @@
                            (push window found)
                            (return))))
               (dolist (window windows)
-                (when (win32:peek-message msg (ptr window) 0 0 1)
+                (when (win32:peek-message msg (ptr window) 0 0 :remove)
                   (push window found))))
             (when (or found (not (eql T timeout)))
               (return found))))))
@@ -584,7 +586,7 @@
 (defmethod fb:process-events ((window window) &key timeout)
   (cffi:with-foreign-objects ((msg '(:struct win32:message)))
     (flet ((poll-events ()
-             (loop while (win32:peek-message msg (ptr window) 0 0 1)
+             (loop while (win32:peek-message msg (ptr window) 0 0 :remove)
                    do (case (win32:message-type msg)
                         (:quit
                          (fb:shutdown))
@@ -632,7 +634,7 @@
            (let ((scancode (logand (ldb (byte 16 16) lparam) #x1FF))
                  (action (if (logtest #x8000 (ldb (byte 16 16) lparam)) :release :press))
                  (modifiers (update-modifiers window)))
-             (when (= #x000 scancode) (setf scancode (win32:map-virtual-key wparam 0)))
+             (when (= #x000 scancode) (setf scancode (win32:map-virtual-key wparam :vk-to-vsc)))
              (when (= #x054 scancode) (setf scancode #x137))
              (when (= #x146 scancode) (setf scancode #x045))
              (when (= #x136 scancode) (setf scancode #x036))
@@ -642,7 +644,7 @@
                           (T ;; Hack to handle AltGr sending LCTRL + RALT
                            (cffi:with-foreign-objects ((msg '(:struct win32:message)))
                              (let ((time (win32:get-message-time)))
-                               (unless (and (win32:peek-message msg ptr 0 0 0)
+                               (unless (and (win32:peek-message msg ptr 0 0 :noremove)
                                             (find (win32:message-type msg) '(:keydown :syskeydown :keyup :syskeyup))
                                             (= (win32:message-wparameter msg) (cffi:foreign-enum-value 'win32:key :MENU))
                                             (logtest (ldb (byte 16 16) (win32:message-lparameter msg)) #x0100)
@@ -702,7 +704,7 @@
              (cffi:with-foreign-objects ((track '(:struct win32:track-mouse-event)))
                (setf (win32:track-mouse-event-size track) (cffi:foreign-type-size '(:struct win32:track-mouse-event)))
                (setf (win32:track-mouse-event-flags track) 2)
-               (setf (win32:track-mouse-event-track track) ptr)
+               (setf (win32:track-mouse-event-track track) (fb-int:ptr-int ptr))
                (setf (win32:track-mouse-event-hover-time track) 0)
                (win32:track-mouse-event track)))
            (multiple-value-bind (x y) (dec32 lparam)
@@ -765,7 +767,7 @@
              (fb:file-dropped window (drag-files ptr))
              (win32:drag-finish ptr)
              (return 0)))))
-      (return (win32:def-window-proc ptr message wparam lparam)))))
+      (return (win32:def-window-proc (cffi:pointer-address ptr) message wparam lparam)))))
 
 ;; TODO: touch events
 ;; TODO: pen events

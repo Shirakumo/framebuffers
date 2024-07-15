@@ -97,17 +97,54 @@
   (:hand 32649)
   (:appstarting 32650))
 
+(cffi:defcenum (map-virtual-key-type :uint32)
+  (:vk-to-vsc 0)
+  (:vsc-to-vk 1)
+  (:vk-to-char 2)
+  (:vsc-to-vk-ex 3)
+  (:vk-to-vsc-ex 4))
+
+(cffi:defcenum (monitor-from-flags :uint32)
+  (:default-to-nearest 2)
+  (:default-to-null 0)
+  (:default-to-primary 1))
+
+(cffi:defbitfield (queue-status-flags :uint32)
+  (:allevents #x000004BF)
+  (:allinput #x000004FF)
+  (:allpostmessage #x00000100)
+  (:hotkey #x00000080)
+  (:input #x00000407)
+  (:key #x00000001)
+  (:mouse #x00000006)
+  (:mousebutton #x00000004)
+  (:mousemove #x00000002)
+  (:paint #x00000020)
+  (:postmessage #x00000008)
+  (:rawinput #x00000400)
+  (:sendmessage #x00000040)
+  (:timer #x00000010))
+
+(cffi:defbitfield (peek-message-remove-type :uint32)
+  (:noremove #x00000000)
+  (:remove #x00000001)
+  (:noyield #x00000002)
+  (:qs-input #x04070000)
+  (:qs-postmessage #x00980000)
+  (:qs-paint #x00200000)
+  (:qs-sendmessage #x00400000))
+
 (cffi:defcenum monitor-dpi-type
   (:effective-dpi 0)
   (:angular-dpi 1)
   (:raw-dpi 2))
 
-(cffi:defcenum dpi-awareness
+(cffi:defcenum dpi-awareness ;; PROCESS_DPI_AWARENESS
   (:unaware 0)
   (:system-dpi-aware 1)
   (:per-monitor-dpi-aware 2))
 
-(cffi:defcenum (dpi-awareness-context :ssize)
+(cffi:defcenum (dpi-awareness-context :intptr) ;; DPI_AWARENESS_CONTEXT
   (:unaware -1)
   (:system-aware -2)
   (:per-monitor-aware -3)
@@ -823,7 +860,7 @@
   (:ime #x00010000)
   (:dropshadow #x00020000))
 
-(cffi:defbitfield set-window-pos
+(cffi:defbitfield (set-window-pos :uint32)
   (:nosize #x0001)
   (:nomove #x0002)
   (:nozorder #x0004)
@@ -838,7 +875,50 @@
   (:defererase #x2000)
   (:asyncwindowpos #x4000))
 
-(cffi:defcstruct (minmax-info :conc-name minmax-info-)
+(cffi:define-foreign-type wstring-type (cffi::foreign-array-type)
+  ()
+  (:actual-type :uint16)
+  (:simple-parser wstring))
+
+(cffi:define-parse-method wstring (length)
+  (make-instance 'wstring-type :dimensions (list length)
+                 :element-type :uint16))
+
+(int::define-cffi-translators wstring-type wstring (p v s type1)
+  :from `(com:wstring->string ,p ,(if (typep type1 'wstring-type)
+                                      (reduce #'* (cffi::dimensions type1))
+                                      `(reduce #'* (cffi::dimensions ,type1))))
+  ;; can't limit size of com:string->wstring?, translate manually
+  ;; :to `(com:string->wstring ,v ,p)
+  :to `(let* ((#1=#:o (babel:string-to-octets ,v :encoding :utf-16/le))
+              (l (min (length #1#)
+                      (* 2 (1- ,(if (typep type1 'wstring-type)
+                                    (reduce #'* (cffi::dimensions type1))
+                                    `(reduce #'* (cffi::dimensions ,type1))))))))
+         (loop for #2=#:i below l
+               do (setf (cffi:mem-aref ,p :uint8 #2#)
+                        (aref #1# #2#)))
+         ;; force nul-termination for now, possibly could be optional?
+         (setf (cffi:mem-aref ,p :uint16 (/ l 2)) 0))
+  :alloc (cffi:foreign-alloc :uint16 :count (reduce #'* (cffi::dimensions type1))))
+
+#++
+(cffi:with-foreign-object (p #++'(wstring 16)
+                             :uint16 32)
+  (format t "p = ~s~%" p)
+  (loop for i below 32 do (setf (cffi:mem-aref p :uint16 i) i))
+  (setf (cffi:mem-aref p :uint16 0) 33)
+  (setf (cffi:mem-aref p :uint16 1) 0)
+  (let ((a (cffi:mem-ref p '(wstring 16))))
+    (setf (cffi:mem-ref p '(wstring 16)) "test")
+    (let ((b (loop for i below 20 collect (cffi:mem-aref p :uint16 i)))
+          (c (cffi:mem-ref p '(wstring 16))))
+      (setf (cffi:mem-ref p '(wstring 16)) "defghijklmnopqrstuvwxyz")
+      (list a b c
+            (loop for i below 20 collect (cffi:mem-aref p :uint16 i))
+            (cffi:mem-ref p '(wstring 16))))))
+
+(cffi:defcstruct (minmax-info :conc-name minmax-info-) ;;MINMAXINFO
   (reserved-x :long)
   (reserved-y :long)
   (max-size-x :long)
@@ -850,35 +930,36 @@
   (max-track-size-x :long)
   (max-track-size-y :long))
 
-(cffi:defcstruct (window-class :conc-name window-class-)
+(cffi:defcstruct (window-class :conc-name window-class-) ;; WNDCLASSW
   (style window-class-style)
-  (proc :pointer)
-  (class-extra :int)
-  (window-extra :int)
-  (instance :pointer)
-  (icon :pointer)
-  (cursor :pointer)
-  (background :pointer)
+  (proc :pointer) ;; wndproc
+  (class-extra :int32)
+  (window-extra :int32)
+  (instance com:hinstance)
+  (icon com:hicon)
+  (cursor com:hcursor)
+  (background com:hbrush)
   (menu-name com:wstring)
   (class-name com:wstring))
 
-(cffi:defcstruct (message :conc-name message-)
-  (window :pointer)
+(cffi:defcstruct (message :conc-name message-) ;; MSG
+  (window com:hwnd)
   (type message-type)
-  (wparameter :ssize)
-  (lparameter :ssize)
+  (wparameter com:wparam)
+  (lparameter com:lparam)
   (time :uint32)
-  (x :long)
-  (y :long))
+  (x :int32)
+  (y :int32)
+  (lprivate :uint32))
 
-(cffi:defcstruct (icon-info :conc-name icon-info-)
-  (icon :boolean)
+(cffi:defcstruct (icon-info :conc-name icon-info-) ;; ICONINFO
+  (icon com:bool)
   (xhotspot :uint32)
   (yhotspot :uint32)
-  (mask :pointer)
-  (color :pointer))
+  (mask com:hbitmap)
+  (color com:hbitmap))
 
-(cffi:defcstruct (bitmap-info :conc-name bitmap-info-)
+(cffi:defcstruct (bitmap-info-header :conc-name bitmap-info-header-) ;; BITMAPINFOHEADER
   (size :uint32)
   (width :long)
   (height :long)
@@ -888,32 +969,113 @@
   (size-image :uint32)
   (x-per-meter :long)
   (y-per-meter :long)
-  (clear-used :uint32)
-  (clear-important :uint32)
+  (color-used :uint32)
+  (color-important :uint32))
+
+;; BITMAPINFO struct is a BITMAPINFOHEADER followed by COLOR-USED RGBx
+
+(cffi:defcstruct (bitmap-v5-header :conc-name bitmap-info-) ;; BITMAPV5HEADER
+  (size :uint32)
+  (width :long)
+  (height :long)
+  (planes :int16)
+  (bit-count :int16)
+  (compression :uint32)
+  (size-image :uint32)
+  (x-per-meter :long)
+  (y-per-meter :long)
+  (color-used :uint32)
+  (color-important :uint32)
   (red-mask :uint32)
   (green-mask :uint32)
   (blue-mask :uint32)
-  (alpha-mask :uint32))
+  (alpha-mask :uint32)
+  (cs-type :uint32)
+  (cie-red-x :int32)
+  (cie-red-y :int32)
+  (cie-red-z :int32)
+  (cie-green-x :int32)
+  (cie-green-y :int32)
+  (cie-green-z :int32)
+  (cie-blue-x :int32)
+  (cie-blue-y :int32)
+  (cie-blue-z :int32)
+  (gamma-red :uint32)
+  (gamma-green :uint32)
+  (gamma-blue :uint32)
+  (intent :uint32)
+  (profile-data :uint32)
+  (profile-size :uint32)
+  (reserved :uint32))
 
-(cffi:defcstruct (rect :conc-name rect-)
+(cffi:defcstruct (rect :conc-name rect-) ;; RECT
   (left :long)
   (top :long)
   (right :long)
   (bottom :long))
 
-(cffi:defcstruct (track-mouse-event :conc-name track-mouse-event-)
+(cffi:defbitfield (track-mouse-event-flags :uint32)
+  (:cancel #x80000000)
+  (:hover #x00000001)
+  (:leave #x00000002)
+  (:nonclient #x00000010)
+  (:query #x40000000))
+
+(cffi:defcstruct (track-mouse-event :conc-name track-mouse-event-) ;; TRACKMOUSEEVENT
   (size :uint32)
-  (flags :uint32)
-  (track :pointer)
+  (flags track-mouse-event-flags)
+  (track com:hwnd)
   (hover-time :uint32))
 
-(cffi:defcstruct (device-mode :conc-name device-mode-)
-  (device-name :uint16 :count 32)
+(cffi:defbitfield (devmode-field-flags :uint32)
+  (:specversion #x00000401)
+  (:orientation #x00000001)
+  (:papersize #x00000002)
+  (:paperlength #x00000004)
+  (:paperwidth #x00000008)
+  (:scale #x00000010)
+  (:position #x00000020)
+  (:nup #x00000040)
+  (:displayorientation #x00000080)
+  (:copies #x00000100)
+  (:defaultsource #x00000200)
+  (:printquality #x00000400)
+  (:color #x00000800)
+  (:duplex #x00001000)
+  (:yresolution #x00002000)
+  (:ttoption #x00004000)
+  (:collate #x00008000)
+  (:formname #x00010000)
+  (:logpixels #x00020000)
+  (:bitsperpel #x00040000)
+  (:pelswidth #x00080000)
+  (:pelsheight #x00100000)
+  (:displayflags #x00200000)
+  (:displayfrequency #x00400000)
+  (:icmmethod #x00800000)
+  (:icmintent #x01000000)
+  (:mediatype #x02000000)
+  (:dithertype #x04000000)
+  (:panningwidth #x08000000)
+  (:panningheight #x10000000)
+  (:displayfixedoutput #x20000000)
+  (:interlaced #x00000002)
+  (:update #x00000001)
+  (:copy #x00000002)
+  (:prompt #x00000004)
+  (:modify #x00000008)
+  (:in-buffer #x00000008)
+  (:in-prompt #x00000004)
+  (:out-buffer #x00000002)
+  (:out-default #x00000001))
+
+(cffi:defcstruct (device-mode :conc-name device-mode-) ;; DEVMODEW
+  (device-name (wstring 32))
   (spec-version :uint16)
   (driver-version :uint16)
   (size :uint16)
   (driver-extra :uint16)
-  (fields :uint32)
+  (fields devmode-field-flags)
   (position-x :long)
   (position-y :long)
   (display-orientation :uint32)
@@ -923,7 +1085,7 @@
   (resolution :short)
   (option :short)
   (collate :short)
-  (form-name :uint16 :count 32)
+  (form-name (wstring 32))
   (log-pixels :uint16)
   (bits-per-pel :uint32)
   (pels-width :uint32)
@@ -947,354 +1109,391 @@
   (:device-removable 32)
   (:device-modes-pruned 134217728))
 
-(cffi:defcstruct (adapter :conc-name adapter-)
+(cffi:defcstruct (adapter :conc-name adapter-) ;; DISPLAY_DEVICEW
   (cb :uint32)
-  (device-name :uint16 :count 32)
-  (device-string :uint16 :count 128)
+  (device-name (wstring 32))
+  (device-string (wstring 128))
   (state-flags adapter-state-flags)
-  (device-id :uint16 :count 128)
-  (device-key :uint16 :count 128))
+  (device-id (wstring 128))
+  (device-key (wstring 128)))
 
-(cffi:defcfun (adjust-window-rect "AdjustWindowRect") :boolean
-  (rect :pointer)
+(cffi:defcenum (dib-usage :uint32)
+  (:rgb-colors 0)
+  (:pal-colors 1))
+
+(cffi:defbitfield (rop-code :uint32)
+  (:blackness #x00000042)
+  (:not-src-erase #x001100A6)
+  (:not-src-copy #x00330008)
+  (:dst-invert #x00550009)
+  (:merge-paint #x00BB0226)
+  (:merge-copy #x00C000CA)
+  (:src-and #x008800C6)
+  (:src-copy #x00CC0020)
+  (:src-erase #x00440328)
+  (:src-invert #x00660046)
+  (:src-paint #x00EE0086)
+  (:pat-copy #x00F00021)
+  (:pat-invert #x005A0049)
+  (:pat-paint #x00FB0A09)
+  (:whiteness #x00FF0062)
+  (:capture-blt #x40000000)
+  (:no-mirror-bitmap #x80000000))
+
+(cffi:defcfun (adjust-window-rect "AdjustWindowRect") com:bool
+  (rect (:pointer (:struct rect)))
   (style window-style)
-  (menu :boolean))
+  (menu com:bool))
 
-(cffi:defcfun (bit-blt "BitBlt") :bool
-  (hdc :pointer)
-  (x :int)
-  (y :int)
-  (cx :int)
-  (cy :int)
+(cffi:defcfun (bit-blt "BitBlt") com:bool
+  (hdc com:hdc)
+  (x :int32)
+  (y :int32)
+  (cx :int32)
+  (cy :int32)
   (hdc-src :pointer)
-  (x1 :int)
-  (y1 :int)
-  (rop :uint32))
+  (x1 :int32)
+  (y1 :int32)
+  (rop rop-code))
 
-(cffi:defcfun (bring-window-to-top "BringWindowToTop") :bool
-  (window :pointer))
+(cffi:defcfun (bring-window-to-top "BringWindowToTop") com:bool
+  (window com:hwnd))
 
-(cffi:defcfun (change-display-settings "ChangeDisplaySettingsExW") :long
+(cffi:defcenum (disp-change :int32)
+  (:successful 0)
+  (:restart 1)
+  (:failed -1)
+  (:badmode -2)
+  (:notupdated -3)
+  (:badflags -4)
+  (:badparam -5)
+  (:baddualview -6))
+
+(cffi:defcfun (change-display-settings "ChangeDisplaySettingsExW") disp-change
   (device-name com:wstring)
-  (dev-mode :pointer)
-  (window :pointer)
+  (dev-mode (:pointer (:struct device-mode)))
+  (window com:hwnd)
   (flags display-setting-flags)
-  (param :pointer))
+  (param (:pointer :void)))
 
-(cffi:defcfun (create-window "CreateWindowExW") :pointer
+(cffi:defcfun (create-window "CreateWindowExW") com:hwnd
   (ex-style window-style-ex)
   (class-name com:wstring)
   (window-name com:wstring)
   (style window-style)
-  (x :int)
-  (y :int)
-  (w :int)
-  (h :int)
-  (parent :pointer)
-  (menu :pointer)
-  (instance :pointer)
-  (param :pointer))
+  (x :int32)
+  (y :int32)
+  (w :int32)
+  (h :int32)
+  (parent com:hwnd)
+  (menu com:hmenu)
+  (instance com:hinstance)
+  (param (:pointer :void)))
 
 (cffi:defcfun (def-window-proc "DefWindowProcW") :size
-  (window :pointer)
+  (window com:hwnd)
   (message message-type)
-  (wparameter :size)
-  (lparameter :size))
+  (wparameter com:wparam)
+  (lparameter com:lparam))
 
-(cffi:defcfun (destroy-window "DestroyWindow") :boolean
-  (window :pointer))
+(cffi:defcfun (destroy-window "DestroyWindow") com:bool
+  (window com:hwnd))
 
-(cffi:defcfun (dispatch-message "DispatchMessageW") :size
-  (message :pointer))
+(cffi:defcfun (dispatch-message "DispatchMessageW") com:lresult
+  (message (:pointer (:struct message))))
 
-(cffi:defcfun (enable-non-client-dpi-scaling "EnableNonClientDpiScaling") :boolean
-  (window :pointer))
+(cffi:defcfun (enable-non-client-dpi-scaling "EnableNonClientDpiScaling") com:bool
+  (window com:hwnd))
 
-(cffi:defcfun (enum-display-settings "EnumDisplaySettingsW") :boolean
-  (device-name (:string :encoding :utf-16/le))
+(cffi:defcfun (enum-display-settings "EnumDisplaySettingsW") com:bool
+  (device-name com:wstring)
   (mode-num :uint32)
-  (dev-mode :pointer))
+  (dev-mode (:pointer (:struct device-mode))))
 
-(cffi:defcfun (enum-display-devices "EnumDisplayDevicesW") :boolean
-  (device (:string :encoding :utf-16/le))
+(cffi:defcfun (enum-display-devices "EnumDisplayDevicesW") com:bool
+  (device com:wstring)
   (index :uint32)
-  (output :pointer)
+  (output (:pointer (:struct adapter)))
   (flags :uint32))
 
-(cffi:defcfun (flash-window "FlashWindow") :boolean
-  (window :pointer)
-  (invert :boolean))
+(cffi:defcfun (flash-window "FlashWindow") com:bool
+  (window com:hwnd)
+  (invert com:bool))
 
 (cffi:defcfun (get-class "GetClassLongPtrW") :size
-  (window :pointer)
+  (window com:hwnd)
   (index :int))
 
-(cffi:defcfun (get-class-info "GetClassInfoW") :bool
-  (hinstance :pointer)
+(cffi:defcfun (get-class-info "GetClassInfoW") com:bool
+  (hinstance com:hinstance)
   (class-name com:wstring)
-  (class :pointer))
+  (class (:pointer (:struct window-class))))
 
-(cffi:defcfun (get-dc "GetDC") :pointer
-  (window :pointer))
+(cffi:defcfun (get-dc "GetDC") com:hdc
+  (window com:hwnd))
 
-(cffi:defcfun (get-device-caps "GetDeviceCaps") :int
-  (dc :pointer)
+(cffi:defcfun (get-device-caps "GetDeviceCaps") :int32
+  (dc com:hdc)
   (cap device-cap))
 
 (cffi:defcfun (get-dpi-for-monitor "GetDpiForMonitor") com:hresult
-  (monitor :pointer)
+  (monitor com:hmonitor)
   (dpi-type monitor-dpi-type)
-  (x :pointer)
-  (y :pointer))
+  (x (:pointer :uint32))
+  (y (:pointer :uint32)))
 
-(cffi:defcfun (get-dpi-for-window "GetDpiForWindow") :uint
-  (window :pointer))
+(cffi:defcfun (get-dpi-for-window "GetDpiForWindow") :uint32
+  (window com:hwnd))
 
-(cffi:defcfun (get-message-time "GetMessageTime") :long)
+(cffi:defcfun (get-message-time "GetMessageTime") :int32)
 
-(cffi:defcfun (get-module-handle "GetModuleHandleW") :pointer
-  (arg :pointer))
+(cffi:defcfun (get-module-handle "GetModuleHandleW") com:hmodule
+  (arg com:wstring))
 
 (cffi:defcfun (get-key-state "GetKeyState") :short
   (key key))
 
-(cffi:defcfun (get-system-metrics "GetSystemMetrics") :int
+(cffi:defcfun (get-system-metrics "GetSystemMetrics") :int32
   (index system-metric))
 
-(cffi:defcfun (get-window "GetWindowLongW") :ssize
-  (window :pointer)
+(cffi:defcfun (get-window "GetWindowLongW") :int32
+  (window com:hwnd)
   (index get-window-long))
 
-(cffi:defcfun (get-window-rect "GetWindowRect") :bool
-  (window :pointer)
-  (rect :pointer))
+(cffi:defcfun (get-window-rect "GetWindowRect") com:bool
+  (window com:hwnd)
+  (rect (:pointer (:struct rect))))
 
-(cffi:defcfun (invalidate-rect "InvalidateRect") :boolean
-  (window :pointer)
-  (rect :pointer)
-  (erase :boolean))
+(cffi:defcfun (invalidate-rect "InvalidateRect") com:bool
+  (window com:hwnd)
+  (rect (:pointer (:struct rect)))
+  (erase com:bool))
 
-(cffi:defcfun (load-cursor "LoadCursorW") :pointer
-  (window :pointer)
+(cffi:defcfun (load-cursor "LoadCursorW") com:hcursor
+  (window com:hwnd)
   (cursor-name cursor))
 
-(cffi:defcfun (load-cursor* "LoadCursorW") :pointer
-  (window :pointer)
-  (cursor :pointer))
+(cffi:defcfun (load-cursor* "LoadCursorW") com:hcursor
+  (window com:hwnd)
+  (cursor com:wstring))
 
-(cffi:defcfun (map-virtual-key "MapVirtualKeyW") :uint
-  (code :uint)
-  (map-type :uint))
+(cffi:defcfun (map-virtual-key "MapVirtualKeyW") :uint32
+  (code :uint32)
+  (map-type map-virtual-key-type))
 
-(cffi:defcfun (monitor-from-window "MonitorFromWindow") :pointer
-  (window :pointer)
-  (flags :uint32))
+(cffi:defcfun (monitor-from-window "MonitorFromWindow") com:hmonitor
+  (window com:hwnd)
+  (flags monitor-from-flags))
 
-(cffi:defcfun (move-window "MoveWindow") :bool
-  (window :pointer)
-  (x :int)
-  (y :int)
-  (w :int)
-  (h :int)
-  (repaint :boolean))
+(cffi:defcfun (move-window "MoveWindow") com:bool
+  (window com:hwnd)
+  (x :int32)
+  (y :int32)
+  (w :int32)
+  (h :int32)
+  (repaint com:bool))
 
 (cffi:defcfun (msg-wait-for-multiple-objects "MsgWaitForMultipleObjects") :uint32
   (count :uint32)
-  (handles :pointer)
-  (wait-all :bool)
+  (handles (:pointer com:handle))
+  (wait-all com:bool)
   (milliseconds :uint32)
-  (wake-mask :uint32))
+  (wake-mask queue-status-flags))
 
-(cffi:defcfun (peek-message "PeekMessageW") :boolean
-  (message :pointer)
-  (window :pointer)
-  (message-filter-min :uint)
-  (message-filter-max :uint)
-  (remove-message :uint))
+(cffi:defcfun (peek-message "PeekMessageW") com:bool
+  (message (:pointer (:struct message)))
+  (window com:hwnd)
+  (message-filter-min :uint32)
+  (message-filter-max :uint32)
+  (remove-message peek-message-remove-type))
 
 (cffi:defcfun (register-class "RegisterClassW") :uint16
-  (class :pointer))
+  (class (:pointer (:struct window-class))))
 
-(cffi:defcfun (unregister-class "UnregisterClassW") :bool
+(cffi:defcfun (unregister-class "UnregisterClassW") com:bool
   (name com:wstring)
-  (window :pointer))
+  (hinstance com:hinstance))
 
-(cffi:defcfun (release-dc "ReleaseDC") :int
-  (window :pointer)
-  (dc :pointer))
+(cffi:defcfun (release-dc "ReleaseDC") :int32
+  (window com:hwnd)
+  (dc com:hdc))
 
-(cffi:defcfun (send-message "SendMessageW") :ssize
-  (window :pointer)
+(cffi:defcfun (send-message "SendMessageW") com:lresult
+  (window com:hwnd)
   (message message-type)
-  (wparameter :size)
-  (lparameter :size))
+  (wparameter com:wparam)
+  (lparameter com:lparam))
 
-(cffi:defcfun (set-focus "SetFocus") :boolean
-  (window :pointer))
+(cffi:defcfun (set-focus "SetFocus") com:hwnd
+  (window com:hwnd))
 
-(cffi:defcfun (set-foreground-window "SetForegroundWindow") :boolean
-  (window :pointer))
+(cffi:defcfun (set-foreground-window "SetForegroundWindow") com:bool
+  (window com:hwnd))
 
-(cffi:defcfun (set-process-dpi-aware "SetProcessDPIAware") :boolean)
+(cffi:defcfun (set-process-dpi-aware "SetProcessDPIAware") com:bool)
 
-(cffi:defcfun (set-process-dpi-awareness-context "SetProcessDpiAwarenessContext") :boolean
+(cffi:defcfun (set-process-dpi-awareness-context "SetProcessDpiAwarenessContext") com:bool
   (context dpi-awareness-context))
 
 (cffi:defcfun (set-process-dpi-awareness "SetProcessDpiAwareness") com:hresult
   (awareness dpi-awareness))
 
-(cffi:defcfun (set-window "SetWindowLongW") :ssize
-  (window :pointer)
+(cffi:defcfun (set-window "SetWindowLongW") :int32
+  (window com:hwnd)
   (index get-window-long)
-  (new-long :ssize))
+  (new-long :int32))
 
-(cffi:defcfun (set-window-pos "SetWindowPos") :boolean
-  (window :pointer)
-  (insert-after :ssize)
-  (x :int)
-  (y :int)
-  (cx :int)
-  (cy :int)
+(cffi:defcfun (set-window-pos "SetWindowPos") com:bool
+  (window com:hwnd)
+  (insert-after com:hwnd)
+  (x :int32)
+  (y :int32)
+  (cx :int32)
+  (cy :int32)
   (flags set-window-pos))
 
-(cffi:defcfun (set-window-text "SetWindowText") :boolean
-  (window :pointer)
+(cffi:defcfun (set-window-text "SetWindowTextW") com:bool
+  (window com:hwnd)
   (title com:wstring))
 
-(cffi:defcfun (show-window "ShowWindow") :boolean
-  (window :pointer)
+(cffi:defcfun (show-window "ShowWindow") com:bool
+  (window com:hwnd)
   (command show-command))
 
-(cffi:defcfun (stretch-di-bits "StretchDIBits") :int
-  (device :pointer)
-  (xdest :int)
-  (ydest :int)
-  (wdest :int)
-  (hdest :int)
-  (xsrc :int)
-  (ysrc :int)
-  (wsrc :int)
-  (hsrc :int)
-  (bits :pointer)
-  (bitmapinfo :pointer)
-  (usage :uint)
-  (rop :uint32))
+(cffi:defcfun (stretch-di-bits "StretchDIBits") :int32
+  (device com:hdc)
+  (xdest :int32)
+  (ydest :int32)
+  (wdest :int32)
+  (hdest :int32)
+  (xsrc :int32)
+  (ysrc :int32)
+  (wsrc :int32)
+  (hsrc :int32)
+  (bits (:pointer :void))
+  ;; pointer to bitmap-info-header or bitmap-v5-header
+  (bitmapinfo (:pointer #++(:struct bitmap-info-header)))
+  (usage dib-usage)
+  (rop rop-code))
 
-(cffi:defcfun (to-unicode "ToUnicode") :int
-  (vk :uint)
-  (scan-code :uint)
-  (state :pointer)
-  (chars :pointer)
-  (buff-count :int)
-  (flags :uint))
+(cffi:defcfun (to-unicode "ToUnicode") :int32
+  (vk :uint32)
+  (scan-code :uint32)
+  (state (:pointer :uint8))
+  (chars com:wstring)
+  (buff-count :int32)
+  (flags :uint32))
 
-(cffi:defcfun (track-mouse-event "TrackMouseEvent") :bool
-  (event :pointer))
+(cffi:defcfun (track-mouse-event "TrackMouseEvent") com:bool
+  (event (:pointer (:struct track-mouse-event))))
 
-(cffi:defcfun (translate-message "TranslateMessage") :boolean
-  (message :pointer))
+(cffi:defcfun (translate-message "TranslateMessage") com:bool
+  (message (:pointer (:struct message))))
 
-(cffi:defcfun (validate-rect "ValidateRect") :boolean
-  (window :pointer)
-  (rect :pointer))
+(cffi:defcfun (validate-rect "ValidateRect") com:bool
+  (window com:hwnd)
+  (rect (:pointer (:struct rect))))
 
-(cffi:defcfun (create-waitable-timer "CreateWaitableTimerW") :pointer
-  (attributes :pointer)
-  (manual-reset :boolean)
-  (timer-name :pointer))
+(cffi:defcfun (create-waitable-timer "CreateWaitableTimerW") com:handle
+  (attributes (:pointer #++(:struct security-attributes)))
+  (manual-reset com:bool)
+  (timer-name com:wstring))
 
-(cffi:defcfun (set-waitable-timer "SetWaitableTimer") :boolean
-  (timer :pointer)
-  (due-time :pointer)
+(cffi:defcfun (set-waitable-timer "SetWaitableTimer") com:bool
+  (timer com:handle)
+  (due-time (:pointer :int64))
   (period :long)
-  (completion-routine :pointer)
-  (arg :pointer)
-  (resume :bool))
+  (completion-routine :pointer) ;;((:pointer :void) :uint32 :uint32) -> :void
+  (arg (:pointer :void))
+  (resume com:bool))
 
-(cffi:defcfun (cancel-waitable-timer "CancelWaitableTimer") :boolean
-  (timer :pointer))
+(cffi:defcfun (cancel-waitable-timer "CancelWaitableTimer") com:bool
+  (timer com:handle))
 
-(cffi:defcfun (close-handle "CloseHandle") :boolean
-  (handle :pointer))
+(cffi:defcfun (close-handle "CloseHandle") com:bool
+  (handle com:handle))
 
-(cffi:defcfun (destroy-icon "DestroyIcon") :boolean
-  (handle :pointer))
+(cffi:defcfun (destroy-icon "DestroyIcon") com:bool
+  (handle com:hicon))
 
-(cffi:defcfun (create-dib-section "CreateDIBSection") :pointer
-  (dc :pointer)
-  (bi :pointer)
-  (usage :uint)
-  (bits :pointer)
-  (section :pointer)
+(cffi:defcfun (create-dib-section "CreateDIBSection") com:hbitmap
+  (dc com:hdc)
+  (bi (:pointer #++(:struct bitmap-info-header)))
+  (usage dib-usage)
+  (bits (:pointer (:pointer :void)))
+  (section com:handle)
   (offset :uint32))
 
-(cffi:defcfun (create-bitmap "CreateBitmap") :pointer
-  (width :int)
-  (height :int)
-  (planes :uint)
-  (bitcount :uint)
-  (bits :pointer))
+(cffi:defcfun (create-bitmap "CreateBitmap") com:hbitmap
+  (width :int32)
+  (height :int32)
+  (planes :uint32)
+  (bitcount :uint32)
+  (bits (:pointer :void)))
 
-(cffi:defcfun (create-icon "CreateIconIndirect") :pointer
-  (icon-info :pointer))
+(cffi:defcfun (create-icon "CreateIconIndirect") com:hicon
+  (icon-info (:pointer (:struct icon-info))))
 
-(cffi:defcfun (destroy-object "DestroyObject") :boolean
-  (object :pointer))
-
-(cffi:defcfun (load-image "LoadImageW") :pointer
-  (instance :pointer)
+(cffi:defcfun (load-image "LoadImageW") com:handle
+  (instance com:hinstance)
   (name cursor)
   (type load-image-type)
-  (cx :int)
-  (cy :int)
+  (cx :int32)
+  (cy :int32)
   (behavior load-image-behavior))
 
-(cffi:defcfun (set-cursor "SetCursor") :boolean
-  (cursor :pointer))
+(cffi:defcfun (set-cursor "SetCursor") com:hcursor
+  (cursor com:hcursor))
 
-(cffi:defcfun (open-clipboard "OpenClipboard") :boolean
-  (handle :pointer))
+(cffi:defcfun (open-clipboard "OpenClipboard") com:bool
+  (handle com:hwnd))
 
 (cffi:defcfun (enum-clipboard-formats "EnumClipboardFormats") clipboard-format
   (format clipboard-format))
 
-(cffi:defcfun (get-clipboard-data "GetClipboardData") :pointer
+(cffi:defcfun (get-clipboard-data "GetClipboardData") com:handle
   (format clipboard-format))
 
-(cffi:defcfun (close-clipboard "CloseClipboard") :boolean)
+(cffi:defcfun (close-clipboard "CloseClipboard") com:bool)
 
-(cffi:defcfun (empty-clipboard "EmptyClipboard") :boolean)
+(cffi:defcfun (empty-clipboard "EmptyClipboard") com:bool)
 
-(cffi:defcfun (set-clipboard-data "SetClipboardData") :boolean
+(cffi:defcfun (set-clipboard-data "SetClipboardData") com:handle
   (format clipboard-format)
-  (data :pointer))
+  (data com:handle))
 
-(cffi:defcfun (global-alloc "GlobalAlloc") :pointer
+(cffi:defcfun (global-alloc "GlobalAlloc") com:hglobal
   (flags global-alloc-flags)
   (size :size))
 
-(cffi:defcfun (delete-object "DeleteObject") :boolean
-  (handle :pointer))
+(cffi:defcfun (delete-object "DeleteObject") com:bool
+  (handle com:hgdiobj))
 
-(cffi:defcfun (global-lock "GlobalLock") :pointer
-  (handle :pointer))
+(cffi:defcfun (global-lock "GlobalLock") (:pointer :void)
+  (handle com:hglobal))
 
-(cffi:defcfun (global-unlock "GlobalUnlock") :boolean
-  (handle :pointer))
+(cffi:defcfun (global-unlock "GlobalUnlock") com:bool
+  (handle com:hglobal))
 
-(cffi:defcfun (drag-query-point "DragQueryPoint") :boolean
-  (handle :pointer)
-  (point :pointer))
+(cffi:defcfun (drag-query-point "DragQueryPoint") com:bool
+  (handle com:hdrop)
+  (point (:pointer #++(:struct point))))
 
-(cffi:defcfun (drag-query-file "DragQueryFileW") :uint
-  (handle :pointer)
-  (file :uint)
-  (buf :pointer)
-  (size :uint))
+(cffi:defcfun (drag-query-file "DragQueryFileW") :uint32
+  (handle com:hdrop)
+  (file :uint32)
+  (buf com:wstring)
+  (size :uint32))
 
-(cffi:defcfun (drag-finish "DragFinish") :boolean
-  (handle :pointer))
+(cffi:defcfun (drag-finish "DragFinish") :void
+  (handle com:hdrop))
 
-(cffi:defcfun (drag-accept-files "DragAcceptFiles") :boolean
-  (handle :pointer)
-  (mode :boolean))
+(cffi:defcfun (drag-accept-files "DragAcceptFiles") :void
+  (handle com:hwnd)
+  (mode com:bool))
+
+(cffi:defcfun ("DwmFlush" dwm-flush) com:hresult)
+
+(cffi:defcfun ("DwmIsCompositionEnabled" %dwm-is-composition-enabled)
+    com:hresult
+  (enabled (:pointer com:bool)))

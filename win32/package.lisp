@@ -1,7 +1,8 @@
 (defpackage #:org.shirakumo.framebuffers.win32.cffi
   (:use #:cl)
   (:local-nicknames
-   (#:com #:org.shirakumo.com-on))
+   (#:com #:org.shirakumo.com-on)
+   (#:int #:org.shirakumo.framebuffers.int))
   (:export
    #:user32
    #:gdi32
@@ -182,7 +183,8 @@
    #:drag-query-file
    #:drag-accept-files
    #:ENUM-CURRENT-SETTINGS
-   #:ENUM-REGISTRY-SETTINGS))
+   #:ENUM-REGISTRY-SETTINGS
+   #:bitmap-v5-header))
 
 (defpackage #:org.shirakumo.framebuffers.win32
   (:use #:cl)

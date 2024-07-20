@@ -185,7 +185,7 @@
 (defmethod initialize-instance :after ((window window) &key)
   (setf (fb-int:ptr-window (display window)) window)
   (unless (xkb window) (setf (xkb window) (probe-xkb (display window))))
-  #+static-vectors-aligned
+  #+(and static-vectors-aligned framebuffers-use-xshm)
   (unless (xshm window) (when (ignore-errors (xlib:xshm-query-extension (display window)))
                           (cffi:foreign-alloc '(:struct xlib:shm-segment-info))))
   (unless (gc window) (setf (gc window) (xlib:default-gc (display window) (screen window))))
@@ -656,6 +656,7 @@
                   ((eql T) 1000)
                   (null 0)))
         (fds (loop for window in windows
+                   when (display window)
                    append (list* (xlib:connection-number (display window)) (fb-int::timers window))))
         (found ()))
     (loop (dolist (fd (fb-int::poll fds millis))

@@ -417,9 +417,8 @@
       ;; Copy sub-region back.
       (dotimes (y (min h oh))
         (dotimes (x (min w ow))
-          (dotimes (z 4)
-            (setf (aref buffer (+ z (* 4 (+ x (* w y)))))
-                  (aref old-buffer (+ z (* 4 (+ x (* ow y)))))))))
+          (setf (nibbles:ub32ref/le buffer (* 4 (+ x (* w y))))
+                (nibbles:ub32ref/le old-buffer (* 4 (+ x (* ow y)))))))
       #+static-vectors (static-vectors:free-static-vector old-buffer))
     buffer))
 

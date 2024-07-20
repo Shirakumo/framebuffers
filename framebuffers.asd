@@ -25,6 +25,7 @@
   :depends-on (:documentation-utils
                :trivial-features
                :trivial-indent
+               :nibbles
                (:feature (:not :mezzano) :static-vectors)
                (:feature (:not :mezzano) :cffi)))
 

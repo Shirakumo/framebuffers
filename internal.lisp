@@ -508,3 +508,60 @@
                           (etypecase type
                             (integer type)
                             ((or cons symbol) (cffi:foreign-type-size type))))))
+
+#+cffi
+(defmacro define-cffi-translators (class ftype
+                                   (p v s &optional (type (gensym "TYPE")))
+                                   &body translators)
+  (alexandria:with-gensyms (extra body)
+    (declare (ignorable extra))
+    (let* ((from (getf translators :from))
+           (to (getf translators :to))
+           (st `',ftype)
+           (alloc (or (getf translators :alloc) `(cffi:foreign-alloc ,st)))
+           (free (or (getf translators :alloc) nil)))
+      `(macrolet ((from (,p ,v ,type)
+                    (declare (ignorable ,p ,v ,type))
+                    (let ((,s ,st))
+                      (declare (ignorable ,s))
+                      ,from))
+                  (to (,p ,v ,type)
+                    (declare (ignorable ,p ,v ,type))
+                    (let ((,s ,st))
+                      (declare (ignorable ,s))
+                      ,to)))
+         (defmethod cffi:translate-from-foreign (,p (,type ,class))
+           (from ,p ,v ,type))
+
+         (defmethod cffi:translate-to-foreign (,v (,type ,class))
+           (let ((,p ,alloc))
+             (to ,p ,v ,type)
+             ,p))
+
+         (defmethod cffi::translate-aggregate-to-foreign (,p ,v (,type ,class))
+           (to ,p ,v ,type)
+           ,p)
+         (defmethod cffi:translate-into-foreign-memory (,v (,type ,class) ,p)
+           (to ,p ,v ,type)
+           ,p)
+
+         ,@(when free
+             `((defmethod cffi:free-translated-object (,p (,type ,class) ,extra)
+                 (declare (ignore ,extra))
+                 ,free)))
+
+         (defmethod cffi:expand-from-foreign (,p (,type ,class))
+           (let ((,s ,st))
+             (declare (ignorable ,s))
+             (alexandria:once-only (,p)
+               ,from)))
+
+         (defmethod cffi:expand-into-foreign-memory (,v (,type ,class) ,p)
+           (let ((,s ,st))
+             (declare (ignorable ,s))
+             ,to))
+
+         (defmethod cffi:expand-to-foreign-dyn (,p ,v ,body (,type ,class))
+           `(with-foreign-object (,',p ,',st)
+              ,(to ,p ,v ,type)
+              ,@,body))))))

@@ -122,4 +122,4 @@
 (asdf:defsystem framebuffers/test
   :components ((:module "test"
                 :components ((:file "test"))))
-  :depends-on (:framebuffers))
+  :depends-on (:framebuffers :parachute))

@@ -9,7 +9,7 @@
   :source-control (:git "https://github.com/shirakumo/framebuffers.git")
   :defsystem-depends-on (:trivial-features)
   :depends-on (:framebuffers/protocol
-               (:feature :unix :framebuffers/xlib)
+               (:feature (:and :unix (:not :darwin)) :framebuffers/xlib)
                (:feature :windows :framebuffers/win32)
                (:feature :linux :framebuffers/wayland)
                (:feature :darwin :framebuffers/cocoa)

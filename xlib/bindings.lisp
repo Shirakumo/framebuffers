@@ -24,6 +24,11 @@
   (:linux (:or (:default "libXi") "libXi.so.6"))
   (T (:or (:default "libXi") (:default "Xi"))))
 
+(set 'cl-user::*foreign-system-libraries*
+     (union (when (boundp 'cl-user::*foreign-system-libraries*)
+              (symbol-value 'cl-user::*foreign-system-libraries*))
+            '(x11 xext xrandr xinerama xcursor xi)))
+
 (cffi:defctype xid :ulong)
 (cffi:defctype atom :ulong)
 

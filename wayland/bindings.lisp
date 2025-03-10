@@ -8,6 +8,11 @@
   (:linux (:or (:default "libxkbcommon") "libxkbcommon.so.0"))
   (T (:or (:default "libxkbcommon") (:default "xkbcommon"))))
 
+(set 'cl-user::*foreign-system-libraries*
+      (union (when (boundp 'cl-user::*foreign-system-libraries*)
+               (symbol-value 'cl-user::*foreign-system-libraries*))
+             '(wayland xkbcommon)))
+
 ;;; core defs
 (defconstant MARSHAL-FLAG-DESTROY 1)
 

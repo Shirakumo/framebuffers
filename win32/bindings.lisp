@@ -12,7 +12,7 @@
 (set 'cl-user::*foreign-system-libraries*
      (union (when (boundp 'cl-user::*foreign-system-libraries*)
               (symbol-value 'cl-user::*foreign-system-libraries*))
-            '(user32 shcore user32)))
+            '(user32 shcore gdi32)))
 
 (defconstant ENUM-CURRENT-SETTINGS (ldb (byte 32 0) -1))
 (defconstant ENUM-REGISTRY-SETTINGS (ldb (byte 32 0) -2))

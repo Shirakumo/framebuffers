@@ -4,9 +4,9 @@
   :author "Yukari Hafner <shinmera@tymoon.eu>"
   :maintainer "Yukari Hafner <shinmera@tymoon.eu>"
   :description "A portable library for operating system framebuffers and windows, including IO handling"
-  :homepage "https://shirakumo.github.io/framebuffers/"
-  :bug-tracker "https://github.com/shirakumo/framebuffers/issues"
-  :source-control (:git "https://github.com/shirakumo/framebuffers.git")
+  :homepage "https://shirakumo.org/docs/framebuffers/"
+  :bug-tracker "https://shirakumo.org/project/framebuffers/issues"
+  :source-control (:git "https://shirakumo.org/project/framebuffers.git")
   :defsystem-depends-on (:trivial-features)
   :depends-on (:framebuffers/protocol
                (:feature :unix :framebuffers/xlib)

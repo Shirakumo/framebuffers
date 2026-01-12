@@ -139,7 +139,7 @@
     (loop for scancode from 0 below (length *keycodes*)
           for key = (aref *keycodes* scancode)
           do (when key
-               (let* ((vk (win32:map-virtual-key scancode 1))
+               (let* ((vk (win32:map-virtual-key scancode :vsc-to-vk))
                       (len (win32:to-unicode vk scancode state chars 16 0)))
                  (when (= -1 len) ;; Retry for dead keys
                    (win32:to-unicode vk scancode state chars 16 0))
